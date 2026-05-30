@@ -1,0 +1,2109 @@
+<!DOCTYPE html>
+<html lang="ja" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="description" content="製品の使用可否を判定する検品アプリ">
+<title>検品アプリ</title>
+<style>
+/* =====================================================
+   CSS変数（テーマカラー）
+   ===================================================== */
+:root {
+  --bg:         #edf0f8;
+  --surface:    #ffffff;
+  --surface-2:  #f4f5fa;
+  --primary:    #6366f1;
+  --primary-dim:#eef2ff;
+  --primary-b:  #c7d2fe;
+  --text:       #1a1a2e;
+  --text-2:     #6b7280;
+  --text-3:     #9ca3af;
+  --border:     rgba(0,0,0,0.07);
+  --shadow:     0 2px 14px rgba(0,0,0,0.06);
+  --shadow-md:  0 4px 24px rgba(0,0,0,0.10);
+  --pass:       #22c55e;
+  --pass-dim:   #f0fdf4;
+  --fail:       #ef4444;
+  --fail-dim:   #fef2f2;
+  --review:     #f59e0b;
+  --review-dim: #fffbeb;
+  --radius:     18px;
+  --nav-h:      76px;
+  --hdr-h:      58px;
+}
+[data-theme="dark"] {
+  --bg:        #0d0d1a;
+  --surface:   #1a1a2e;
+  --surface-2: #242438;
+  --text:      #f0f0ff;
+  --text-2:    #8890a4;
+  --text-3:    #565e70;
+  --border:    rgba(255,255,255,0.07);
+  --shadow:    0 2px 14px rgba(0,0,0,0.5);
+  --shadow-md: 0 4px 24px rgba(0,0,0,0.6);
+}
+
+/* =====================================================
+   リセット & ベース
+   ===================================================== */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html{font-size:16px;-webkit-text-size-adjust:100%}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Hiragino Kaku Gothic ProN","Noto Sans JP",sans-serif;
+  background:var(--bg);color:var(--text);min-height:100dvh;
+  overflow-x:hidden;-webkit-font-smoothing:antialiased;
+}
+button{cursor:pointer;font-family:inherit;border:none;background:none;outline:none}
+input,textarea{font-family:inherit;outline:none;border:none}
+img{display:block}
+a{color:inherit;text-decoration:none}
+::-webkit-scrollbar{display:none}
+
+/* =====================================================
+   アプリコンテナ
+   ===================================================== */
+#app{
+  max-width:430px;margin:0 auto;min-height:100dvh;
+  position:relative;background:var(--bg);
+}
+@media(min-width:430px){
+  #app{border-left:1px solid var(--border);border-right:1px solid var(--border)}
+  .bottom-nav{border-left:1px solid var(--border);border-right:1px solid var(--border)}
+}
+
+/* =====================================================
+   ヘッダー
+   ===================================================== */
+.app-header{
+  position:sticky;top:0;z-index:100;
+  background:var(--surface);height:var(--hdr-h);
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 18px;
+  border-bottom:1px solid var(--border);
+}
+.header-logo{display:flex;align-items:center;gap:11px}
+.logo-icon{
+  width:38px;height:38px;
+  background:linear-gradient(140deg,#818cf8,#4f46e5);
+  border-radius:11px;display:flex;align-items:center;justify-content:center;
+  box-shadow:0 3px 10px rgba(99,102,241,.35);flex-shrink:0;
+}
+.logo-icon svg{width:22px;height:22px}
+.header-title{font-size:19px;font-weight:800;letter-spacing:-.4px;color:var(--text)}
+.notif-btn{
+  width:38px;height:38px;background:var(--surface-2);
+  border-radius:50%;display:flex;align-items:center;justify-content:center;
+  position:relative;border:1px solid var(--border);
+  transition:background .15s;
+}
+.notif-btn:active{background:var(--primary-dim)}
+.notif-dot{
+  position:absolute;top:7px;right:7px;width:8px;height:8px;
+  background:var(--primary);border-radius:50%;
+  border:2px solid var(--surface);
+}
+
+/* =====================================================
+   ページ
+   ===================================================== */
+.page{
+  display:none;
+  padding:14px 14px calc(var(--nav-h) + 14px);
+  min-height:calc(100dvh - var(--hdr-h));
+}
+.page.active{display:block;animation:fadeUp .25s ease}
+
+/* =====================================================
+   カード
+   ===================================================== */
+.card{
+  background:var(--surface);border-radius:var(--radius);
+  padding:16px;box-shadow:var(--shadow);margin-bottom:12px;
+}
+.card-head{
+  display:flex;align-items:center;gap:9px;
+  font-size:15px;font-weight:700;color:var(--text);
+  margin-bottom:14px;
+}
+.card-head.between{justify-content:space-between}
+.head-icon{
+  width:30px;height:30px;background:var(--primary-dim);
+  border-radius:9px;display:flex;align-items:center;justify-content:center;flex-shrink:0;
+}
+.head-icon svg{width:15px;height:15px;stroke:var(--primary)}
+.see-all{
+  font-size:13px;color:var(--primary);font-weight:600;
+  display:flex;align-items:center;gap:2px;
+  background:none;border:none;padding:0;
+}
+
+/* =====================================================
+   メーカー
+   ===================================================== */
+/* =====================================================
+   メーカー
+   ===================================================== */
+.mfr-section-lbl{
+  font-size:11px;font-weight:700;color:var(--text-3);
+  letter-spacing:.5px;text-transform:uppercase;margin-bottom:7px;
+}
+.mfr-recent-row{
+  display:flex;gap:7px;overflow-x:auto;
+  padding-bottom:3px;margin-bottom:10px;
+}
+.mfr-recent-chip{
+  flex-shrink:0;padding:7px 15px;border-radius:100px;
+  border:1.5px solid var(--border);background:var(--surface-2);
+  font-size:13px;font-weight:600;color:var(--text-2);
+  cursor:pointer;transition:all .15s;white-space:nowrap;
+}
+.mfr-recent-chip:active{transform:scale(.95)}
+.mfr-recent-chip.selected{
+  border-color:var(--primary);background:var(--primary-dim);color:var(--primary);
+}
+.mfr-toggle-btn{
+  width:100%;padding:9px;border-radius:11px;
+  background:var(--surface-2);border:1.5px solid var(--border);
+  font-size:13px;font-weight:600;color:var(--text-2);
+  display:flex;align-items:center;justify-content:center;gap:5px;
+  cursor:pointer;transition:all .15s;
+}
+.mfr-toggle-btn:active{background:var(--primary-dim);border-color:var(--primary);color:var(--primary)}
+.mfr-scroll{
+  display:flex;gap:9px;overflow-x:auto;
+  padding-bottom:3px;scroll-snap-type:x mandatory;
+  margin-top:10px;
+}
+.mfr-card{
+  flex-shrink:0;width:88px;min-height:48px;
+  padding:10px 6px;
+  background:var(--surface);border:1.5px solid var(--border);
+  border-radius:13px;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;
+  cursor:pointer;transition:all .15s;scroll-snap-align:start;
+  position:relative;
+}
+.mfr-card:active{transform:scale(.96)}
+.mfr-card.selected{
+  border-color:var(--primary);background:var(--primary-dim);
+}
+.mfr-logo{
+  height:28px;display:flex;align-items:center;justify-content:center;
+  font-weight:900;letter-spacing:-.3px;line-height:1;
+}
+.mfr-name{font-size:11px;color:var(--text-2);text-align:center;font-weight:500}
+.mfr-card.selected .mfr-name{color:var(--primary)}
+
+/* =====================================================
+   製品名検索
+   ===================================================== */
+.search-wrap{position:relative}
+.search-input{
+  width:100%;padding:12px 44px 12px 14px;
+  background:var(--surface-2);border:1.5px solid var(--border);
+  border-radius:12px;font-size:15px;color:var(--text);
+  transition:border-color .15s,background .15s;
+}
+.search-input:focus{border-color:var(--primary);background:var(--surface)}
+.search-input::placeholder{color:var(--text-3)}
+.search-ico{
+  position:absolute;right:14px;top:50%;transform:translateY(-50%);
+  color:var(--text-3);pointer-events:none;
+}
+.hist-label{font-size:12px;color:var(--text-2);margin:10px 0 8px;font-weight:500}
+.hist-chips{display:flex;gap:7px;overflow-x:auto;padding-bottom:2px}
+.hist-chip{
+  flex-shrink:0;display:flex;align-items:center;gap:5px;
+  padding:5px 11px;background:var(--surface-2);
+  border:1px solid var(--border);border-radius:100px;
+  font-size:12px;color:var(--text-2);cursor:pointer;
+  white-space:nowrap;transition:all .15s;font-weight:500;
+}
+.hist-chip:active{background:var(--primary-dim);border-color:var(--primary);color:var(--primary)}
+.suggest-dd{
+  position:absolute;top:calc(100% + 4px);left:0;right:0;
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:13px;box-shadow:var(--shadow-md);
+  z-index:50;overflow:hidden;max-height:180px;overflow-y:auto;
+}
+.suggest-item{
+  padding:11px 16px;font-size:14px;color:var(--text);
+  border-bottom:1px solid var(--border);cursor:pointer;
+  display:flex;align-items:center;gap:8px;transition:background .1s;
+}
+.suggest-item:last-child{border-bottom:none}
+.suggest-item:active{background:var(--primary-dim)}
+
+/* =====================================================
+   確認者
+   ===================================================== */
+.inspector-scroll{display:flex;gap:9px;overflow-x:auto;padding-bottom:3px}
+.inspector-card{
+  flex-shrink:0;width:88px;
+  padding:12px 6px;background:var(--surface);
+  border:1.5px solid var(--border);border-radius:13px;
+  display:flex;flex-direction:column;align-items:center;gap:5px;
+  cursor:pointer;transition:all .15s;position:relative;
+}
+.inspector-card:active{transform:scale(.96)}
+.inspector-card.selected{border-color:var(--primary);background:var(--primary-dim)}
+.avatar{
+  width:54px;height:54px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:20px;font-weight:800;color:#fff;position:relative;
+  flex-shrink:0;
+}
+.avatar-check{
+  position:absolute;top:-2px;right:-2px;
+  width:20px;height:20px;background:var(--primary);
+  border-radius:50%;border:2.5px solid var(--surface);
+  display:none;align-items:center;justify-content:center;
+}
+.inspector-card.selected .avatar-check{display:flex}
+.inspector-name{font-size:12px;font-weight:700;color:var(--text);text-align:center;line-height:1.3}
+.inspector-card.selected .inspector-name{color:var(--primary)}
+
+/* =====================================================
+   不良内容（カードグリッド）
+   ===================================================== */
+.defect-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.defect-chip{
+  display:flex;align-items:center;justify-content:center;
+  padding:13px 8px;border-radius:13px;
+  border:1.5px solid var(--border);
+  background:var(--surface-2);
+  cursor:pointer;transition:all .15s;
+  text-align:center;
+}
+.defect-chip:active{transform:scale(.97)}
+.defect-chip.on{border-color:var(--primary);background:var(--primary-dim)}
+.defect-label{
+  font-size:13px;font-weight:600;
+  color:var(--text-2);line-height:1.3;transition:color .15s;
+}
+.defect-chip.on .defect-label{color:var(--primary)}
+.defect-clear-btn{
+  font-size:12px;color:var(--text-3);font-weight:600;
+  background:none;border:none;padding:0;cursor:pointer;
+  transition:color .15s;
+}
+.defect-clear-btn:hover{color:var(--primary)}
+
+/* =====================================================
+   判定ボタン（2グループ）
+   ===================================================== */
+.judge-group-label{
+  font-size:12px;font-weight:700;color:var(--text-2);
+  margin-bottom:8px;padding-left:2px;
+}
+.judge-group-label+.judge-group-label{margin-top:14px}
+.judge-toggle-row{display:flex;gap:8px;}
+.judge-toggle{
+  flex:1;padding:13px 8px;border-radius:13px;
+  font-size:14px;font-weight:700;
+  display:flex;align-items:center;justify-content:center;gap:7px;
+  transition:all .15s;border:1.5px solid var(--border);
+  background:var(--surface-2);color:var(--text-2);
+  letter-spacing:.2px;
+}
+.judge-toggle:active{transform:scale(.96)}
+/* 使用可 */
+.judge-toggle.usable.active{
+  background:var(--pass-dim);border-color:var(--pass);color:var(--pass);
+}
+/* 使用否 */
+.judge-toggle.unusable.active{
+  background:var(--fail-dim);border-color:var(--fail);color:var(--fail);
+}
+/* 恒久判断 */
+.judge-toggle.permanent.active{
+  background:#eff6ff;border-color:#3b82f6;color:#3b82f6;
+}
+/* 暫定判断 */
+.judge-toggle.provisional.active{
+  background:var(--review-dim);border-color:var(--review);color:var(--review);
+}
+.judge-dot{
+  width:10px;height:10px;border-radius:50%;flex-shrink:0;
+}
+.judge-dot.blue{background:#3b82f6}
+.judge-dot.yellow{background:var(--review)}
+
+/* =====================================================
+   カメラ
+   ===================================================== */
+.cam-area{
+  background:#111827;border-radius:14px;overflow:hidden;
+  position:relative;height:210px;
+  display:flex;align-items:center;justify-content:center;
+}
+#camVideo{width:100%;height:100%;object-fit:cover;display:none}
+.cam-frame{
+  position:absolute;width:88px;height:88px;pointer-events:none;
+  border:none;
+}
+.cam-frame::before,.cam-frame::after{
+  content:'';position:absolute;width:20px;height:20px;
+  border:2.5px solid rgba(255,255,255,.8);
+}
+.cam-frame::before{top:0;left:0;border-right:none;border-bottom:none;border-radius:4px 0 0 0}
+.cam-frame::after{bottom:0;right:0;border-left:none;border-top:none;border-radius:0 0 4px 0}
+.cam-frame-tl,.cam-frame-tr,.cam-frame-bl,.cam-frame-br{
+  position:absolute;width:20px;height:20px;
+  border:2.5px solid rgba(255,255,255,.8);
+}
+.cam-frame-tl{top:0;left:0;border-right:none;border-bottom:none;border-radius:4px 0 0 0}
+.cam-frame-tr{top:0;right:0;border-left:none;border-bottom:none;border-radius:0 4px 0 0}
+.cam-frame-bl{bottom:0;left:0;border-right:none;border-top:none;border-radius:0 0 0 4px}
+.cam-frame-br{bottom:0;right:0;border-left:none;border-top:none;border-radius:0 0 4px 0}
+.cam-placeholder{
+  display:flex;flex-direction:column;align-items:center;gap:13px;
+  color:rgba(255,255,255,.55);
+}
+.cam-placeholder svg{width:42px;height:42px}
+.cam-start{
+  padding:9px 22px;background:rgba(255,255,255,.12);
+  border:1.5px solid rgba(255,255,255,.25);border-radius:100px;
+  color:#fff;font-size:14px;font-weight:600;
+  transition:all .15s;backdrop-filter:blur(8px);
+}
+.cam-start:active{background:rgba(255,255,255,.22)}
+.cam-controls{
+  position:absolute;right:11px;top:50%;transform:translateY(-50%);
+  display:none;flex-direction:column;gap:9px;
+}
+.cam-ctrl{
+  width:40px;height:40px;background:rgba(255,255,255,.18);
+  backdrop-filter:blur(10px);border-radius:50%;
+  color:#fff;display:flex;align-items:center;justify-content:center;
+  transition:background .15s;border:1px solid rgba(255,255,255,.15);
+}
+.cam-ctrl:active{background:rgba(255,255,255,.35)}
+.cam-capture{
+  background:var(--primary)!important;
+  width:48px!important;height:48px!important;
+  box-shadow:0 4px 14px rgba(99,102,241,.5);
+}
+.photo-grid{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.photo-wrap{position:relative;width:62px;height:62px}
+.photo-thumb{width:100%;height:100%;border-radius:10px;object-fit:cover}
+.photo-del{
+  position:absolute;top:-5px;right:-5px;
+  width:20px;height:20px;background:var(--fail);
+  border-radius:50%;border:2px solid var(--surface);
+  color:#fff;font-size:11px;display:flex;align-items:center;justify-content:center;
+  font-weight:700;
+}
+.file-pick{
+  margin-top:9px;width:100%;padding:10px;
+  background:var(--surface-2);border:1.5px dashed var(--border);
+  border-radius:11px;color:var(--text-2);font-size:13px;font-weight:600;
+  display:flex;align-items:center;justify-content:center;gap:6px;
+  transition:all .15s;
+}
+.file-pick:active{background:var(--primary-dim);border-color:var(--primary);color:var(--primary)}
+.req-badge{
+  display:inline-flex;align-items:center;gap:4px;
+  font-size:11px;color:var(--fail);
+  background:var(--fail-dim);padding:3px 9px;border-radius:100px;font-weight:600;
+}
+
+/* =====================================================
+   コメント
+   ===================================================== */
+.comment-ta{
+  width:100%;padding:12px;background:var(--surface-2);
+  border:1.5px solid var(--border);border-radius:12px;
+  font-size:14px;color:var(--text);resize:none;min-height:78px;
+  transition:border-color .15s,background .15s;line-height:1.5;
+}
+.comment-ta:focus{border-color:var(--primary);background:var(--surface)}
+.comment-ta::placeholder{color:var(--text-3)}
+
+/* =====================================================
+   保存ボタン
+   ===================================================== */
+.save-btn{
+  width:100%;padding:18px;margin-top:4px;
+  background:linear-gradient(135deg,#818cf8,#4f46e5);
+  border-radius:15px;color:#fff;font-size:16px;font-weight:800;
+  box-shadow:0 5px 18px rgba(99,102,241,.38);
+  transition:transform .1s,box-shadow .15s;
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  letter-spacing:.3px;
+}
+.save-btn:active{transform:scale(.98);box-shadow:0 2px 8px rgba(99,102,241,.3)}
+
+/* =====================================================
+   履歴ページ
+   ===================================================== */
+.search-bar{position:relative;margin-bottom:11px}
+.search-bar input{
+  width:100%;padding:12px 44px 12px 16px;
+  background:var(--surface);border:1.5px solid var(--border);
+  border-radius:13px;font-size:14px;color:var(--text);
+  transition:border-color .15s;
+}
+.search-bar input:focus{border-color:var(--primary)}
+.search-bar input::placeholder{color:var(--text-3)}
+.filter-row{
+  display:flex;gap:7px;overflow-x:auto;
+  margin-bottom:11px;padding-bottom:2px;
+}
+.f-chip{
+  flex-shrink:0;padding:6px 14px;border-radius:100px;
+  font-size:12px;font-weight:600;cursor:pointer;
+  border:1.5px solid var(--border);
+  background:var(--surface);color:var(--text-2);transition:all .15s;
+}
+.f-chip.on-all{border-color:var(--primary);background:var(--primary-dim);color:var(--primary)}
+.f-chip.on-pass{border-color:var(--pass);background:var(--pass-dim);color:var(--pass)}
+.f-chip.on-fail{border-color:var(--fail);background:var(--fail-dim);color:var(--fail)}
+.f-chip.on-review{border-color:var(--review);background:var(--review-dim);color:var(--review)}
+
+.hist-card{
+  background:var(--surface);border-radius:var(--radius);
+  padding:13px 14px;box-shadow:var(--shadow);margin-bottom:10px;
+  animation:fadeUp .2s ease;cursor:pointer;
+  transition:transform .12s,box-shadow .12s;
+  display:flex;align-items:center;gap:12px;
+}
+.hist-card:active{transform:scale(.985);box-shadow:none}
+.h-icon{
+  width:44px;height:44px;border-radius:12px;
+  background:var(--primary-dim);flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;
+}
+.h-icon svg{stroke:var(--primary)}
+.h-info{min-width:0;flex:1}
+.h-top{
+  display:flex;align-items:flex-start;justify-content:space-between;gap:6px;margin-bottom:1px;
+}
+.h-product{
+  font-size:15px;font-weight:700;color:var(--text);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.h-date-top{
+  display:flex;align-items:center;gap:3px;
+  font-size:11px;color:var(--text-3);flex-shrink:0;white-space:nowrap;
+}
+.h-meta{font-size:12px;color:var(--text-2);margin-bottom:6px;display:flex;align-items:center;gap:0}
+.h-sep{margin:0 5px;color:var(--border)}
+.h-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.h-badge{
+  display:inline-flex;align-items:center;
+  padding:4px 12px;border-radius:100px;font-size:12px;font-weight:600;
+}
+.h-badge.pass{background:var(--pass-dim);color:var(--pass)}
+.h-badge.fail{background:var(--fail-dim);color:var(--fail)}
+.h-badge.review{background:var(--review-dim);color:var(--review)}
+.h-badge-sub{
+  display:inline-flex;align-items:center;
+  padding:4px 12px;border-radius:100px;font-size:12px;font-weight:600;
+}
+.h-comment-pill{
+  display:inline-flex;align-items:center;
+  padding:4px 12px;border-radius:100px;font-size:12px;font-weight:500;
+  background:var(--surface-2);color:var(--text-2);
+}
+.h-chevron{flex-shrink:0;color:var(--text-3);display:flex;align-items:center}
+.empty{
+  text-align:center;padding:64px 20px;color:var(--text-3);
+  display:flex;flex-direction:column;align-items:center;gap:12px;
+}
+.empty svg{width:48px;height:48px}
+.empty p{font-size:14px;font-weight:500}
+
+/* =====================================================
+   詳細ボトムシート
+   ===================================================== */
+.detail-bg{
+  position:fixed;inset:0;background:rgba(0,0,0,.48);
+  z-index:200;display:flex;align-items:flex-end;justify-content:center;
+  opacity:0;pointer-events:none;transition:opacity .25s;
+}
+.detail-bg.show{opacity:1;pointer-events:all}
+.detail-sheet{
+  background:var(--surface);border-radius:22px 22px 0 0;
+  width:100%;max-width:430px;
+  max-height:82dvh;overflow-y:auto;
+  padding:14px 20px calc(env(safe-area-inset-bottom,0) + 24px);
+  transform:translateY(100%);
+  transition:transform .3s cubic-bezier(.34,1.12,.64,1);
+}
+.detail-bg.show .detail-sheet{transform:translateY(0)}
+.detail-handle{
+  width:36px;height:4px;background:var(--border);
+  border-radius:100px;margin:0 auto 18px;
+}
+.detail-header{
+  display:flex;align-items:flex-start;justify-content:space-between;
+  margin-bottom:14px;
+}
+.detail-title{
+  font-size:20px;font-weight:800;color:var(--text);
+  flex:1;padding-right:12px;line-height:1.3;
+}
+.detail-close{
+  width:32px;height:32px;background:var(--surface-2);
+  border-radius:50%;display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;border:1px solid var(--border);
+}
+.detail-close:active{background:var(--border)}
+.detail-badge-row{margin-bottom:16px}
+.detail-row{
+  display:flex;align-items:flex-start;gap:10px;
+  padding:11px 0;border-bottom:1px solid var(--border);
+  font-size:14px;color:var(--text);
+}
+.detail-row:last-child{border-bottom:none}
+.detail-lbl{
+  font-size:12px;color:var(--text-3);
+  width:68px;flex-shrink:0;font-weight:600;padding-top:1px;
+}
+.detail-val{flex:1;font-weight:500;line-height:1.5}
+.detail-photos{
+  display:grid;grid-template-columns:1fr 1fr;
+  gap:8px;margin-top:16px;
+}
+.detail-photo{
+  width:100%;border-radius:12px;
+  aspect-ratio:1;object-fit:cover;
+}
+
+/* =====================================================
+   統計ページ
+   ===================================================== */
+.total-box{
+  background:linear-gradient(135deg,#818cf8,#4f46e5);
+  border-radius:var(--radius);padding:20px 16px;
+  color:#fff;text-align:center;
+  box-shadow:0 6px 20px rgba(99,102,241,.32);margin-bottom:12px;
+}
+.total-num{font-size:44px;font-weight:900;line-height:1;letter-spacing:-1px}
+.total-lbl{font-size:13px;opacity:.8;margin-top:3px;font-weight:600}
+.stat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:12px}
+.stat-box{
+  background:var(--surface);border-radius:15px;padding:16px 8px;
+  text-align:center;box-shadow:var(--shadow);
+}
+.stat-num{font-size:30px;font-weight:900;line-height:1;margin-bottom:3px}
+.stat-lbl{font-size:11px;color:var(--text-2);font-weight:600}
+.stat-box.pass .stat-num{color:var(--pass)}
+.stat-box.fail .stat-num{color:var(--fail)}
+.stat-box.review .stat-num{color:var(--review)}
+.chart-card{
+  background:var(--surface);border-radius:var(--radius);
+  padding:16px;box-shadow:var(--shadow);margin-bottom:12px;
+}
+.chart-ttl{font-size:13px;font-weight:700;color:var(--text-2);margin-bottom:14px}
+.donut-wrap{display:flex;align-items:center;gap:18px}
+.bar-item{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.bar-lbl{font-size:12px;color:var(--text-2);width:76px;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500}
+.bar-track{flex:1;height:8px;background:var(--surface-2);border-radius:100px;overflow:hidden}
+.bar-fill{height:100%;border-radius:100px;transition:width .5s ease}
+.bar-cnt{font-size:12px;color:var(--text-2);width:22px;text-align:right;font-weight:600}
+.month-bars{display:flex;align-items:flex-end;gap:7px;height:110px}
+.month-bar{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px}
+.month-bar-inner{width:100%;display:flex;flex-direction:column;border-radius:6px;overflow:hidden;min-height:4px}
+.month-lbl{font-size:10px;color:var(--text-3);font-weight:600}
+.month-cnt{font-size:10px;color:var(--text-2);font-weight:700}
+.legend-row{display:flex;gap:14px;justify-content:center;margin-top:12px;flex-wrap:wrap}
+.legend-item{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text-2);font-weight:600}
+.legend-dot{width:9px;height:9px;border-radius:2px;flex-shrink:0}
+
+/* =====================================================
+   設定ページ
+   ===================================================== */
+.settings-section{margin-bottom:22px}
+.section-title{
+  font-size:12px;font-weight:700;color:var(--text-3);
+  text-transform:uppercase;letter-spacing:.6px;
+  margin-bottom:8px;padding-left:4px;
+}
+.settings-card{background:var(--surface);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow)}
+.s-item{
+  display:flex;align-items:center;padding:14px 16px;
+  border-bottom:1px solid var(--border);cursor:pointer;transition:background .12s;
+}
+.s-item:last-child{border-bottom:none}
+.s-item:active{background:var(--surface-2)}
+.s-icon{
+  width:34px;height:34px;border-radius:9px;
+  display:flex;align-items:center;justify-content:center;
+  margin-right:13px;flex-shrink:0;
+}
+.s-label{flex:1;font-size:15px;color:var(--text);font-weight:500}
+.s-value{font-size:13px;color:var(--text-3)}
+.toggle{
+  width:46px;height:27px;background:var(--border);
+  border-radius:100px;position:relative;
+  transition:background .22s;flex-shrink:0;
+}
+.toggle.on{background:var(--primary)}
+.toggle::after{
+  content:'';position:absolute;top:3px;left:3px;
+  width:21px;height:21px;background:#fff;border-radius:50%;
+  transition:transform .22s;box-shadow:0 1px 4px rgba(0,0,0,.18);
+}
+.toggle.on::after{transform:translateX(19px)}
+
+/* =====================================================
+   ボトムナビ
+   ===================================================== */
+.bottom-nav{
+  position:fixed;bottom:0;left:50%;transform:translateX(-50%);
+  width:100%;max-width:430px;height:var(--nav-h);
+  background:var(--surface);
+  border-top:1px solid var(--border);
+  display:flex;align-items:stretch;z-index:100;
+  padding-bottom:env(safe-area-inset-bottom,0);
+}
+.nav-item{
+  flex:1;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:3px;
+  color:var(--text-3);font-size:10px;font-weight:600;
+  padding:8px 4px;transition:color .15s;
+}
+.nav-item.active{color:var(--primary)}
+.nav-item svg{width:23px;height:23px;stroke-width:1.8}
+.nav-icon-wrap{position:relative}
+.nav-item.active .nav-icon-wrap::before{
+  content:'';position:absolute;
+  width:36px;height:36px;background:var(--primary-dim);
+  border-radius:50%;top:50%;left:50%;
+  transform:translate(-50%,-50%);z-index:-1;
+}
+
+/* =====================================================
+   トースト
+   ===================================================== */
+.toast{
+  position:fixed;bottom:calc(var(--nav-h) + 14px);
+  left:50%;transform:translateX(-50%) translateY(10px);
+  background:#1e2030;color:#fff;
+  padding:11px 20px;border-radius:100px;
+  font-size:14px;font-weight:600;z-index:9999;
+  opacity:0;transition:all .28s cubic-bezier(.34,1.56,.64,1);
+  pointer-events:none;white-space:nowrap;max-width:90vw;
+  display:flex;align-items:center;gap:7px;
+}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.toast.success{background:var(--pass)}
+.toast.error{background:var(--fail)}
+.toast.warning{background:var(--review)}
+
+/* =====================================================
+   モーダル
+   ===================================================== */
+.modal-bg{
+  position:fixed;inset:0;background:rgba(0,0,0,.48);
+  z-index:200;display:flex;align-items:center;justify-content:center;
+  opacity:0;pointer-events:none;transition:opacity .2s;
+}
+.modal-bg.show{opacity:1;pointer-events:all}
+.modal-box{
+  background:var(--surface);border-radius:22px;padding:24px;
+  width:calc(100% - 48px);max-width:360px;
+  transform:scale(.94);transition:transform .22s cubic-bezier(.34,1.56,.64,1);
+}
+.modal-bg.show .modal-box{transform:scale(1)}
+.modal-title{font-size:17px;font-weight:800;margin-bottom:16px;color:var(--text)}
+.modal-input{
+  width:100%;padding:12px 14px;background:var(--surface-2);
+  border:1.5px solid var(--border);border-radius:11px;
+  font-size:15px;color:var(--text);margin-bottom:9px;
+  transition:border-color .15s;
+}
+.modal-input:focus{border-color:var(--primary);background:var(--surface)}
+.modal-input::placeholder{color:var(--text-3)}
+.modal-actions{display:flex;gap:9px;margin-top:14px}
+.m-btn{
+  flex:1;padding:13px;border-radius:13px;
+  font-size:15px;font-weight:700;transition:all .12s;
+}
+.m-btn.cancel{background:var(--surface-2);color:var(--text-2)}
+.m-btn.cancel:active{background:var(--border)}
+.m-btn.ok{background:var(--primary);color:#fff}
+.m-btn.ok:active{background:#4f46e5}
+.m-btn.danger{background:var(--fail);color:#fff}
+.m-btn.danger:active{background:#dc2626}
+
+/* =====================================================
+   アニメーション
+   ===================================================== */
+@keyframes fadeUp{
+  from{opacity:0;transform:translateY(10px)}
+  to{opacity:1;transform:translateY(0)}
+}
+@keyframes pop{
+  0%{transform:scale(1)}50%{transform:scale(.94)}100%{transform:scale(1)}
+}
+
+/* =====================================================
+   非表示要素
+   ===================================================== */
+#fileInput{display:none}
+#captureCanvas{display:none}
+
+/* =====================================================
+   写真アノテーター
+   ===================================================== */
+.annot-bg{
+  position:fixed;inset:0;background:rgba(0,0,0,.94);
+  z-index:300;display:flex;flex-direction:column;
+  opacity:0;pointer-events:none;transition:opacity .22s;
+}
+.annot-bg.show{opacity:1;pointer-events:all}
+.annot-bar{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:14px 16px;flex-shrink:0;
+  padding-top:calc(env(safe-area-inset-top,0) + 14px);
+}
+.annot-cancel{font-size:15px;font-weight:600;color:rgba(255,255,255,.7);background:none;border:none;padding:7px 4px}
+.annot-title{font-size:15px;font-weight:700;color:#fff}
+.annot-save{font-size:14px;font-weight:700;color:#fff;background:var(--primary);border:none;padding:7px 18px;border-radius:100px;box-shadow:0 3px 10px rgba(99,102,241,.45)}
+.annot-hint{text-align:center;font-size:12px;font-weight:500;color:rgba(255,255,255,.4);padding:0 0 8px;flex-shrink:0;display:flex;align-items:center;justify-content:center;gap:5px}
+.annot-canvas-area{flex:1;overflow:auto;display:flex;align-items:center;justify-content:center;padding:8px;min-height:0}
+#annotCanvas{max-width:100%;max-height:100%;border-radius:10px;touch-action:none;cursor:crosshair;display:block;box-shadow:0 4px 24px rgba(0,0,0,.6)}
+.annot-bottom{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;flex-shrink:0;padding-bottom:calc(env(safe-area-inset-bottom,0) + 14px)}
+.annot-undo{display:flex;align-items:center;gap:7px;font-size:14px;font-weight:600;color:#fff;background:rgba(255,255,255,.13);border:none;padding:10px 18px;border-radius:100px}
+.annot-clear{font-size:13px;font-weight:500;color:rgba(255,255,255,.4);background:none;border:none;padding:10px 8px}
+.photo-annot-btn{position:absolute;bottom:-5px;left:-5px;width:22px;height:22px;background:var(--primary);border-radius:50%;border:2px solid var(--surface);display:flex;align-items:center;justify-content:center;cursor:pointer}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ===================== HEADER ===================== -->
+  <header class="app-header">
+    <div class="header-logo">
+      <span class="header-title">検品アプリ</span>
+    </div>
+    <button class="notif-btn" onclick="showToast('通知はありません','default')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="var(--text-2)" stroke-width="2" width="17" height="17" stroke-linecap="round">
+        <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+        <path d="M13.73 21a2 2 0 01-3.46 0"/>
+      </svg>
+      <span class="notif-dot"></span>
+    </button>
+  </header>
+
+  <!-- =================== HOME PAGE =================== -->
+  <div id="page-home" class="page active">
+
+    <!-- メーカー選択 -->
+    <div class="card" id="mfr-card">
+      <div class="card-head">
+        <div class="head-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/></svg>
+        </div>
+        メーカー
+      </div>
+      <!-- 最近使用 -->
+      <div class="mfr-section-lbl">最近使用</div>
+      <div class="mfr-recent-row" id="mfrRecentRow"></div>
+      <!-- すべて見る トグル -->
+      <button class="mfr-toggle-btn" id="mfrToggleBtn" onclick="toggleAllMfr()">
+        すべて見る
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="13" height="13" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+      </button>
+      <!-- 全メーカースクロール（初期非表示） -->
+      <div class="mfr-scroll" id="mfrScroll" style="display:none"></div>
+    </div>
+
+    <!-- 製品名入力 -->
+    <div class="card">
+      <div class="card-head">
+        <div class="head-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        </div>
+        製品名
+      </div>
+      <div class="search-wrap">
+        <input type="text" class="search-input" id="productInput" placeholder="製品名を入力してください"
+          oninput="onProductInput(this.value)"
+          onblur="setTimeout(hideSuggest,180)">
+        <span class="search-ico">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="17" height="17" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        </span>
+        <div class="suggest-dd" id="suggestDd" style="display:none"></div>
+      </div>
+      <div class="hist-label">履歴から選択</div>
+      <div class="hist-chips" id="histChips"></div>
+    </div>
+
+    <!-- 不良内容 -->
+    <div class="card" id="defect-card">
+      <div class="card-head between">
+        <div style="display:flex;align-items:center;gap:9px">
+          <div class="head-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          </div>
+          不良内容
+        </div>
+        <button class="defect-clear-btn" id="defectClearBtn" onclick="clearDefects()" style="display:none">選択クリア</button>
+      </div>
+      <div class="defect-grid" id="defectGrid"></div>
+    </div>
+
+    <!-- 確認者選択 -->
+    <div class="card">
+      <div class="card-head between">
+        <div style="display:flex;align-items:center;gap:9px">
+          <div class="head-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2" stroke-linecap="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          </div>
+          確認者
+        </div>
+        <button class="see-all" onclick="openInspModal()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="13" height="13" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          追加
+        </button>
+      </div>
+      <div class="inspector-scroll" id="inspScroll"></div>
+    </div>
+
+    <!-- 判定ボタン -->
+    <div class="card">
+      <div class="card-head">
+        <div class="head-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2" stroke-linecap="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>
+        </div>
+        判定
+      </div>
+      <!-- 使用可否 -->
+      <div class="judge-group-label">使用可否</div>
+      <div class="judge-toggle-row">
+        <button class="judge-toggle usable" id="jUsable" onclick="selectUsability('pass')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" width="16" height="16" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+          使用可
+        </button>
+        <button class="judge-toggle unusable" id="jUnusable" onclick="selectUsability('fail')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" width="15" height="15" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          使用否
+        </button>
+      </div>
+      <!-- 判断区分 -->
+      <div class="judge-group-label" style="margin-top:14px">判断区分</div>
+      <div class="judge-toggle-row">
+        <button class="judge-toggle permanent" id="jPermanent" onclick="selectJudgeType('恒久判断')">
+          <span class="judge-dot blue"></span>
+          恒久判断
+        </button>
+        <button class="judge-toggle provisional" id="jProvisional" onclick="selectJudgeType('暫定判断')">
+          <span class="judge-dot yellow"></span>
+          暫定判断
+        </button>
+      </div>
+    </div>
+
+    <!-- カメラ -->
+    <div class="card">
+      <div class="card-head between">
+        <div style="display:flex;align-items:center;gap:9px">
+          <div class="head-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2" stroke-linecap="round"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
+          </div>
+          カメラ起動
+        </div>
+        <div id="reqBadge" style="display:none">
+          <span class="req-badge">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="10" height="10"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            写真必須
+          </span>
+        </div>
+      </div>
+
+      <div class="cam-area" id="camArea">
+        <video id="camVideo" autoplay playsinline muted></video>
+        <div class="cam-placeholder" id="camPlaceholder">
+          <svg viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.4)" stroke-width="1.5" stroke-linecap="round"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
+          <button class="cam-start" onclick="startCamera()">📷 カメラを起動</button>
+        </div>
+        <!-- コーナーフレーム -->
+        <div id="camFrameEl" style="display:none;position:absolute;width:90px;height:90px;pointer-events:none">
+          <div class="cam-frame-tl"></div>
+          <div class="cam-frame-tr"></div>
+          <div class="cam-frame-bl"></div>
+          <div class="cam-frame-br"></div>
+        </div>
+        <div class="cam-controls" id="camControls">
+          <button class="cam-ctrl" onclick="showToast('フラッシュ: 自動','default')" title="フラッシュ">
+            <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" width="16" height="16" stroke-linecap="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+          </button>
+          <button class="cam-ctrl" onclick="flipCamera()" title="カメラ切替">
+            <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" width="16" height="16" stroke-linecap="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg>
+          </button>
+          <button class="cam-ctrl cam-capture" onclick="capturePhoto()" title="撮影">
+            <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" width="22" height="22" stroke-linecap="round"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <input type="file" id="fileInput" accept="image/*" multiple onchange="onFileSelected(this.files)">
+      <button class="file-pick" onclick="document.getElementById('fileInput').click()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15" stroke-linecap="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg>
+        ファイルから選択
+      </button>
+      <div class="photo-grid" id="photoGrid"></div>
+    </div>
+
+
+    <button class="save-btn" onclick="saveInspection()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" width="18" height="18" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+      保存する
+    </button>
+
+    <canvas id="captureCanvas"></canvas>
+  </div>
+
+  <!-- =================== HISTORY PAGE =================== -->
+  <div id="page-history" class="page">
+    <div class="search-bar">
+      <input type="text" placeholder="製品名・メーカーで検索" id="histSearch" oninput="filterHist(this.value)">
+      <span style="position:absolute;right:14px;top:50%;transform:translateY(-50%);color:var(--text-3)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      </span>
+    </div>
+    <div class="filter-row">
+      <button class="f-chip on-all" id="fAll" onclick="setFilter('all')">すべて</button>
+      <button class="f-chip" id="fPass" onclick="setFilter('pass')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="11" height="11" stroke-linecap="round" style="display:inline;vertical-align:middle;margin-right:3px"><polyline points="20 6 9 17 4 12"/></svg>使用可
+      </button>
+      <button class="f-chip" id="fFail" onclick="setFilter('fail')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="11" height="11" stroke-linecap="round" style="display:inline;vertical-align:middle;margin-right:3px"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>使用否
+      </button>
+    </div>
+    <div id="histList"></div>
+  </div>
+
+
+  <!-- =================== BOTTOM NAV =================== -->
+  <nav class="bottom-nav">
+    <button class="nav-item active" id="nav-home" onclick="switchPage('home')">
+      <div class="nav-icon-wrap">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      </div>
+      ホーム
+    </button>
+    <button class="nav-item" id="nav-history" onclick="switchPage('history')">
+      <div class="nav-icon-wrap">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+      </div>
+      検品履歴
+    </button>
+
+  </nav>
+</div><!-- /#app -->
+
+<!-- DETAIL BOTTOM SHEET -->
+<div class="detail-bg" id="detailBg" onclick="if(event.target===this)closeDetail()">
+  <div class="detail-sheet">
+    <div class="detail-handle"></div>
+    <div class="detail-header">
+      <div class="detail-title" id="dTitle"></div>
+      <button class="detail-close" onclick="closeDetail()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="var(--text-2)" stroke-width="2.5" width="14" height="14" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div id="dContent"></div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<!-- ADD INSPECTOR MODAL -->
+<div class="modal-bg" id="inspModal" onclick="if(event.target===this)closeInspModal()">
+  <div class="modal-box">
+    <div class="modal-title">確認者を追加</div>
+    <input type="text" class="modal-input" id="newName" placeholder="氏名（例: 山田 一郎）">
+    <div class="modal-actions">
+      <button class="m-btn cancel" onclick="closeInspModal()">キャンセル</button>
+      <button class="m-btn ok" onclick="addInspector()">追加する</button>
+    </div>
+  </div>
+</div>
+
+<!-- CONFIRM MODAL -->
+<div class="modal-bg" id="confirmModal" onclick="if(event.target===this)closeConfirm()">
+  <div class="modal-box">
+    <div class="modal-title" id="confirmTitle">確認</div>
+    <div style="font-size:14px;color:var(--text-2);margin-bottom:4px;line-height:1.6" id="confirmMsg"></div>
+    <div class="modal-actions">
+      <button class="m-btn cancel" onclick="closeConfirm()">キャンセル</button>
+      <button class="m-btn danger" id="confirmOk">削除する</button>
+    </div>
+  </div>
+</div>
+
+<!-- ANNOTATION MODAL -->
+<div class="annot-bg" id="annotBg">
+  <div class="annot-bar">
+    <button class="annot-cancel" onclick="closeAnnotator()">キャンセル</button>
+    <span class="annot-title">🔴 赤丸注釈</span>
+    <button class="annot-save" onclick="saveAnnotation()">保存</button>
+  </div>
+  <div class="annot-hint">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+    ドラッグで問題箇所を囲む
+  </div>
+  <div class="annot-canvas-area">
+    <canvas id="annotCanvas"
+      onmousedown="annotPointerDown(event)"
+      onmousemove="annotPointerMove(event)"
+      onmouseup="annotPointerUp(event)"
+      onmouseleave="annotPointerUp(event)"
+      ontouchstart="annotPointerDown(event)"
+      ontouchmove="annotPointerMove(event)"
+      ontouchend="annotPointerUp(event)">
+    </canvas>
+  </div>
+  <div class="annot-bottom">
+    <button class="annot-undo" onclick="undoAnnotation()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="14" height="14" stroke-linecap="round"><polyline points="9 14 4 9 9 4"/><path d="M20 20v-7a4 4 0 00-4-4H4"/></svg>
+      元に戻す
+    </button>
+    <button class="annot-clear" onclick="clearAnnotations()">全て消す</button>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// 定数データ
+// ============================================================
+
+/** メーカー一覧 */
+const MANUFACTURERS = [
+  { id:'panasonic', name:'Panasonic', html:'<span style="font-weight:900;font-size:12px;color:#0047BB;font-family:sans-serif;letter-spacing:-0.5px">Panasonic</span>' },
+  { id:'sony',      name:'Sony',      html:'<span style="font-weight:900;font-size:15px;color:#000;font-family:sans-serif;letter-spacing:1px">SONY</span>' },
+  { id:'canon',     name:'Canon',     html:'<span style="font-weight:700;font-size:15px;color:#CC0000;font-family:Georgia,serif;font-style:italic">Canon</span>' },
+  { id:'toshiba',   name:'Toshiba',   html:'<span style="font-weight:900;font-size:11px;color:#cc0000;letter-spacing:.5px">TOSHIBA</span>' },
+  { id:'mitsubishi',name:'Mitsubishi',html:'<span style="font-weight:800;font-size:9px;color:#CC0000;text-align:center;line-height:1.4;letter-spacing:.2px">▲<br>MITSUBISHI<br>ELECTRIC</span>' },
+  { id:'hitachi',   name:'Hitachi',   html:'<span style="font-weight:700;font-size:14px;color:#005BAC;font-family:sans-serif">Hitachi</span>' },
+  { id:'fujitsu',   name:'Fujitsu',   html:'<span style="font-weight:900;font-size:11px;color:#E2000F;letter-spacing:.5px">FUJITSU</span>' },
+  { id:'nec',       name:'NEC',       html:'<span style="font-weight:900;font-size:19px;color:#003087;letter-spacing:2px">NEC</span>' },
+  { id:'sharp',     name:'Sharp',     html:'<span style="font-weight:900;font-size:11px;color:#003781;letter-spacing:.8px">SHARP</span>' },
+  { id:'other',     name:'その他',    html:'<span style="font-weight:700;font-size:18px;color:var(--primary)">···</span>' },
+];
+
+/** デフォルト確認者 */
+const DEFAULT_INSPECTORS = [
+  { id:'INS-001', name:'田中 太郎', color:'#6366f1', initials:'田' },
+  { id:'INS-002', name:'佐藤 花子', color:'#ec4899', initials:'佐' },
+  { id:'INS-003', name:'鈴木 一郎', color:'#14b8a6', initials:'鈴' },
+];
+
+/** サンプル製品履歴 */
+const SAMPLE_PRODUCTS = [
+  '6204ZZ','6205ZZ','6206RS','NJ208EG','NU210ECM',
+  'SKF-6205','FAG-6206','7203BEP','32207J2','NU1010ECM',
+];
+
+/** 確認者カラープール */
+const COLORS = ['#6366f1','#ec4899','#14b8a6','#f59e0b','#8b5cf6','#10b981','#ef4444','#3b82f6'];
+
+/** 不良内容項目（アイコン付き） */
+const DEFECT_ITEMS = [
+  { id:'欠肉',        svg:'<path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/>' },
+  { id:'巻き込み',    svg:'<path d="M12 22C6.477 22 2 17.523 2 12S6.477 2 12 2s10 4.477 10 10"/><path d="M12 18a6 6 0 100-12 6 6 0 000 12"/><path d="M12 14a2 2 0 100-4 2 2 0 000 4"/>'},
+  { id:'変形',        svg:'<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>'},
+  { id:'黒皮残り',    svg:'<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="5"/>'},
+  { id:'変色',        svg:'<path d="M12 2.69l5.66 5.66a8 8 0 11-11.31 0z"/>'},
+  { id:'オーバーヒート', svg:'<path d="M8.5 14.5A2.5 2.5 0 0011 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 11-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 002.5 2.5z"/>'},
+  { id:'打痕・キズ',  svg:'<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/>'},
+  { id:'加工忘れ',    svg:'<path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>'},
+  { id:'寸法不良',    svg:'<path d="M21 6H3"/><path d="M21 18H3"/><path d="M3 6v12"/><path d="M21 6v12"/><line x1="7" y1="12" x2="17" y2="12"/><polyline points="14 9 17 12 14 15"/>'},
+  { id:'加工位置ズレ',svg:'<circle cx="12" cy="12" r="10"/><path d="M8 12h8"/><path d="M12 8l4 4-4 4"/>'},
+  { id:'バリ・切粉残り', svg:'<circle cx="12" cy="12" r="3"/><path d="M6.3 6.3a8.5 8.5 0 000 11.4m11.4-11.4a8.5 8.5 0 010 11.4M3.05 9A12.5 12.5 0 003 15m18-6a12.5 12.5 0 010 6"/>'},
+  { id:'異品混入',    svg:'<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>'},
+  { id:'異物付着',    svg:'<circle cx="12" cy="12" r="2"/><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>'},
+  { id:'面粗度不良',  svg:'<circle cx="8" cy="8" r="1" fill="currentColor"/><circle cx="12" cy="8" r="1" fill="currentColor"/><circle cx="16" cy="8" r="1" fill="currentColor"/><circle cx="8" cy="12" r="1" fill="currentColor"/><circle cx="12" cy="12" r="1" fill="currentColor"/><circle cx="16" cy="12" r="1" fill="currentColor"/><circle cx="8" cy="16" r="1" fill="currentColor"/><circle cx="12" cy="16" r="1" fill="currentColor"/><circle cx="16" cy="16" r="1" fill="currentColor"/>'},
+  { id:'その他',      svg:'<circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/>'},
+];
+
+// ============================================================
+// アプリ状態
+// ============================================================
+
+const S = {
+  selectedMfr: null,
+  productName: '',
+  selectedInsp: null,
+  usability: null,   // 'pass' | 'fail'
+  judgeType: null,   // '恒久判断' | '暫定判断'
+  defects: [],
+  photos: [],
+  camStream: null,
+  camFacing: 'environment',
+  showAllMfr: false,
+  histFilter: 'all',
+  histSearch: '',
+};
+
+// ============================================================
+// ローカルストレージ ヘルパー
+// ============================================================
+
+const KEY = {
+  inspections: 'kiken_inspections_v1',
+  inspectors:  'kiken_inspectors_v1',
+  products:    'kiken_products_v1',
+  dark:        'kiken_dark_v1',
+};
+
+function load(key, def) {
+  try { const v = localStorage.getItem(KEY[key]); return v ? JSON.parse(v) : def; } catch { return def; }
+}
+function save(key, val) {
+  try { localStorage.setItem(KEY[key], JSON.stringify(val)); } catch(e) {}
+}
+
+// ============================================================
+// ユーティリティ
+// ============================================================
+
+/** ユニークID生成 */
+function uid() { return 'i_' + Date.now() + '_' + Math.random().toString(36).slice(2,7); }
+
+/** 日時フォーマット */
+function fmtDate(iso) {
+  const d = new Date(iso);
+  const now = new Date();
+  const isToday = d.toDateString() === now.toDateString();
+  const time = `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+  if (isToday) return `今日 ${time}`;
+  return `${d.getMonth()+1}/${d.getDate()} ${time}`;
+}
+
+// ============================================================
+// トースト通知
+// ============================================================
+
+let _toastTimer;
+function showToast(msg, type='default') {
+  const el = document.getElementById('toast');
+  const icons = { success:'✓ ', error:'✕ ', warning:'⚠ ', default:'' };
+  el.textContent = icons[type] + msg;
+  el.className = 'toast ' + type + ' show';
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => el.classList.remove('show'), 3000);
+}
+
+// ============================================================
+// ページナビゲーション
+// ============================================================
+
+function switchPage(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-' + page).classList.add('active');
+  document.getElementById('nav-' + page).classList.add('active');
+
+  // カメラ停止（ホーム以外）
+  if (page !== 'home' && S.camStream) stopCamera();
+
+  if (page === 'stats')    renderStats();
+  if (page === 'history')  renderHist();
+  if (page === 'settings') { renderInspSettings(); updateSettingsCount(); }
+}
+
+// ============================================================
+// メーカー選択
+// ============================================================
+
+/** 最近使用したメーカーを最大3件取得 */
+function getRecentMfrs() {
+  const inspections = load('inspections', []);
+  const seen = [];
+  const sorted = [...inspections].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  for (const insp of sorted) {
+    if (!seen.includes(insp.manufacturerId)) {
+      seen.push(insp.manufacturerId);
+      if (seen.length >= 3) break;
+    }
+  }
+  return seen.map(id => MANUFACTURERS.find(m => m.id === id)).filter(Boolean);
+}
+
+function renderMfr() {
+  // 最近使用チップ
+  const recent = getRecentMfrs();
+  document.getElementById('mfrRecentRow').innerHTML = recent.length
+    ? recent.map(m => `
+        <button class="mfr-recent-chip ${S.selectedMfr === m.id ? 'selected' : ''}" onclick="selectMfr('${m.id}')">
+          ${m.name}
+        </button>
+      `).join('')
+    : `<span style="font-size:13px;color:var(--text-3)">履歴がありません</span>`;
+
+  // 全メーカースクロール
+  document.getElementById('mfrScroll').innerHTML = MANUFACTURERS.map(m => `
+    <div class="mfr-card ${S.selectedMfr === m.id ? 'selected' : ''}" onclick="selectMfr('${m.id}')">
+      <div class="mfr-name" style="font-size:13px;font-weight:700">${m.name}</div>
+    </div>
+  `).join('');
+}
+
+function selectMfr(id) {
+  S.selectedMfr = S.selectedMfr === id ? null : id;
+  renderMfr();
+}
+
+function toggleAllMfr() {
+  S.showAllMfr = !S.showAllMfr;
+  const scroll = document.getElementById('mfrScroll');
+  const btn    = document.getElementById('mfrToggleBtn');
+  scroll.style.display = S.showAllMfr ? 'flex' : 'none';
+  btn.innerHTML = S.showAllMfr
+    ? `閉じる <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="13" height="13" stroke-linecap="round"><polyline points="18 15 12 9 6 15"/></svg>`
+    : `すべて見る <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="13" height="13" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>`;
+}
+
+// ============================================================
+// 製品名入力 / サジェスト
+// ============================================================
+
+function renderHistChips() {
+  const history = load('products', SAMPLE_PRODUCTS);
+  document.getElementById('histChips').innerHTML = history.slice(0,7).map(n => `
+    <button class="hist-chip" onclick="pickProduct('${n}')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="10" height="10" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      ${n}
+    </button>
+  `).join('');
+}
+
+function pickProduct(name) {
+  document.getElementById('productInput').value = name;
+  S.productName = name;
+  hideSuggest();
+}
+
+function onProductInput(val) {
+  S.productName = val;
+  if (!val.trim()) { hideSuggest(); return; }
+  const history = load('products', SAMPLE_PRODUCTS);
+  const hits = history.filter(p => p.toLowerCase().includes(val.toLowerCase()));
+  hits.length ? showSuggest(hits) : hideSuggest();
+}
+
+function showSuggest(items) {
+  const dd = document.getElementById('suggestDd');
+  dd.innerHTML = items.slice(0,8).map(it => `
+    <div class="suggest-item" onclick="pickProduct('${it}')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="var(--text-3)" stroke-width="2" width="13" height="13" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      ${it}
+    </div>
+  `).join('');
+  dd.style.display = 'block';
+}
+
+function hideSuggest() {
+  document.getElementById('suggestDd').style.display = 'none';
+}
+
+// ============================================================
+// 不良内容
+// ============================================================
+
+function renderDefects() {
+  document.getElementById('defectGrid').innerHTML =
+    DEFECT_ITEMS.map(item => {
+      const on = S.defects.includes(item.id);
+      return `<button class="defect-chip${on ? ' on' : ''}" onclick="toggleDefect('${item.id.replace(/'/g,"\\'")}')">
+        <span class="defect-label">${item.id}</span>
+      </button>`;
+    }).join('');
+  document.getElementById('defectClearBtn').style.display =
+    S.defects.length ? 'block' : 'none';
+}
+
+function toggleDefect(item) {
+  if (S.defects.includes(item)) {
+    S.defects = S.defects.filter(d => d !== item);
+  } else {
+    S.defects.push(item);
+  }
+  renderDefects();
+}
+
+function clearDefects() {
+  S.defects = [];
+  renderDefects();
+}
+
+// ============================================================
+// 確認者選択
+// ============================================================
+
+function getInspectors() { return load('inspectors', DEFAULT_INSPECTORS); }
+
+function renderInspectors() {
+  const list = getInspectors();
+  document.getElementById('inspScroll').innerHTML =
+    list.map(ins => `
+      <div class="inspector-card ${S.selectedInsp === ins.id ? 'selected' : ''}" onclick="selectInsp('${ins.id}')">
+        <div class="avatar" style="background:${ins.color}">
+          ${ins.initials}
+          <div class="avatar-check">
+            <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" width="10" height="10" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+          </div>
+        </div>
+        <div class="inspector-name">${ins.name}</div>
+      </div>
+    `).join('');
+}
+
+function selectInsp(id) {
+  S.selectedInsp = S.selectedInsp === id ? null : id;
+  renderInspectors();
+}
+
+function openInspModal() { document.getElementById('inspModal').classList.add('show'); document.getElementById('newName').focus(); }
+function closeInspModal() {
+  document.getElementById('inspModal').classList.remove('show');
+  document.getElementById('newName').value = '';
+}
+
+function addInspector() {
+  const name = document.getElementById('newName').value.trim();
+  if (!name) { showToast('氏名を入力してください','error'); return; }
+  const list = getInspectors();
+  const color = COLORS[list.length % COLORS.length];
+  const newId = `INS-${String(list.length + 1).padStart(3,'0')}`;
+  list.push({ id:newId, name, color, initials:name.charAt(0) });
+  save('inspectors', list);
+  closeInspModal();
+  renderInspectors();
+  showToast('確認者を追加しました','success');
+}
+
+// ============================================================
+// 判定選択
+// ============================================================
+
+function selectUsability(val) {
+  S.usability = S.usability === val ? null : val;
+  document.getElementById('jUsable').classList.toggle('active', S.usability === 'pass');
+  document.getElementById('jUnusable').classList.toggle('active', S.usability === 'fail');
+  // 使用否の場合は写真必須バッジ表示
+  document.getElementById('reqBadge').style.display = S.usability === 'fail' ? 'block' : 'none';
+}
+
+function selectJudgeType(val) {
+  S.judgeType = S.judgeType === val ? null : val;
+  document.getElementById('jPermanent').classList.toggle('active', S.judgeType === '恒久判断');
+  document.getElementById('jProvisional').classList.toggle('active', S.judgeType === '暫定判断');
+}
+
+// ============================================================
+// カメラ機能
+// ============================================================
+
+async function startCamera() {
+  // 制約を段階的に緩めてフォールバック
+  // 1. 要求したfacingMode + 高解像度
+  // 2. facingModeなし（任意カメラ）+ 解像度ヒント
+  // 3. video: true（最もシンプル）
+  const attempts = [
+    { facingMode: S.camFacing, width:{ideal:1920}, height:{ideal:1080} },
+    { width:{ideal:1280}, height:{ideal:720} },
+    true,
+  ];
+
+  let stream = null;
+  let lastErr = null;
+
+  for (const video of attempts) {
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ video, audio:false });
+      break;
+    } catch(err) {
+      lastErr = err;
+      // パーミッション拒否は再試行しても無意味なので即終了
+      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') break;
+    }
+  }
+
+  if (!stream) {
+    console.warn('Camera:', lastErr);
+    const msg = lastErr?.name === 'NotAllowedError'
+      ? 'カメラのアクセスが拒否されました。'
+      : 'カメラが見つかりません。ファイルを選択してください。';
+    showToast(msg, 'warning');
+    return;
+  }
+
+  S.camStream = stream;
+  const v = document.getElementById('camVideo');
+  v.srcObject = stream;
+  v.style.display = 'block';
+  document.getElementById('camPlaceholder').style.display = 'none';
+  document.getElementById('camFrameEl').style.display = 'block';
+  document.getElementById('camControls').style.display = 'flex';
+  showToast('カメラを起動しました','success');
+}
+
+function stopCamera() {
+  if (!S.camStream) return;
+  S.camStream.getTracks().forEach(t => t.stop());
+  S.camStream = null;
+  const v = document.getElementById('camVideo');
+  v.srcObject = null;
+  v.style.display = 'none';
+  document.getElementById('camPlaceholder').style.display = 'flex';
+  document.getElementById('camFrameEl').style.display = 'none';
+  document.getElementById('camControls').style.display = 'none';
+}
+
+async function flipCamera() {
+  S.camFacing = S.camFacing === 'environment' ? 'user' : 'environment';
+  if (S.camStream) { stopCamera(); await startCamera(); }
+}
+
+// ============================================================
+// 画像圧縮ヘルパー
+// ============================================================
+
+/**
+ * dataURL を受け取り、長辺を maxPx 以内にリサイズして
+ * JPEG quality で再エンコードした dataURL を返す。
+ */
+function compressImage(dataUrl, maxPx = 1280, quality = 0.75) {
+  return new Promise(resolve => {
+    const img = new Image();
+    img.onload = () => {
+      let w = img.width, h = img.height;
+      if (w > maxPx || h > maxPx) {
+        if (w >= h) { h = Math.round(h / w * maxPx); w = maxPx; }
+        else        { w = Math.round(w / h * maxPx); h = maxPx; }
+      }
+      const cv = document.createElement('canvas');
+      cv.width = w; cv.height = h;
+      cv.getContext('2d').drawImage(img, 0, 0, w, h);
+      resolve(cv.toDataURL('image/jpeg', quality));
+    };
+    img.src = dataUrl;
+  });
+}
+
+async function capturePhoto() {
+  const v = document.getElementById('camVideo');
+  if (!v.srcObject) { showToast('カメラが起動していません','error'); return; }
+  const c = document.getElementById('captureCanvas');
+  c.width = v.videoWidth; c.height = v.videoHeight;
+  c.getContext('2d').drawImage(v, 0, 0);
+  // 撮影フラッシュ
+  const a = document.getElementById('camArea');
+  a.style.filter = 'brightness(2.5)';
+  setTimeout(() => a.style.filter = '', 110);
+  // 圧縮してから保存
+  const compressed = await compressImage(c.toDataURL('image/jpeg', 1.0), 1280, 0.75);
+  addPhoto(compressed);
+  showToast('撮影しました','success');
+}
+
+function onFileSelected(files) {
+  Array.from(files).forEach(file => {
+    const reader = new FileReader();
+    reader.onload = async e => {
+      const compressed = await compressImage(e.target.result, 1280, 0.75);
+      addPhoto(compressed);
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function addPhoto(dataUrl) {
+  S.photos.push(dataUrl);
+  renderPhotoGrid();
+}
+
+function removePhoto(i) {
+  S.photos.splice(i, 1);
+  renderPhotoGrid();
+}
+
+function renderPhotoGrid() {
+  document.getElementById('photoGrid').innerHTML = S.photos.map((url, i) => `
+    <div class="photo-wrap">
+      <img src="${url}" class="photo-thumb" onclick="openAnnotator(${i})">
+      <button class="photo-del" onclick="removePhoto(${i})">✕</button>
+      <div class="photo-annot-btn" onclick="openAnnotator(${i})">
+        <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" width="11" height="11" stroke-linecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ============================================================
+// 写真アノテーター
+// ============================================================
+
+const annotState = {
+  photoIdx: -1, circles: [],
+  drawing: false, startX: 0, startY: 0, img: null,
+};
+
+function openAnnotator(i) {
+  annotState.photoIdx = i;
+  annotState.circles  = [];
+  annotState.drawing  = false;
+  const canvas = document.getElementById('annotCanvas');
+  const img = new Image();
+  img.onload = () => {
+    annotState.img    = img;
+    canvas.width      = img.naturalWidth;
+    canvas.height     = img.naturalHeight;
+    redrawAnnotCanvas();
+    document.getElementById('annotBg').classList.add('show');
+  };
+  img.src = S.photos[i];
+}
+
+function closeAnnotator() {
+  document.getElementById('annotBg').classList.remove('show');
+}
+
+function getEventPos(e, canvas) {
+  const rect = canvas.getBoundingClientRect();
+  const sx = canvas.width / rect.width;
+  const sy = canvas.height / rect.height;
+  let cx, cy;
+  if (e.changedTouches && e.changedTouches.length) {
+    cx = e.changedTouches[0].clientX; cy = e.changedTouches[0].clientY;
+  } else if (e.touches && e.touches.length) {
+    cx = e.touches[0].clientX; cy = e.touches[0].clientY;
+  } else {
+    cx = e.clientX; cy = e.clientY;
+  }
+  return { x: (cx - rect.left) * sx, y: (cy - rect.top) * sy };
+}
+
+function redrawAnnotCanvas() {
+  const canvas = document.getElementById('annotCanvas');
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  if (annotState.img) ctx.drawImage(annotState.img, 0, 0);
+  const lw = Math.max(4, canvas.width / 100);
+  for (const c of annotState.circles) {
+    ctx.beginPath();
+    ctx.arc(c.cx, c.cy, c.r, 0, Math.PI * 2);
+    ctx.strokeStyle = '#ff1f1f';
+    ctx.lineWidth   = lw;
+    ctx.stroke();
+  }
+}
+
+function annotPointerDown(e) {
+  e.preventDefault();
+  const pos = getEventPos(e, document.getElementById('annotCanvas'));
+  annotState.drawing = true;
+  annotState.startX  = pos.x;
+  annotState.startY  = pos.y;
+}
+
+function annotPointerMove(e) {
+  if (!annotState.drawing) return;
+  e.preventDefault();
+  const canvas = document.getElementById('annotCanvas');
+  const pos = getEventPos(e, canvas);
+  redrawAnnotCanvas();
+  const cx = (annotState.startX + pos.x) / 2;
+  const cy = (annotState.startY + pos.y) / 2;
+  const r  = Math.hypot(pos.x - annotState.startX, pos.y - annotState.startY) / 2;
+  if (r > 2) {
+    const ctx = canvas.getContext('2d');
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.strokeStyle = '#ff1f1f';
+    ctx.lineWidth   = Math.max(4, canvas.width / 100);
+    ctx.stroke();
+  }
+}
+
+function annotPointerUp(e) {
+  if (!annotState.drawing) return;
+  e.preventDefault();
+  annotState.drawing = false;
+  const canvas = document.getElementById('annotCanvas');
+  const pos = getEventPos(e, canvas);
+  const cx = (annotState.startX + pos.x) / 2;
+  const cy = (annotState.startY + pos.y) / 2;
+  const r  = Math.hypot(pos.x - annotState.startX, pos.y - annotState.startY) / 2;
+  if (r > canvas.width / 80) annotState.circles.push({ cx, cy, r });
+  redrawAnnotCanvas();
+}
+
+function undoAnnotation() {
+  if (!annotState.circles.length) { showToast('元に戻す操作がありません', 'default'); return; }
+  annotState.circles.pop();
+  redrawAnnotCanvas();
+}
+
+function clearAnnotations() {
+  if (!annotState.circles.length) return;
+  annotState.circles = [];
+  redrawAnnotCanvas();
+}
+
+async function saveAnnotation() {
+  if (!annotState.circles.length) { closeAnnotator(); return; }
+  const canvas = document.getElementById('annotCanvas');
+  const raw    = canvas.toDataURL('image/jpeg', 0.92);
+  const compressed = await compressImage(raw, 1280, 0.85);
+  S.photos[annotState.photoIdx] = compressed;
+  renderPhotoGrid();
+  closeAnnotator();
+  showToast('注釈を保存しました', 'success');
+}
+
+// ============================================================
+// 保存
+// ============================================================
+
+function saveInspection() {
+  const productName = document.getElementById('productInput').value.trim();
+
+  // バリデーション
+  if (!S.selectedMfr)   { showToast('メーカーを選択してください','error'); scrollToCard('mfr-card'); return; }
+  if (!productName)      { showToast('製品名を入力してください','error'); return; }
+  if (!S.selectedInsp)  { showToast('確認者を選択してください','error'); return; }
+  if (!S.usability)      { showToast('使用可否を選択してください','error'); return; }
+  if (!S.judgeType)      { showToast('判断区分を選択してください','error'); return; }
+  if (S.usability === 'fail' && S.photos.length === 0) {
+    showToast('使用否の場合は写真が必須です','error');
+    return;
+  }
+
+  const mfr  = MANUFACTURERS.find(m => m.id === S.selectedMfr);
+  const insp = getInspectors().find(i => i.id === S.selectedInsp);
+
+  const record = {
+    id: uid(),
+    manufacturerId:   S.selectedMfr,
+    manufacturerName: mfr  ? mfr.name  : '不明',
+    productName,
+    inspectorId:      S.selectedInsp,
+    inspectorName:    insp ? insp.name : '不明',
+    result:    S.usability,
+    judgeType: S.judgeType,
+    defects:   [...S.defects],
+    comment:   '',
+    photos:    [...S.photos],
+    createdAt: new Date().toISOString(),
+  };
+
+  const list = load('inspections', []);
+  list.unshift(record);
+  save('inspections', list);
+
+  // 製品履歴更新
+  const ph = load('products', SAMPLE_PRODUCTS);
+  save('products', [productName, ...ph.filter(p => p !== productName)].slice(0, 30));
+
+  const lbls = { pass:'使用可', fail:'使用否' };
+  showToast(`保存しました（${lbls[S.usability] || S.usability} / ${S.judgeType}）`, 'success');
+  resetForm();
+}
+
+function scrollToCard(id) {
+  document.getElementById(id).scrollIntoView({ behavior:'smooth', block:'start' });
+}
+
+function resetForm() {
+  S.selectedMfr = null;
+  S.selectedInsp = null;
+  S.usability = null;
+  S.judgeType = null;
+  S.defects = [];
+  S.photos = [];
+  S.productName = '';
+  document.getElementById('productInput').value = '';
+  renderMfr();
+  renderInspectors();
+  renderDefects();
+  renderHistChips();
+  renderPhotoGrid();
+  ['jUsable','jUnusable','jPermanent','jProvisional'].forEach(id => {
+    document.getElementById(id).classList.remove('active');
+  });
+  document.getElementById('reqBadge').style.display = 'none';
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+
+// ============================================================
+// 履歴ページ
+// ============================================================
+
+function renderHist() {
+  const all = load('inspections', []);
+  const q = S.histSearch.toLowerCase();
+  const f = S.histFilter;
+
+  const data = all.filter(r => {
+    const mq = !q || r.productName.toLowerCase().includes(q) || r.manufacturerName.toLowerCase().includes(q);
+    const mf = f === 'all' || r.result === f;
+    return mq && mf;
+  });
+
+  const lbls  = { pass:'使用可', fail:'使用否', review:'要確認' };
+  const icons  = {
+    pass:'<polyline points="20 6 9 17 4 12" stroke-width="3"/>',
+    fail:'<line x1="18" y1="6" x2="6" y2="18" stroke-width="2.5"/><line x1="6" y1="6" x2="18" y2="18" stroke-width="2.5"/>',
+    review:'<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>',
+  };
+
+  const el = document.getElementById('histList');
+  if (!data.length) {
+    el.innerHTML = `<div class="empty">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+      <p>検品記録はありません</p>
+    </div>`;
+    return;
+  }
+
+  el.innerHTML = data.map(r => {
+    return `<div class="hist-card" onclick="openDetail('${r.id}')">
+      <div class="h-info">
+        <div class="h-top">
+          <div class="h-product">${r.productName}</div>
+          <div class="h-date-top">${fmtDate(r.createdAt)}</div>
+        </div>
+        <div class="h-meta">
+          <span>${r.manufacturerName}</span>
+          <span class="h-sep">|</span>
+          <span>${r.inspectorName}</span>
+        </div>
+        <div class="h-row">
+          <span class="h-badge ${r.result}">${lbls[r.result]}</span>
+          ${r.judgeType ? `<span class="h-badge-sub" style="color:${r.judgeType==='恒久判断'?'#3b82f6':'var(--review)'};background:${r.judgeType==='恒久判断'?'#eff6ff':'var(--review-dim)'}">${r.judgeType}</span>` : ''}
+          ${r.comment ? `<span class="h-comment-pill">${r.comment}</span>` : ''}
+        </div>
+      </div>
+      <div class="h-chevron">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="14" height="14" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function filterHist(val) { S.histSearch = val; renderHist(); }
+
+function setFilter(f) {
+  S.histFilter = f;
+  ['All','Pass','Fail'].forEach(n => {
+    const el = document.getElementById('f' + n);
+    if (el) el.className = 'f-chip';
+  });
+  const map = { all:'All', pass:'Pass', fail:'Fail' };
+  if (map[f]) document.getElementById('f' + map[f]).className = `f-chip on-${f}`;
+  renderHist();
+}
+
+// ============================================================
+// 統計ページ
+// ============================================================
+
+function renderStats() {
+  const all = load('inspections', []);
+  const pass   = all.filter(r => r.result === 'pass').length;
+  const fail   = all.filter(r => r.result === 'fail').length;
+  const review = all.filter(r => r.result === 'review').length;
+  const total  = all.length;
+
+  document.getElementById('stTotal').textContent  = total;
+  document.getElementById('stPass').textContent   = pass;
+  document.getElementById('stFail').textContent   = fail;
+  document.getElementById('stReview').textContent = review;
+
+  drawDonut(pass, fail, review, total);
+  drawMfrBars(all);
+  drawMonthBars(all);
+}
+
+function drawDonut(pass, fail, review, total) {
+  const svg    = document.getElementById('donutSvg');
+  const legend = document.getElementById('donutLegend');
+  const R = 68, cx = 100, cy = 100;
+  const C = 2 * Math.PI * R;
+
+  if (!total) {
+    svg.innerHTML = `<circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="var(--border)" stroke-width="22"/>
+      <text x="${cx}" y="${cy+5}" text-anchor="middle" font-size="12" fill="var(--text-3)" font-family="sans-serif">データなし</text>`;
+    legend.innerHTML = '';
+    return;
+  }
+
+  const segs = [
+    { val:pass,   color:'var(--pass)',   lbl:'使用可' },
+    { val:fail,   color:'var(--fail)',   lbl:'使用否' },
+    { val:review, color:'var(--review)', lbl:'要確認' },
+  ].filter(s => s.val > 0);
+
+  let off = 0, paths = '';
+  segs.forEach(s => {
+    const dash = (s.val / total) * C;
+    paths += `<circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="${s.color}" stroke-width="22"
+      stroke-dasharray="${dash} ${C - dash}"
+      stroke-dashoffset="${-off}"
+      transform="rotate(-90 ${cx} ${cy})" opacity=".88"/>`;
+    off += dash;
+  });
+
+  svg.innerHTML = paths +
+    `<text x="${cx}" y="${cy-7}" text-anchor="middle" font-size="24" font-weight="800" fill="var(--text)" font-family="sans-serif">${total}</text>
+     <text x="${cx}" y="${cy+13}" text-anchor="middle" font-size="11" fill="var(--text-2)" font-family="sans-serif">総数</text>`;
+
+  legend.innerHTML = segs.map(s => `
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:9px">
+      <div style="width:10px;height:10px;border-radius:2px;background:${s.color};flex-shrink:0"></div>
+      <span style="font-size:13px;color:var(--text-2);font-weight:500">${s.lbl}</span>
+      <span style="font-size:15px;font-weight:800;color:var(--text);margin-left:8px">${s.val}</span>
+    </div>
+  `).join('');
+}
+
+function drawMfrBars(all) {
+  const cnt = {};
+  all.filter(r => r.result === 'fail').forEach(r => {
+    cnt[r.manufacturerName] = (cnt[r.manufacturerName] || 0) + 1;
+  });
+  const sorted = Object.entries(cnt).sort((a,b) => b[1]-a[1]).slice(0,5);
+  const max = sorted[0]?.[1] || 1;
+  const el = document.getElementById('mfrChart');
+  if (!sorted.length) { el.innerHTML = `<div style="text-align:center;padding:20px;color:var(--text-3);font-size:13px">データなし</div>`; return; }
+  el.innerHTML = sorted.map(([name,cnt]) => `
+    <div class="bar-item">
+      <div class="bar-lbl">${name}</div>
+      <div class="bar-track">
+        <div class="bar-fill" style="width:${(cnt/max*100).toFixed(1)}%;background:linear-gradient(90deg,#f87171,#ef4444)"></div>
+      </div>
+      <div class="bar-cnt">${cnt}</div>
+    </div>
+  `).join('');
+}
+
+function drawMonthBars(all) {
+  const months = {};
+  const now = new Date();
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const k = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+    months[k] = { lbl:`${d.getMonth()+1}月`, pass:0, fail:0, review:0 };
+  }
+  all.forEach(r => {
+    const d = new Date(r.createdAt);
+    const k = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+    if (months[k]) months[k][r.result]++;
+  });
+
+  const data   = Object.values(months);
+  const maxV   = Math.max(...data.map(d => d.pass + d.fail + d.review), 1);
+  const BAR_H  = 80;
+
+  document.getElementById('monthChart').innerHTML = data.map(d => {
+    const tot = d.pass + d.fail + d.review;
+    const h   = tot > 0 ? Math.max(6, (tot / maxV) * BAR_H) : 4;
+    const ph  = tot ? (d.pass   / tot) * h : 0;
+    const fh  = tot ? (d.fail   / tot) * h : 0;
+    const rh  = tot ? (d.review / tot) * h : h;
+    return `<div class="month-bar">
+      ${tot ? `<div class="month-cnt">${tot}</div>` : '<div class="month-cnt" style="opacity:0">0</div>'}
+      <div class="month-bar-inner" style="height:${h}px">
+        <div style="height:${rh}px;background:var(--review)"></div>
+        <div style="height:${fh}px;background:var(--fail)"></div>
+        <div style="height:${ph}px;background:var(--pass)"></div>
+      </div>
+      <div class="month-lbl">${d.lbl}</div>
+    </div>`;
+  }).join('');
+}
+
+// ============================================================
+// 設定ページ
+// ============================================================
+
+function toggleDark() {
+  const t = document.getElementById('darkToggle');
+  const on = t.classList.toggle('on');
+  document.documentElement.setAttribute('data-theme', on ? 'dark' : 'light');
+  save('dark', on);
+}
+
+function renderInspSettings() {
+  const list = getInspectors();
+  document.getElementById('inspectorSettings').innerHTML =
+    list.map((ins, i) => `
+      <div class="s-item">
+        <div style="width:34px;height:34px;border-radius:50%;background:${ins.color};display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:14px;margin-right:13px;flex-shrink:0">${ins.initials}</div>
+        <div style="flex:1">
+          <div style="font-size:15px;color:var(--text);font-weight:500">${ins.name}</div>
+          <div style="font-size:12px;color:var(--text-3)">${ins.id}</div>
+        </div>
+        ${i >= DEFAULT_INSPECTORS.length
+          ? `<button onclick="removeInspector('${ins.id}')" style="color:var(--fail);font-size:19px;padding:4px 8px;background:none;border:none;cursor:pointer;font-weight:700">×</button>`
+          : ''
+        }
+      </div>
+    `).join('') +
+    `<div class="s-item" onclick="openInspModal()">
+      <div style="width:34px;height:34px;border-radius:50%;border:1.5px dashed var(--border);display:flex;align-items:center;justify-content:center;margin-right:13px;flex-shrink:0;color:var(--primary);font-size:20px">+</div>
+      <span style="font-size:15px;color:var(--primary);font-weight:600">確認者を追加</span>
+    </div>`;
+}
+
+function removeInspector(id) {
+  let list = getInspectors().filter(i => i.id !== id);
+  save('inspectors', list);
+  if (S.selectedInsp === id) S.selectedInsp = null;
+  renderInspectors();
+  showToast('確認者を削除しました','default');
+}
+
+function updateSettingsCount() {
+  const n = load('inspections', []).length;
+  document.getElementById('sTotalCnt').textContent = `${n}件`;
+}
+
+function exportJSON() {
+  const data = {
+    inspections: load('inspections', []),
+    inspectors:  getInspectors(),
+    exportedAt:  new Date().toISOString(),
+  };
+  const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `inspection_${new Date().toISOString().split('T')[0]}.json`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+  showToast('エクスポートしました','success');
+}
+
+function confirmClear() {
+  document.getElementById('confirmTitle').textContent = 'データを全削除しますか？';
+  document.getElementById('confirmMsg').textContent   = 'すべての検品記録が削除されます。この操作は元に戻せません。';
+  document.getElementById('confirmOk').onclick = () => {
+    save('inspections', []);
+    save('products', SAMPLE_PRODUCTS);
+    renderHist();
+    closeConfirm();
+    showToast('データを削除しました','default');
+  };
+  document.getElementById('confirmModal').classList.add('show');
+}
+
+function closeConfirm() { document.getElementById('confirmModal').classList.remove('show'); }
+
+// ============================================================
+// 詳細モーダル
+// ============================================================
+
+function openDetail(id) {
+  const all = load('inspections', []);
+  const r = all.find(x => x.id === id);
+  if (!r) return;
+
+  const lbls = { pass:'使用可', fail:'使用否', review:'要確認' };
+  const icons = {
+    pass:'<polyline points="20 6 9 17 4 12" stroke-width="3"/>',
+    fail:'<line x1="18" y1="6" x2="6" y2="18" stroke-width="2.5"/><line x1="6" y1="6" x2="18" y2="18" stroke-width="2.5"/>',
+    review:'<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>',
+  };
+
+  const d = new Date(r.createdAt);
+  const dateStr = `${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+
+  document.getElementById('dTitle').textContent = r.productName;
+  document.getElementById('dContent').innerHTML = `
+    <div class="detail-badge-row" style="display:flex;align-items:center;gap:7px">
+      <span class="h-badge ${r.result}" style="font-size:13px;padding:5px 14px">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" width="12" height="12">${icons[r.result]}</svg>
+        ${lbls[r.result]}
+      </span>
+      ${r.judgeType ? `<span style="font-size:12px;font-weight:700;color:${r.judgeType==='恒久判断'?'#3b82f6':'var(--review)'};background:${r.judgeType==='恒久判断'?'#eff6ff':'var(--review-dim)'};border-radius:100px;padding:4px 12px">${r.judgeType}</span>` : ''}
+    </div>
+    <div class="detail-row">
+      <span class="detail-lbl">メーカー</span>
+      <span class="detail-val">${r.manufacturerName}</span>
+    </div>
+    <div class="detail-row">
+      <span class="detail-lbl">確認者</span>
+      <span class="detail-val">${r.inspectorName}</span>
+    </div>
+    <div class="detail-row">
+      <span class="detail-lbl">日時</span>
+      <span class="detail-val">${dateStr}</span>
+    </div>
+    ${r.defects?.length ? `
+    <div class="detail-row">
+      <span class="detail-lbl">不良内容</span>
+      <span class="detail-val">
+        <div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:2px">
+          ${r.defects.map(d => `<span style="display:inline-block;padding:3px 10px;border-radius:100px;font-size:12px;font-weight:600;background:var(--fail-dim);color:var(--fail)">${d}</span>`).join('')}
+        </div>
+      </span>
+    </div>` : ''}
+    ${r.photos?.length ? `
+    <div class="detail-photos">
+      ${r.photos.map(p => `<img src="${p}" class="detail-photo">`).join('')}
+    </div>` : ''}
+  `;
+
+  document.getElementById('detailBg').classList.add('show');
+}
+
+function closeDetail() {
+  document.getElementById('detailBg').classList.remove('show');
+}
+
+// ============================================================
+// キーボード / ジェスチャー
+// ============================================================
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') { closeInspModal(); closeConfirm(); closeDetail(); closeAnnotator(); }
+});
+
+// ============================================================
+// アプリ初期化
+// ============================================================
+
+function init() {
+  // ダークモード復元
+  if (load('dark', false)) {
+    document.documentElement.setAttribute('data-theme', 'dark');
+  }
+
+  // サンプルデータ投入（初回のみ）
+  if (!localStorage.getItem(KEY.inspections)) {
+    const now = new Date();
+    const samples = [
+      { id:uid(), manufacturerId:'panasonic', manufacturerName:'Panasonic', productName:'EZ9L48', inspectorId:'INS-001', inspectorName:'田中 太郎', result:'pass',   comment:'外観良好', photos:[], createdAt: new Date(now - 864e5 * 0).toISOString() },
+      { id:uid(), manufacturerId:'sony',      manufacturerName:'Sony',      productName:'RX100M7',inspectorId:'INS-002', inspectorName:'佐藤 花子', result:'fail',   comment:'傷あり',   photos:[], createdAt: new Date(now - 864e5 * 1).toISOString() },
+      { id:uid(), manufacturerId:'canon',     manufacturerName:'Canon',     productName:'EOS90D', inspectorId:'INS-001', inspectorName:'田中 太郎', result:'review', comment:'要再確認', photos:[], createdAt: new Date(now - 864e5 * 2).toISOString() },
+      { id:uid(), manufacturerId:'panasonic', manufacturerName:'Panasonic', productName:'LUMIX DC-GH6', inspectorId:'INS-003', inspectorName:'鈴木 一郎', result:'pass', comment:'', photos:[], createdAt: new Date(now - 864e5 * 3).toISOString() },
+      { id:uid(), manufacturerId:'toshiba',   manufacturerName:'Toshiba',   productName:'KX-PD350DL', inspectorId:'INS-002', inspectorName:'佐藤 花子', result:'fail', comment:'動作不良', photos:[], createdAt: new Date(now - 864e5 * 4).toISOString() },
+      { id:uid(), manufacturerId:'hitachi',   manufacturerName:'Hitachi',   productName:'6204ZZ', inspectorId:'INS-001', inspectorName:'田中 太郎', result:'pass', comment:'', photos:[], createdAt: new Date(now - 864e5 * 33).toISOString() },
+      { id:uid(), manufacturerId:'sony',      manufacturerName:'Sony',      productName:'6205ZZ', inspectorId:'INS-003', inspectorName:'鈴木 一郎', result:'fail', comment:'亀裂確認', photos:[], createdAt: new Date(now - 864e5 * 34).toISOString() },
+    ];
+    save('inspections', samples);
+  }
+
+  renderMfr();
+  renderInspectors();
+  renderDefects();
+  renderHistChips();
+  renderHist();
+}
+
+init();
+</script>
+</body>
+</html>
