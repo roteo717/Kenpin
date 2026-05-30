@@ -231,8 +231,46 @@ a{color:inherit;text-decoration:none}
   color:var(--text-3);border-radius:50%;transition:background .15s;
 }
 .hist-item-fill:hover{background:var(--primary-dim);color:var(--primary)}
+.hist-item-del{
+  flex-shrink:0;width:28px;height:28px;
+  display:flex;align-items:center;justify-content:center;
+  color:var(--text-3);border-radius:50%;transition:all .15s;
+}
+.hist-item-del:active,.hist-item-del:hover{background:var(--fail-dim);color:var(--fail)}
 /* 旧スタイル（互換） */
 .hist-chip{display:none}
+
+/* =====================================================
+   スワイプ削除
+   ===================================================== */
+.swipe-row{
+  position:relative;overflow:hidden;
+  border-radius:10px;margin:0 -4px;
+}
+.swipe-row:last-child .hist-item{border-bottom:none}
+.swipe-del-bg{
+  position:absolute;right:0;top:0;bottom:0;
+  width:80px;background:var(--fail);
+  display:flex;align-items:center;justify-content:center;
+  border-radius:0 10px 10px 0;
+  flex-direction:column;gap:3px;
+}
+.swipe-del-bg svg{stroke:white;width:16px;height:16px}
+.swipe-del-lbl{font-size:11px;font-weight:700;color:white;letter-spacing:.3px}
+.hist-item{
+  position:relative;z-index:1;
+  background:var(--surface);
+  transform:translateX(0);
+  transition:transform .3s cubic-bezier(.34,1.12,.64,1);
+  will-change:transform;
+  padding-left:8px;padding-right:8px;
+  border-radius:10px;
+}
+.hist-item.swiping{transition:none}
+.swipe-row.deleting{
+  transition:max-height .25s ease, opacity .2s ease, margin .25s ease;
+  overflow:hidden;
+}
 .suggest-dd{
   position:absolute;top:calc(100% + 6px);left:0;right:0;
   background:var(--surface);border:1px solid var(--border);
@@ -597,6 +635,48 @@ a{color:inherit;text-decoration:none}
 .detail-photo{
   width:100%;border-radius:12px;
   aspect-ratio:1;object-fit:cover;
+  cursor:pointer;transition:opacity .15s;
+}
+.detail-photo:active{opacity:.8}
+
+/* =====================================================
+   写真フルスクリーンビューアー
+   ===================================================== */
+.photo-viewer-bg{
+  position:fixed;inset:0;background:rgba(0,0,0,.95);
+  z-index:400;display:flex;align-items:center;justify-content:center;
+  opacity:0;pointer-events:none;transition:opacity .2s;
+}
+.photo-viewer-bg.show{opacity:1;pointer-events:all}
+.photo-viewer-img{
+  max-width:100%;max-height:100dvh;
+  object-fit:contain;
+  transition:transform .2s;
+}
+.photo-viewer-close{
+  position:absolute;top:16px;right:16px;
+  width:40px;height:40px;
+  background:rgba(255,255,255,.15);backdrop-filter:blur(8px);
+  border-radius:50%;display:flex;align-items:center;justify-content:center;
+  color:#fff;border:1px solid rgba(255,255,255,.2);
+  cursor:pointer;transition:background .15s;z-index:1;
+}
+.photo-viewer-close:active{background:rgba(255,255,255,.3)}
+.photo-viewer-nav{
+  position:absolute;top:50%;transform:translateY(-50%);
+  width:40px;height:40px;
+  background:rgba(255,255,255,.15);backdrop-filter:blur(8px);
+  border-radius:50%;display:flex;align-items:center;justify-content:center;
+  color:#fff;border:1px solid rgba(255,255,255,.2);
+  cursor:pointer;transition:background .15s;
+}
+.photo-viewer-nav:active{background:rgba(255,255,255,.3)}
+.photo-viewer-nav.prev{left:12px}
+.photo-viewer-nav.next{right:12px}
+.photo-viewer-count{
+  position:absolute;bottom:24px;left:50%;transform:translateX(-50%);
+  color:rgba(255,255,255,.7);font-size:13px;font-weight:600;
+  background:rgba(0,0,0,.4);padding:4px 14px;border-radius:100px;
 }
 
 /* =====================================================
@@ -996,7 +1076,10 @@ a{color:inherit;text-decoration:none}
         </span>
         <div class="suggest-dd" id="suggestDd" style="display:none"></div>
       </div>
-      <div class="hist-label">最近使用した製品名</div>
+      <div class="hist-label" style="display:flex;align-items:center;justify-content:space-between">
+        <span>最近使用した製品名</span>
+        <button id="clearAllProductsBtn" onclick="clearAllProducts()" style="display:none;font-size:12px;color:var(--fail);font-weight:600;background:none;border:none;padding:2px 4px;cursor:pointer;opacity:.75;transition:opacity .15s" onmouseenter="this.style.opacity=1" onmouseleave="this.style.opacity=.75">すべて削除</button>
+      </div>
       <div class="hist-chips" id="histChips"></div>
     </div>
 
@@ -1214,7 +1297,6 @@ a{color:inherit;text-decoration:none}
           </div>
           <div style="flex:1">
             <div class="s-label" id="settingsUserName">—</div>
-            <div style="font-size:12px;color:var(--text-3)" id="settingsUserEmp"></div>
           </div>
         </div>
         <div class="s-item" onclick="logoutUser()">
@@ -1267,6 +1349,21 @@ a{color:inherit;text-decoration:none}
 
 <!-- TOAST -->
 <div class="toast" id="toast"></div>
+
+<!-- PHOTO VIEWER -->
+<div class="photo-viewer-bg" id="photoViewerBg" onclick="if(event.target===this)closePhotoViewer()">
+  <button class="photo-viewer-close" onclick="closePhotoViewer()">
+    <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" width="16" height="16" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+  </button>
+  <button class="photo-viewer-nav prev" id="pvPrev" onclick="photoViewerNav(-1)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" width="16" height="16" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg>
+  </button>
+  <img class="photo-viewer-img" id="photoViewerImg" src="" alt="">
+  <button class="photo-viewer-nav next" id="pvNext" onclick="photoViewerNav(1)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" width="16" height="16" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+  </button>
+  <div class="photo-viewer-count" id="pvCount"></div>
+</div>
 
 <!-- ADD INSPECTOR MODAL -->
 <div class="modal-bg" id="inspModal" onclick="if(event.target===this)closeInspModal()">
@@ -1628,25 +1725,116 @@ function toggleAllMfr() {
 function renderHistChips() {
   const history = load('products', SAMPLE_PRODUCTS);
   const el = document.getElementById('histChips');
+  const clearBtn = document.getElementById('clearAllProductsBtn');
+
   if (!history.length) {
     el.innerHTML = `<div style="padding:14px 4px;text-align:center;font-size:13px;color:var(--text-3)">履歴はありません</div>`;
+    if (clearBtn) clearBtn.style.display = 'none';
     return;
   }
-  el.innerHTML = history.slice(0, 4).map(n => `
-    <div class="hist-item" onclick="pickProduct('${n.replace(/'/g,"\\'")}')">
-      <span class="hist-item-icon">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15" stroke-linecap="round">
-          <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+
+  if (clearBtn) clearBtn.style.display = history.length > 1 ? 'inline-block' : 'none';
+
+  el.innerHTML = history.slice(0, 6).map(n => {
+    const esc  = n.replace(/'/g, "\\'");
+    const attr = n.replace(/"/g, '&quot;');
+    return `
+    <div class="swipe-row" data-name="${attr}">
+      <div class="swipe-del-bg">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round">
+          <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
         </svg>
-      </span>
-      <span class="hist-item-name">${n}</span>
-      <span class="hist-item-fill" title="入力欄に挿入" onclick="event.stopPropagation();pickProduct('${n.replace(/'/g,"\\'")}')">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14" stroke-linecap="round">
-          <polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 014-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 01-4 4H3"/>
-        </svg>
-      </span>
-    </div>
-  `).join('');
+        <span class="swipe-del-lbl">削除</span>
+      </div>
+      <div class="hist-item" onclick="pickProduct('${esc}')">
+        <span class="hist-item-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15" stroke-linecap="round">
+            <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+          </svg>
+        </span>
+        <span class="hist-item-name">${n}</span>
+        <span class="hist-item-fill" title="入力欄に挿入" onclick="event.stopPropagation();pickProduct('${esc}')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14" stroke-linecap="round">
+            <polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 014-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 01-4 4H3"/>
+          </svg>
+        </span>
+      </div>
+    </div>`;
+  }).join('');
+
+  _initSwipeDelete();
+}
+
+function deleteProduct(name) {
+  const ph = load('products', SAMPLE_PRODUCTS);
+  save('products', ph.filter(p => p !== name));
+  renderHistChips();
+  showToast(`"${name}" を削除しました`, 'default');
+}
+
+function clearAllProducts() {
+  if (!confirm('最近使用した製品名をすべて削除しますか？')) return;
+  save('products', []);
+  renderHistChips();
+  showToast('履歴をすべて削除しました', 'default');
+}
+
+// ============================================================
+// スワイプ削除
+// ============================================================
+
+let _swStartX = null;
+let _swStartY = null;
+let _swInner  = null;
+let _swDx     = 0;
+const SW_MAX  = 80;   // px — 完全に開いた状態
+const SW_DEL  = 72;   // px — この距離以上でスワイプ削除確定
+
+function _initSwipeDelete() {
+  document.querySelectorAll('.swipe-row').forEach(row => {
+    const inner = row.querySelector('.hist-item');
+    const name  = row.dataset.name;
+
+    row.addEventListener('touchstart', e => {
+      _swStartX = e.touches[0].clientX;
+      _swStartY = e.touches[0].clientY;
+      _swInner  = inner;
+      _swDx     = 0;
+      inner.classList.add('swiping');
+    }, { passive: true });
+
+    row.addEventListener('touchmove', e => {
+      if (_swInner !== inner) return;
+      const dx = e.touches[0].clientX - _swStartX;
+      const dy = e.touches[0].clientY - _swStartY;
+      // 縦スクロールが主体のときはスワイプしない
+      if (Math.abs(dy) > Math.abs(dx) + 6) return;
+      if (dx > 0) { inner.style.transform = 'translateX(0)'; return; }
+      _swDx = Math.max(dx, -SW_MAX);
+      inner.style.transform = `translateX(${_swDx}px)`;
+    }, { passive: true });
+
+    row.addEventListener('touchend', () => {
+      if (_swInner !== inner) return;
+      inner.classList.remove('swiping');
+      if (_swDx <= -SW_DEL) {
+        // 削除アニメーション
+        inner.style.transform = `translateX(-${SW_MAX}px)`;
+        row.style.transition   = 'max-height .22s ease, opacity .18s ease, margin .22s ease, padding .22s ease';
+        row.style.maxHeight    = row.offsetHeight + 'px';
+        row.style.overflow     = 'hidden';
+        requestAnimationFrame(() => {
+          row.style.maxHeight = '0';
+          row.style.opacity   = '0';
+          row.style.margin    = '0';
+        });
+        setTimeout(() => deleteProduct(name), 230);
+      } else {
+        inner.style.transform = 'translateX(0)';
+      }
+      _swStartX = null; _swInner = null; _swDx = 0;
+    });
+  });
 }
 
 function pickProduct(name) {
@@ -2517,7 +2705,6 @@ function renderInspSettings() {
         <div style="width:34px;height:34px;border-radius:50%;background:${ins.color};display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:14px;margin-right:13px;flex-shrink:0">${ins.initials}</div>
         <div style="flex:1">
           <div style="font-size:15px;color:var(--text);font-weight:500">${ins.name}</div>
-          <div style="font-size:12px;color:var(--text-3)">${ins.employeeId || ins.id}</div>
         </div>
         <button onclick="removeInspector('${ins.id}')" style="color:var(--fail);font-size:19px;padding:4px 8px;background:none;border:none;cursor:pointer;font-weight:700">×</button>
       </div>
@@ -2806,7 +2993,7 @@ function openDetail(id) {
     </div>` : ''}
     ${r.photos?.length ? `
     <div class="detail-photos">
-      ${r.photos.map(p => `<img src="${p}" class="detail-photo">`).join('')}
+      ${r.photos.map((p, i) => `<img src="${p}" class="detail-photo" onclick="openPhotoViewer(${i})" data-idx="${i}">`).join('')}
     </div>` : ''}
   `;
 
@@ -2818,11 +3005,45 @@ function closeDetail() {
 }
 
 // ============================================================
+// 写真フルスクリーンビューアー
+// ============================================================
+
+let _pvPhotos = [];
+let _pvIdx    = 0;
+
+function openPhotoViewer(idx) {
+  // 現在表示中の詳細シートから写真URLを収集
+  const imgs = document.querySelectorAll('#dContent .detail-photo');
+  _pvPhotos = Array.from(imgs).map(img => img.src);
+  if (!_pvPhotos.length) return;
+  _pvIdx = idx;
+  _renderPhotoViewer();
+  document.getElementById('photoViewerBg').classList.add('show');
+}
+
+function _renderPhotoViewer() {
+  document.getElementById('photoViewerImg').src = _pvPhotos[_pvIdx];
+  const total = _pvPhotos.length;
+  document.getElementById('pvCount').textContent = total > 1 ? `${_pvIdx + 1} / ${total}` : '';
+  document.getElementById('pvPrev').style.display = (total > 1 && _pvIdx > 0)           ? 'flex' : 'none';
+  document.getElementById('pvNext').style.display = (total > 1 && _pvIdx < total - 1)   ? 'flex' : 'none';
+}
+
+function photoViewerNav(dir) {
+  _pvIdx = Math.max(0, Math.min(_pvPhotos.length - 1, _pvIdx + dir));
+  _renderPhotoViewer();
+}
+
+function closePhotoViewer() {
+  document.getElementById('photoViewerBg').classList.remove('show');
+}
+
+// ============================================================
 // キーボード / ジェスチャー
 // ============================================================
 
 document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') { closeInspModal(); closeConfirm(); closeDetail(); closeAnnotator(); closeUserEditModal(); }
+  if (e.key === 'Escape') { closeInspModal(); closeConfirm(); closeDetail(); closeAnnotator(); closeUserEditModal(); closePhotoViewer(); }
 });
 
 // ============================================================
