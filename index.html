@@ -246,6 +246,8 @@ a{color:inherit;text-decoration:none}
 .swipe-row{
   position:relative;overflow:hidden;
   border-radius:10px;margin:0 -4px;
+  -webkit-mask-image:-webkit-radial-gradient(white,black);
+  transform:translateZ(0);
 }
 .swipe-row:last-child .hist-item{border-bottom:none}
 .swipe-del-bg{
@@ -254,6 +256,7 @@ a{color:inherit;text-decoration:none}
   display:flex;align-items:center;justify-content:center;
   border-radius:0 10px 10px 0;
   flex-direction:column;gap:3px;
+  opacity:0;
 }
 .swipe-del-bg svg{stroke:white;width:16px;height:16px}
 .swipe-del-lbl{font-size:11px;font-weight:700;color:white;letter-spacing:.3px}
@@ -264,7 +267,6 @@ a{color:inherit;text-decoration:none}
   transition:transform .3s cubic-bezier(.34,1.12,.64,1);
   will-change:transform;
   padding-left:8px;padding-right:8px;
-  border-radius:10px;
 }
 .hist-item.swiping{transition:none}
 .swipe-row.deleting{
@@ -306,13 +308,13 @@ a{color:inherit;text-decoration:none}
 .inspector-card:active{transform:scale(.96)}
 .inspector-card.selected{border-color:var(--primary);background:var(--primary-dim)}
 .avatar{
-  width:54px;height:54px;border-radius:50%;
+  width:54px;height:54px;border-radius:14px;
+  background:var(--primary-dim);
   display:flex;align-items:center;justify-content:center;
-  font-size:20px;font-weight:800;color:#fff;position:relative;
-  flex-shrink:0;
+  position:relative;flex-shrink:0;
 }
 .avatar-check{
-  position:absolute;top:-2px;right:-2px;
+  position:absolute;bottom:-4px;right:-4px;
   width:20px;height:20px;background:var(--primary);
   border-radius:50%;border:2.5px solid var(--surface);
   display:none;align-items:center;justify-content:center;
@@ -1076,10 +1078,7 @@ a{color:inherit;text-decoration:none}
         </span>
         <div class="suggest-dd" id="suggestDd" style="display:none"></div>
       </div>
-      <div class="hist-label" style="display:flex;align-items:center;justify-content:space-between">
-        <span>最近使用した製品名</span>
-        <button id="clearAllProductsBtn" onclick="clearAllProducts()" style="display:none;font-size:12px;color:var(--fail);font-weight:600;background:none;border:none;padding:2px 4px;cursor:pointer;opacity:.75;transition:opacity .15s" onmouseenter="this.style.opacity=1" onmouseleave="this.style.opacity=.75">すべて削除</button>
-      </div>
+      <div class="hist-label">最近使用した製品名</div>
       <div class="hist-chips" id="histChips"></div>
     </div>
 
@@ -1580,6 +1579,10 @@ function save(key, val) {
 // Firestore から全データをロード
 async function loadFromFirestore() {
   if (!currentUser) return;
+  // ユーザー切り替え時にDBをリセット（前ユーザーのデータが残らないように）
+  DB.inspections = [];
+  DB.inspectors  = [...DEFAULT_INSPECTORS];
+  DB.products    = [...SAMPLE_PRODUCTS];
   try {
     const snap = await db.collection('users').doc(currentUser.uid)
       .collection('data').get();
@@ -1725,17 +1728,12 @@ function toggleAllMfr() {
 function renderHistChips() {
   const history = load('products', SAMPLE_PRODUCTS);
   const el = document.getElementById('histChips');
-  const clearBtn = document.getElementById('clearAllProductsBtn');
 
   if (!history.length) {
     el.innerHTML = `<div style="padding:14px 4px;text-align:center;font-size:13px;color:var(--text-3)">履歴はありません</div>`;
-    if (clearBtn) clearBtn.style.display = 'none';
     return;
   }
-
-  if (clearBtn) clearBtn.style.display = history.length > 1 ? 'inline-block' : 'none';
-
-  el.innerHTML = history.slice(0, 6).map(n => {
+  el.innerHTML = history.slice(0, 4).map(n => {
     const esc  = n.replace(/'/g, "\\'");
     const attr = n.replace(/"/g, '&quot;');
     return `
@@ -1793,6 +1791,7 @@ const SW_DEL  = 72;   // px — この距離以上でスワイプ削除確定
 function _initSwipeDelete() {
   document.querySelectorAll('.swipe-row').forEach(row => {
     const inner = row.querySelector('.hist-item');
+    const bg    = row.querySelector('.swipe-del-bg');
     const name  = row.dataset.name;
 
     row.addEventListener('touchstart', e => {
@@ -1801,6 +1800,7 @@ function _initSwipeDelete() {
       _swInner  = inner;
       _swDx     = 0;
       inner.classList.add('swiping');
+      if (bg) bg.style.opacity = '1';
     }, { passive: true });
 
     row.addEventListener('touchmove', e => {
@@ -1831,6 +1831,7 @@ function _initSwipeDelete() {
         setTimeout(() => deleteProduct(name), 230);
       } else {
         inner.style.transform = 'translateX(0)';
+        if (bg) bg.style.opacity = '0';
       }
       _swStartX = null; _swInner = null; _swDx = 0;
     });
@@ -1948,8 +1949,11 @@ function renderInspectors() {
   document.getElementById('inspScroll').innerHTML =
     list.map(ins => `
       <div class="inspector-card ${S.selectedInsp === ins.id ? 'selected' : ''}" onclick="selectInsp('${ins.id}')">
-        <div class="avatar" style="background:${ins.color}">
-          ${ins.initials}
+        <div class="avatar">
+          <svg viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="1.8" width="28" height="28" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/>
+            <circle cx="12" cy="7" r="4"/>
+          </svg>
           <div class="avatar-check">
             <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" width="10" height="10" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
           </div>
