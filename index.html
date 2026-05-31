@@ -176,7 +176,6 @@ a{color:inherit;text-decoration:none}
   display:flex;gap:9px;flex-wrap:wrap;
   padding-bottom:3px;
   margin-top:4px;padding-top:10px;
-  border-top:1px solid var(--border);
 }
 .mfr-card{
   flex-shrink:0;width:88px;min-height:48px;
@@ -243,23 +242,6 @@ a{color:inherit;text-decoration:none}
 .hist-item-del:active,.hist-item-del:hover{background:var(--fail-dim);color:var(--fail)}
 /* 旧スタイル（互換） */
 .hist-chip{display:none}
-
-/* =====================================================
-   製品クイックチップ
-   ===================================================== */
-.product-quick-chips{
-  display:flex;flex-wrap:wrap;gap:6px;
-  margin-top:2px;margin-bottom:4px;
-}
-.product-chip{
-  padding:5px 12px;border-radius:100px;
-  background:var(--surface-2);border:1.5px solid var(--border);
-  font-size:12px;font-weight:600;color:var(--text-2);
-  cursor:pointer;transition:all .15s;white-space:nowrap;flex-shrink:0;
-}
-.product-chip:active,.product-chip.selected{
-  background:var(--primary-dim);border-color:var(--primary);color:var(--primary);
-}
 
 /* =====================================================
    OCRカメラボタン / クリアボタン
@@ -341,6 +323,139 @@ a{color:inherit;text-decoration:none}
   font-size:10px;color:var(--text-3);font-weight:700;
   width:100%;margin-bottom:2px;
 }
+
+/* =====================================================
+   OCR フルスクリーン カメラモーダル
+   ===================================================== */
+.ocr-modal{
+  position:fixed;inset:0;z-index:3000;background:#000;
+  flex-direction:column;display:none;
+  /* safe area */
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+.ocr-modal.active{display:flex}
+
+/* ヘッダー */
+.ocr-modal-hdr{
+  position:absolute;top:0;left:0;right:0;z-index:20;
+  display:flex;align-items:center;
+  padding:max(env(safe-area-inset-top),14px) 16px 14px;
+  background:linear-gradient(to bottom,rgba(0,0,0,.72) 60%,transparent);
+}
+.ocr-close-btn{
+  display:flex;align-items:center;gap:5px;
+  color:#fff;background:rgba(255,255,255,.18);
+  border:1px solid rgba(255,255,255,.22);border-radius:100px;
+  padding:8px 16px;font-size:13px;font-weight:600;
+  backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+}
+.ocr-close-btn:active{background:rgba(255,255,255,.32)}
+.ocr-modal-title{
+  flex:1;color:#fff;font-size:15px;font-weight:700;
+  text-align:center;text-shadow:0 1px 6px rgba(0,0,0,.6);
+}
+
+/* ビデオ */
+.ocr-viewfinder{
+  flex:1;position:relative;overflow:hidden;
+}
+#ocrVideo{
+  width:100%;height:100%;
+  object-fit:cover;
+  position:absolute;inset:0;
+}
+
+/* フレームラッパー（中央揃え） */
+.ocr-frame-wrap{
+  position:absolute;inset:0;
+  display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+  pointer-events:none;
+}
+
+/* スキャン枠（box-shadow で外側を暗くする） */
+.ocr-scan-frame{
+  width:82vw;height:88px;
+  position:relative;border-radius:6px;
+  box-shadow:0 0 0 9999px rgba(0,0,0,.56);
+  z-index:1;
+}
+
+/* コーナーマーク */
+.ocr-cn{
+  position:absolute;width:22px;height:22px;
+  border:3px solid #fff;
+}
+.ocr-cn.tl{top:-1px;left:-1px;border-right:none;border-bottom:none;border-radius:5px 0 0 0}
+.ocr-cn.tr{top:-1px;right:-1px;border-left:none;border-bottom:none;border-radius:0 5px 0 0}
+.ocr-cn.bl{bottom:-1px;left:-1px;border-right:none;border-top:none;border-radius:0 0 0 5px}
+.ocr-cn.br{bottom:-1px;right:-1px;border-left:none;border-top:none;border-radius:0 0 5px 0}
+
+/* スキャンライン */
+.ocr-scan-line{
+  position:absolute;left:3px;right:3px;height:2px;border-radius:2px;
+  background:linear-gradient(90deg,
+    transparent 0%,
+    rgba(99,102,241,.6) 15%,
+    var(--primary) 40%,
+    var(--primary) 60%,
+    rgba(99,102,241,.6) 85%,
+    transparent 100%);
+  box-shadow:0 0 10px var(--primary),0 0 20px rgba(99,102,241,.35);
+  animation:ocrLine 2s ease-in-out infinite;
+}
+@keyframes ocrLine{
+  0%  {top:3px;  opacity:0}
+  8%  {opacity:1}
+  92% {opacity:1}
+  100%{top:calc(100% - 3px);opacity:0}
+}
+
+/* ガイドテキスト */
+.ocr-guide{
+  margin-top:18px;
+  color:rgba(255,255,255,.92);font-size:13px;font-weight:600;letter-spacing:.3px;
+  text-shadow:0 1px 6px rgba(0,0,0,.9);text-align:center;
+}
+.ocr-guide-sub{
+  margin-top:6px;
+  color:rgba(255,255,255,.5);font-size:11px;font-weight:500;
+  text-shadow:0 1px 4px rgba(0,0,0,.8);text-align:center;
+}
+
+/* フッター */
+.ocr-modal-footer{
+  position:absolute;bottom:0;left:0;right:0;z-index:20;
+  display:flex;align-items:center;justify-content:center;gap:28px;
+  padding:18px 24px max(env(safe-area-inset-bottom),22px);
+  background:linear-gradient(to top,rgba(0,0,0,.75) 60%,transparent);
+}
+/* 撮影ボタン */
+.ocr-shoot-btn{
+  width:72px;height:72px;border-radius:50%;
+  background:#fff;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
+  color:var(--primary);font-size:10px;font-weight:700;letter-spacing:.3px;
+  border:4px solid rgba(255,255,255,.35);
+  box-shadow:0 0 0 3px rgba(255,255,255,.15),0 6px 24px rgba(0,0,0,.55);
+  transition:transform .12s,box-shadow .12s;
+}
+.ocr-shoot-btn:active{
+  transform:scale(.91);
+  box-shadow:0 0 0 6px rgba(255,255,255,.25);
+}
+/* サブボタン */
+.ocr-side-btn{
+  width:48px;height:48px;border-radius:50%;
+  background:rgba(255,255,255,.16);
+  border:1.5px solid rgba(255,255,255,.22);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:3px;color:#fff;font-size:9px;font-weight:600;
+  backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+  transition:background .15s;
+}
+.ocr-side-btn:active{background:rgba(255,255,255,.3)}
 
 /* =====================================================
    スワイプ削除
@@ -943,6 +1058,69 @@ a{color:inherit;text-decoration:none}
 .m-btn.danger:active{background:#dc2626}
 
 /* =====================================================
+   保存確認ボトムシート
+   ===================================================== */
+.save-confirm-bg{
+  position:fixed;inset:0;background:rgba(0,0,0,.5);
+  z-index:500;opacity:0;pointer-events:none;
+  transition:opacity .25s;
+  display:flex;align-items:flex-end;justify-content:center;
+}
+.save-confirm-bg.show{opacity:1;pointer-events:all}
+.save-confirm-sheet{
+  background:var(--surface);
+  border-radius:24px 24px 0 0;
+  padding:0 20px max(env(safe-area-inset-bottom),24px);
+  width:100%;max-width:430px;
+  transform:translateY(100%);
+  transition:transform .32s cubic-bezier(.34,1.15,.64,1);
+  max-height:90vh;overflow-y:auto;
+}
+.save-confirm-bg.show .save-confirm-sheet{transform:translateY(0)}
+.sc-handle{
+  width:40px;height:4px;
+  background:var(--border);border-radius:100px;
+  margin:12px auto 0;
+}
+.sc-title{
+  font-size:17px;font-weight:800;color:var(--text);
+  margin:16px 0 4px;
+}
+.sc-subtitle{
+  font-size:12px;color:var(--text-3);font-weight:500;
+  margin-bottom:14px;
+}
+.sc-rows{
+  border:1.5px solid var(--border);
+  border-radius:14px;overflow:hidden;
+}
+.sc-row{
+  display:flex;align-items:center;gap:10px;
+  padding:12px 14px;
+  background:var(--surface-2);
+  border-bottom:1px solid var(--border);
+}
+.sc-row:last-child{border-bottom:none}
+.sc-lbl{
+  font-size:11px;font-weight:700;color:var(--text-3);
+  width:60px;flex-shrink:0;letter-spacing:.2px;
+}
+.sc-val{
+  font-size:14px;font-weight:600;color:var(--text);
+  flex:1;
+}
+.sc-badge{
+  display:inline-flex;align-items:center;gap:5px;
+  padding:4px 11px;border-radius:100px;
+  font-size:13px;font-weight:700;
+}
+.sc-badge.pass{background:var(--pass-dim);color:var(--pass)}
+.sc-badge.fail{background:var(--fail-dim);color:var(--fail)}
+.sc-badge.perm{background:#eff6ff;color:#3b82f6}
+.sc-badge.prov{background:var(--review-dim);color:var(--review)}
+.sc-actions{display:flex;gap:10px;margin-top:16px}
+
+/* =====================================================
    アニメーション
    ===================================================== */
 @keyframes fadeUp{
@@ -1178,8 +1356,6 @@ a{color:inherit;text-decoration:none}
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="13" height="13" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
         </button>
       </div>
-      <!-- クイック履歴チップ（最近5件・常時表示） -->
-      <div class="product-quick-chips" id="productQuickChips"></div>
       <div class="search-wrap">
         <input type="text" class="search-input" id="productInput" placeholder="製品名を入力してください"
           style="padding-right:80px"
@@ -1351,8 +1527,7 @@ a{color:inherit;text-decoration:none}
     </div>
 
 
-    <button class="save-btn" onclick="saveInspection()">
-      <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" width="18" height="18" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+    <button class="save-btn" onclick="showSaveConfirm()">
       保存する
     </button>
 
@@ -1964,7 +2139,6 @@ function deleteProduct(name) {
   const ph = load('products', SAMPLE_PRODUCTS);
   save('products', ph.filter(p => p !== name));
   renderHistChips();
-  renderProductQuickChips();
   showToast(`"${name}" を削除しました`, 'default');
 }
 
@@ -1972,24 +2146,7 @@ function clearAllProducts() {
   if (!confirm('最近使用した製品名をすべて削除しますか？')) return;
   save('products', []);
   renderHistChips();
-  renderProductQuickChips();
   showToast('履歴をすべて削除しました', 'default');
-}
-
-// ============================================================
-// 製品クイックチップ（常時表示・最近5件）
-// ============================================================
-
-function renderProductQuickChips() {
-  const el = document.getElementById('productQuickChips');
-  if (!el) return;
-  const history = load('products', SAMPLE_PRODUCTS);
-  const recent = history.slice(0, 5);
-  if (!recent.length) { el.innerHTML = ''; return; }
-  el.innerHTML = recent.map(n => {
-    const esc = n.replace(/'/g, "\\'");
-    return `<button class="product-chip" onclick="pickProduct('${esc}')">${n}</button>`;
-  }).join('');
 }
 
 // ============================================================
@@ -2008,55 +2165,139 @@ function clearProductInput() {
 }
 
 // ============================================================
-// OCR（カメラ撮影 → Tesseract.js 解析）
+// OCR カメラモーダル
 // ============================================================
 
+let _ocrStream = null;
+let _ocrFacing = 'environment';
+
+/** OCR カメラモーダルを開く */
 function startProductOCR() {
-  document.getElementById('ocrFileInput').click();
+  const modal = document.getElementById('ocrModal');
+  modal.classList.add('active');
+  _openOCRCamera(_ocrFacing);
 }
 
+async function _openOCRCamera(facing) {
+  try {
+    if (_ocrStream) { _ocrStream.getTracks().forEach(t => t.stop()); _ocrStream = null; }
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: { ideal: facing }, width: { ideal: 1920 }, height: { ideal: 1080 } }
+    });
+    _ocrStream = stream;
+    document.getElementById('ocrVideo').srcObject = stream;
+  } catch(e) {
+    console.warn('OCR camera:', e);
+    showToast('カメラにアクセスできません。ファイルから選択してください。', 'error');
+  }
+}
+
+function flipOCRCamera() {
+  _ocrFacing = (_ocrFacing === 'environment') ? 'user' : 'environment';
+  _openOCRCamera(_ocrFacing);
+}
+
+function closeOCRModal() {
+  const modal = document.getElementById('ocrModal');
+  if (modal) modal.classList.remove('active');
+  if (_ocrStream) { _ocrStream.getTracks().forEach(t => t.stop()); _ocrStream = null; }
+  const v = document.getElementById('ocrVideo');
+  if (v) v.srcObject = null;
+}
+
+/**
+ * フレーム内の映像を正確にクロップして OCR
+ * object-fit:cover の座標変換を適用
+ */
+async function captureOCRFrame() {
+  const video  = document.getElementById('ocrVideo');
+  const frame  = document.getElementById('ocrScanFrame');
+  const canvas = document.getElementById('ocrCanvas');
+  if (!video.videoWidth) { showToast('カメラが準備中です', 'error'); return; }
+
+  const videoRect = video.getBoundingClientRect();
+  const frameRect = frame.getBoundingClientRect();
+  const vw = video.videoWidth, vh = video.videoHeight;
+  const dw = videoRect.width,  dh = videoRect.height;
+  const vAsp = vw / vh, dAsp = dw / dh;
+
+  let scale, offX, offY;
+  if (vAsp > dAsp) {
+    // 動画が横長 → 高さに合わせてスケール
+    scale = vh / dh; offX = (vw - dw * scale) / 2; offY = 0;
+  } else {
+    // 動画が縦長 → 幅に合わせてスケール
+    scale = vw / dw; offX = 0; offY = (vh - dh * scale) / 2;
+  }
+
+  // フレーム座標 → 動画ネイティブピクセル
+  const fx = (frameRect.left - videoRect.left) * scale + offX;
+  const fy = (frameRect.top  - videoRect.top ) * scale + offY;
+  const fw = frameRect.width  * scale;
+  const fh = frameRect.height * scale;
+
+  // 余白 (上下 14px、左右 8px 分)
+  const pv = Math.round(14 * scale), ph = Math.round(8 * scale);
+  const sx = Math.max(0, Math.round(fx - ph));
+  const sy = Math.max(0, Math.round(fy - pv));
+  const sw = Math.min(vw - sx, Math.round(fw + ph * 2));
+  const sh = Math.min(vh - sy, Math.round(fh + pv * 2));
+
+  canvas.width = sw; canvas.height = sh;
+  const ctx = canvas.getContext('2d');
+  ctx.filter = 'contrast(1.3) brightness(1.05)'; // 軽いコントラスト強調
+  ctx.drawImage(video, sx, sy, sw, sh, 0, 0, sw, sh);
+
+  closeOCRModal();
+  const blob = await new Promise(r => canvas.toBlob(r, 'image/jpeg', 0.95));
+  await processOCR(blob);
+}
+
+/** モーダル内ファイル選択フォールバック */
+async function handleOCRFileFb(inputEl) {
+  if (!inputEl.files || !inputEl.files[0]) return;
+  const file = inputEl.files[0]; inputEl.value = '';
+  closeOCRModal();
+  await processOCR(file);
+}
+
+/** 旧 input[file] 経由（後方互換） */
 async function handleOCRCapture(inputEl) {
   if (!inputEl.files || !inputEl.files[0]) return;
-  const file = inputEl.files[0];
-  inputEl.value = ''; // 同一ファイル再選択を可能に
+  const file = inputEl.files[0]; inputEl.value = '';
+  await processOCR(file);
+}
 
+/** Tesseract.js で OCR を実行して結果を表示 */
+async function processOCR(imageData) {
   const loadingEl = document.getElementById('ocrLoading');
   const resultEl  = document.getElementById('ocrResultArea');
   if (loadingEl) loadingEl.style.display = 'flex';
   if (resultEl)  resultEl.style.display  = 'none';
-
   try {
-    // Tesseract.js を動的ロード（初回のみ）
     if (!window.Tesseract) {
-      showToast('OCRライブラリを読み込み中...', 'default');
-      await new Promise((resolve, reject) => {
+      showToast('OCR ライブラリを読み込み中...', 'default');
+      await new Promise((ok, ng) => {
         const s = document.createElement('script');
         s.src = 'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';
-        s.onload = resolve; s.onerror = reject;
+        s.onload = ok; s.onerror = ng;
         document.head.appendChild(s);
       });
     }
-
-    // 英語モデルで解析（製品コードは英数字中心）
     const worker = await Tesseract.createWorker('eng', 1, { logger: () => {} });
-    const { data: { text } } = await worker.recognize(file);
+    const { data: { text } } = await worker.recognize(imageData);
     await worker.terminate();
-
     if (loadingEl) loadingEl.style.display = 'none';
-
     const candidates = extractProductCandidates(text);
-
     if (!candidates.length) {
-      showToast('製品名を認識できませんでした。手入力してください。', 'error');
+      showToast('製品名を認識できませんでした。再撮影か手入力してください。', 'error');
       return;
     }
-
     showOCRResult(candidates[0], candidates);
-
   } catch(e) {
     console.error('OCR error:', e);
     if (loadingEl) loadingEl.style.display = 'none';
-    showToast('OCR処理に失敗しました。手入力してください。', 'error');
+    showToast('OCR 処理に失敗しました', 'error');
   }
 }
 
@@ -2824,6 +3065,68 @@ async function saveAnnotation() {
   renderPhotoGrid();
   closeAnnotator();
   showToast('注釈を保存しました', 'success');
+}
+
+// ============================================================
+// 保存確認ボトムシート
+// ============================================================
+
+function showSaveConfirm() {
+  const productName = document.getElementById('productInput').value.trim();
+
+  // バリデーション（保存前と同じ）
+  if (!S.selectedMfr)  { showToast('メーカーを選択してください','error');   scrollToCard('mfr-card'); return; }
+  if (!productName)     { showToast('製品名を入力してください','error');      return; }
+  if (!S.selectedInsp) { showToast('確認者を選択してください','error');      return; }
+  if (!S.usability)    { showToast('使用可否を選択してください','error');    return; }
+  if (!S.judgeType)    { showToast('判断区分を選択してください','error');    return; }
+  if (S.usability === 'fail' && S.photos.length === 0) {
+    showToast('使用否の場合は写真が必須です','error'); return;
+  }
+
+  const mfr  = MANUFACTURERS.find(m => m.id === S.selectedMfr);
+  const insp = getInspectors().find(i => i.id === S.selectedInsp);
+
+  const usabilityBadge = S.usability === 'pass'
+    ? `<span class="sc-badge pass">✓ 使用可</span>`
+    : `<span class="sc-badge fail">✕ 使用否</span>`;
+
+  const judgeBadge = S.judgeType === '恒久判断'
+    ? `<span class="sc-badge perm">● 恒久判断</span>`
+    : `<span class="sc-badge prov">● 暫定判断</span>`;
+
+  const rows = [
+    { lbl: 'メーカー',   val: mfr  ? mfr.name  : '—' },
+    { lbl: '製品名',     val: productName },
+    { lbl: '確認者',     val: insp ? insp.name : '—' },
+    { lbl: '使用可否',   html: usabilityBadge },
+    { lbl: '判断区分',   html: judgeBadge },
+  ];
+
+  if (S.defects.length) {
+    rows.push({ lbl: '不良内容', val: S.defects.join('、') });
+  }
+  if (S.photos.length) {
+    rows.push({ lbl: '写真',
+      html: `<span class="sc-val" style="color:var(--primary)">${S.photos.length}枚</span>` });
+  }
+
+  document.getElementById('scRows').innerHTML = rows.map(r => `
+    <div class="sc-row">
+      <span class="sc-lbl">${r.lbl}</span>
+      ${r.html ? r.html : `<span class="sc-val">${r.val}</span>`}
+    </div>`).join('');
+
+  document.getElementById('saveConfirmBg').classList.add('show');
+}
+
+function closeSaveConfirm() {
+  document.getElementById('saveConfirmBg').classList.remove('show');
+}
+
+async function executeSaveInspection() {
+  closeSaveConfirm();
+  await saveInspection();
 }
 
 // ============================================================
@@ -3624,5 +3927,98 @@ function authErrMsg(code) {
 
 init();
 </script>
+<!-- =================== 保存確認ボトムシート =================== -->
+<div class="save-confirm-bg" id="saveConfirmBg" onclick="if(event.target===this)closeSaveConfirm()">
+  <div class="save-confirm-sheet">
+    <div class="sc-handle"></div>
+    <div class="sc-title">保存内容を確認</div>
+    <div class="sc-subtitle">以下の内容で保存します</div>
+    <div class="sc-rows" id="scRows"></div>
+    <div class="sc-actions">
+      <button class="m-btn cancel" onclick="closeSaveConfirm()">キャンセル</button>
+      <button class="m-btn ok" onclick="executeSaveInspection()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"
+             width="15" height="15" stroke-linecap="round" style="margin-right:4px;vertical-align:middle">
+          <polyline points="20 6 9 17 4 12"/>
+        </svg>
+        保存する
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- =================== OCR カメラモーダル =================== -->
+<div class="ocr-modal" id="ocrModal">
+  <!-- ヘッダー -->
+  <div class="ocr-modal-hdr">
+    <button class="ocr-close-btn" onclick="closeOCRModal()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8"
+           width="12" height="12" stroke-linecap="round">
+        <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+      </svg>
+      キャンセル
+    </button>
+    <span class="ocr-modal-title">製品名スキャン</span>
+    <div style="width:88px"></div>
+  </div>
+
+  <!-- ライブビュー -->
+  <div class="ocr-viewfinder">
+    <video id="ocrVideo" autoplay playsinline muted></video>
+
+    <!-- オーバーレイ＋フレーム -->
+    <div class="ocr-frame-wrap">
+      <div class="ocr-scan-frame" id="ocrScanFrame">
+        <div class="ocr-cn tl"></div>
+        <div class="ocr-cn tr"></div>
+        <div class="ocr-cn bl"></div>
+        <div class="ocr-cn br"></div>
+        <div class="ocr-scan-line"></div>
+      </div>
+      <p class="ocr-guide">製品名をフレーム内に合わせて撮影</p>
+      <p class="ocr-guide-sub">文字がはっきり見えるようにカメラを近づけてください</p>
+    </div>
+  </div>
+
+  <!-- フッター -->
+  <div class="ocr-modal-footer">
+    <!-- ファイル選択（左） -->
+    <button class="ocr-side-btn" onclick="document.getElementById('ocrFileInputFb').click()"
+            title="ファイルから選択">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+           width="20" height="20" stroke-linecap="round">
+        <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66
+                 l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/>
+      </svg>
+      選択
+    </button>
+
+    <!-- 撮影ボタン（中央） -->
+    <button class="ocr-shoot-btn" id="ocrShootBtn" onclick="captureOCRFrame()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+           width="26" height="26" stroke-linecap="round">
+        <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/>
+        <circle cx="12" cy="13" r="4"/>
+      </svg>
+      撮影
+    </button>
+
+    <!-- フリップ（右） -->
+    <button class="ocr-side-btn" id="ocrFlipBtn" onclick="flipOCRCamera()" title="カメラ切替">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+           width="20" height="20" stroke-linecap="round">
+        <polyline points="1 4 1 10 7 10"/>
+        <path d="M3.51 15a9 9 0 102.13-9.36L1 10"/>
+      </svg>
+      切替
+    </button>
+  </div>
+
+  <!-- 非表示要素 -->
+  <canvas id="ocrCanvas" style="display:none"></canvas>
+  <input type="file" accept="image/*" id="ocrFileInputFb"
+         onchange="handleOCRFileFb(this)" style="display:none">
+</div>
+
 </body>
 </html>
