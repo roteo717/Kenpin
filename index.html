@@ -245,6 +245,104 @@ a{color:inherit;text-decoration:none}
 .hist-chip{display:none}
 
 /* =====================================================
+   製品クイックチップ
+   ===================================================== */
+.product-quick-chips{
+  display:flex;flex-wrap:wrap;gap:6px;
+  margin-top:2px;margin-bottom:4px;
+}
+.product-chip{
+  padding:5px 12px;border-radius:100px;
+  background:var(--surface-2);border:1.5px solid var(--border);
+  font-size:12px;font-weight:600;color:var(--text-2);
+  cursor:pointer;transition:all .15s;white-space:nowrap;flex-shrink:0;
+}
+.product-chip:active,.product-chip.selected{
+  background:var(--primary-dim);border-color:var(--primary);color:var(--primary);
+}
+
+/* =====================================================
+   OCRカメラボタン / クリアボタン
+   ===================================================== */
+.ocr-cam-btn{
+  position:absolute;right:8px;top:50%;transform:translateY(-50%);
+  width:34px;height:34px;
+  display:flex;align-items:center;justify-content:center;
+  background:none;border:none;cursor:pointer;
+  color:var(--primary);border-radius:9px;
+  transition:background .15s;
+}
+.ocr-cam-btn:active{background:var(--primary-dim)}
+.input-clear-btn{
+  position:absolute;right:48px;top:50%;transform:translateY(-50%);
+  width:20px;height:20px;
+  background:var(--text-3);border-radius:50%;
+  color:#fff;font-size:11px;font-weight:700;
+  display:none;align-items:center;justify-content:center;
+  cursor:pointer;border:none;line-height:1;padding:0;
+}
+
+/* =====================================================
+   OCRローディング
+   ===================================================== */
+.ocr-loading{
+  margin-top:8px;padding:9px 12px;
+  background:var(--surface-2);border:1.5px solid var(--border);
+  border-radius:10px;
+  display:none;align-items:center;gap:9px;
+  font-size:13px;color:var(--text-2);font-weight:500;
+}
+.ocr-spin{
+  width:18px;height:18px;flex-shrink:0;
+  border:2.5px solid var(--border);border-top-color:var(--primary);
+  border-radius:50%;animation:ocrSpin .7s linear infinite;
+}
+@keyframes ocrSpin{to{transform:rotate(360deg)}}
+
+/* =====================================================
+   OCR結果エリア
+   ===================================================== */
+.ocr-result-area{
+  margin-top:8px;padding:9px 11px;
+  background:var(--pass-dim);border:1.5px solid var(--pass);
+  border-radius:10px;
+  display:none;align-items:center;gap:8px;flex-wrap:wrap;
+}
+.ocr-chk{
+  width:20px;height:20px;background:var(--pass);border-radius:50%;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;
+}
+.ocr-info{flex:1;min-width:0}
+.ocr-title{font-size:11px;font-weight:700;color:var(--pass);letter-spacing:.2px}
+.ocr-cand{
+  font-size:13px;color:var(--text);font-weight:600;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.ocr-confirm-btn{
+  padding:6px 13px;background:var(--primary);
+  border:none;border-radius:8px;
+  color:#fff;font-size:12px;font-weight:700;
+  cursor:pointer;flex-shrink:0;transition:opacity .15s;
+}
+.ocr-confirm-btn:active{opacity:.8}
+.ocr-dismiss{
+  width:24px;height:24px;border:none;background:none;
+  color:var(--text-3);cursor:pointer;font-size:17px;
+  display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;padding:0;line-height:1;
+}
+/* 複数候補行 */
+.ocr-multi-row{
+  display:none;flex-wrap:wrap;gap:5px;
+  margin-top:6px;padding-top:6px;width:100%;
+  border-top:1px solid rgba(34,197,94,.25);
+}
+.ocr-multi-lbl{
+  font-size:10px;color:var(--text-3);font-weight:700;
+  width:100%;margin-bottom:2px;
+}
+
+/* =====================================================
    スワイプ削除
    ===================================================== */
 .swipe-row{
@@ -1080,15 +1178,46 @@ a{color:inherit;text-decoration:none}
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="13" height="13" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
         </button>
       </div>
+      <!-- クイック履歴チップ（最近5件・常時表示） -->
+      <div class="product-quick-chips" id="productQuickChips"></div>
       <div class="search-wrap">
         <input type="text" class="search-input" id="productInput" placeholder="製品名を入力してください"
+          style="padding-right:80px"
           onfocus="onProductFocus()"
           oninput="onProductInput(this.value)"
           onblur="setTimeout(hideSuggest,200)">
-        <span class="search-ico">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="17" height="17" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-        </span>
+        <!-- クリアボタン（テキスト入力時に表示） -->
+        <button class="input-clear-btn" id="productClearBtn" onclick="clearProductInput()" title="クリア">✕</button>
+        <!-- OCR カメラボタン -->
+        <button class="ocr-cam-btn" onclick="startProductOCR()" title="カメラで製品名を読み取る">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/>
+            <circle cx="12" cy="13" r="4"/>
+          </svg>
+        </button>
+        <!-- hidden camera input -->
+        <input type="file" accept="image/*" capture="environment" id="ocrFileInput" onchange="handleOCRCapture(this)" style="display:none">
         <div class="suggest-dd" id="suggestDd" style="display:none"></div>
+      </div>
+      <!-- OCRローディング -->
+      <div class="ocr-loading" id="ocrLoading">
+        <span class="ocr-spin"></span>
+        画像を解析中...
+      </div>
+      <!-- OCR結果エリア -->
+      <div class="ocr-result-area" id="ocrResultArea">
+        <span class="ocr-chk">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" width="11" height="11" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+        </span>
+        <div class="ocr-info">
+          <div class="ocr-title">OCRで読み取りました</div>
+          <div class="ocr-cand">候補：<span id="ocrCandidateText"></span></div>
+          <div class="ocr-multi-row" id="ocrMultiRow">
+            <span class="ocr-multi-lbl">他の候補：</span>
+          </div>
+        </div>
+        <button class="ocr-confirm-btn" onclick="confirmOCR()">確定</button>
+        <button class="ocr-dismiss" onclick="dismissOCR()" title="閉じる">✕</button>
       </div>
       <div class="hist-label" id="histLabel" style="display:none">最近使用した製品名</div>
       <div class="hist-chips" id="histChips" style="display:none"></div>
@@ -1835,6 +1964,7 @@ function deleteProduct(name) {
   const ph = load('products', SAMPLE_PRODUCTS);
   save('products', ph.filter(p => p !== name));
   renderHistChips();
+  renderProductQuickChips();
   showToast(`"${name}" を削除しました`, 'default');
 }
 
@@ -1842,12 +1972,195 @@ function clearAllProducts() {
   if (!confirm('最近使用した製品名をすべて削除しますか？')) return;
   save('products', []);
   renderHistChips();
+  renderProductQuickChips();
   showToast('履歴をすべて削除しました', 'default');
 }
 
 // ============================================================
-// スワイプ削除
+// 製品クイックチップ（常時表示・最近5件）
 // ============================================================
+
+function renderProductQuickChips() {
+  const el = document.getElementById('productQuickChips');
+  if (!el) return;
+  const history = load('products', SAMPLE_PRODUCTS);
+  const recent = history.slice(0, 5);
+  if (!recent.length) { el.innerHTML = ''; return; }
+  el.innerHTML = recent.map(n => {
+    const esc = n.replace(/'/g, "\\'");
+    return `<button class="product-chip" onclick="pickProduct('${esc}')">${n}</button>`;
+  }).join('');
+}
+
+// ============================================================
+// 入力クリア
+// ============================================================
+
+function clearProductInput() {
+  const input = document.getElementById('productInput');
+  input.value = '';
+  S.productName = '';
+  const cb = document.getElementById('productClearBtn');
+  if (cb) cb.style.display = 'none';
+  dismissOCR();
+  hideSuggest();
+  input.focus();
+}
+
+// ============================================================
+// OCR（カメラ撮影 → Tesseract.js 解析）
+// ============================================================
+
+function startProductOCR() {
+  document.getElementById('ocrFileInput').click();
+}
+
+async function handleOCRCapture(inputEl) {
+  if (!inputEl.files || !inputEl.files[0]) return;
+  const file = inputEl.files[0];
+  inputEl.value = ''; // 同一ファイル再選択を可能に
+
+  const loadingEl = document.getElementById('ocrLoading');
+  const resultEl  = document.getElementById('ocrResultArea');
+  if (loadingEl) loadingEl.style.display = 'flex';
+  if (resultEl)  resultEl.style.display  = 'none';
+
+  try {
+    // Tesseract.js を動的ロード（初回のみ）
+    if (!window.Tesseract) {
+      showToast('OCRライブラリを読み込み中...', 'default');
+      await new Promise((resolve, reject) => {
+        const s = document.createElement('script');
+        s.src = 'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';
+        s.onload = resolve; s.onerror = reject;
+        document.head.appendChild(s);
+      });
+    }
+
+    // 英語モデルで解析（製品コードは英数字中心）
+    const worker = await Tesseract.createWorker('eng', 1, { logger: () => {} });
+    const { data: { text } } = await worker.recognize(file);
+    await worker.terminate();
+
+    if (loadingEl) loadingEl.style.display = 'none';
+
+    const candidates = extractProductCandidates(text);
+
+    if (!candidates.length) {
+      showToast('製品名を認識できませんでした。手入力してください。', 'error');
+      return;
+    }
+
+    showOCRResult(candidates[0], candidates);
+
+  } catch(e) {
+    console.error('OCR error:', e);
+    if (loadingEl) loadingEl.style.display = 'none';
+    showToast('OCR処理に失敗しました。手入力してください。', 'error');
+  }
+}
+
+// 製品名候補を抽出（ロット番号・日付等を除外して製品コード優先）
+function extractProductCandidates(rawText) {
+  const seen = new Set();
+  const result = [];
+  const text = rawText.toUpperCase();
+
+  // パターン1: ハイフン付きコード（GT-C2052SAWX, SKF-6205, RUF-A2405SAW）
+  const p1 = /\b[A-Z]{1,6}[0-9]{0,4}-[A-Z0-9]{2,12}(?:-[A-Z0-9]+)?\b/g;
+  // パターン2: 数字＋アルファベット（6204ZZ, 7203BEP, 32207J2）
+  const p2 = /\b[0-9]{4,6}[A-Z]{1,4}[0-9A-Z]{0,4}\b/g;
+  // パターン3: アルファベット＋数字混合（NJ208EG, EZ9L48, NU1010ECM）
+  const p3 = /\b[A-Z]{1,4}[A-Z0-9][0-9]{2,6}[A-Z0-9]{0,6}\b/g;
+  // パターン4: 給水H113-0123 スタイル
+  const p4 = /[A-Z][0-9]{2,4}-[0-9]{3,6}/g;
+
+  for (const pat of [p1, p4, p2, p3]) {
+    const matches = text.match(pat) || [];
+    for (const m of matches) {
+      const clean = m.trim();
+      if (!seen.has(clean) && clean.length >= 4 && clean.length <= 22) {
+        // 日付・ロット番号らしきもの（YYYYMMDD形式）を除外
+        if (!/^\d{8}$/.test(clean) && !/^\d{6}$/.test(clean)) {
+          seen.add(clean);
+          result.push(clean);
+        }
+      }
+    }
+  }
+
+  // フォールバック：英数字混在の行を抽出
+  if (!result.length) {
+    const lines = rawText.split('\n').map(l => l.trim()).filter(l => l.length >= 4);
+    for (const line of lines) {
+      const clean = line.replace(/[^A-Za-z0-9\-\/]/g, '').toUpperCase();
+      if (clean.length >= 4 && clean.length <= 22 && /[A-Z]/.test(clean) && /[0-9]/.test(clean)) {
+        if (!seen.has(clean)) { seen.add(clean); result.push(clean); }
+      }
+      if (result.length >= 4) break;
+    }
+  }
+
+  return result;
+}
+
+// OCR結果エリアに表示
+function showOCRResult(best, all) {
+  const resultEl = document.getElementById('ocrResultArea');
+  const candEl   = document.getElementById('ocrCandidateText');
+  const multiRow = document.getElementById('ocrMultiRow');
+
+  // 入力欄に仮セット
+  const input = document.getElementById('productInput');
+  input.value = best;
+  S.productName = best;
+  const cb = document.getElementById('productClearBtn');
+  if (cb) cb.style.display = 'flex';
+
+  if (candEl) candEl.textContent = best;
+  if (resultEl) resultEl.style.display = 'flex';
+
+  // 他の候補チップ
+  if (multiRow) {
+    const others = all.filter(c => c !== best);
+    if (others.length) {
+      multiRow.style.display = 'flex';
+      multiRow.innerHTML = `<span class="ocr-multi-lbl">他の候補：</span>` +
+        others.slice(0, 4).map(c => {
+          const esc = c.replace(/'/g, "\\'");
+          return `<button class="product-chip" style="font-size:11px;padding:3px 10px" onclick="selectOCRCandidate('${esc}')">${c}</button>`;
+        }).join('');
+    } else {
+      multiRow.style.display = 'none';
+    }
+  }
+}
+
+// 候補チップを選択
+function selectOCRCandidate(name) {
+  document.getElementById('productInput').value = name;
+  S.productName = name;
+  const el = document.getElementById('ocrCandidateText');
+  if (el) el.textContent = name;
+}
+
+// OCR確定
+function confirmOCR() {
+  const val = document.getElementById('productInput').value.trim();
+  if (val) {
+    S.productName = val;
+    dismissOCR();
+    showToast('製品名を確定しました', 'success');
+  }
+}
+
+// OCRエリアを閉じる
+function dismissOCR() {
+  const r = document.getElementById('ocrResultArea');
+  const l = document.getElementById('ocrLoading');
+  if (r) r.style.display = 'none';
+  if (l) l.style.display = 'none';
+}
 
 let _swStartX = null;
 let _swStartY = null;
@@ -1910,6 +2223,9 @@ function pickProduct(name) {
   document.getElementById('productInput').value = name;
   S.productName = name;
   hideSuggest();
+  dismissOCR();
+  const cb = document.getElementById('productClearBtn');
+  if (cb) cb.style.display = 'flex';
 }
 
 // フォーカス時：何もしない（1文字入力後から候補を表示）
@@ -1924,6 +2240,9 @@ function onProductFocus() {
 
 function onProductInput(val) {
   S.productName = val;
+  // クリアボタン表示制御
+  const cb = document.getElementById('productClearBtn');
+  if (cb) cb.style.display = val ? 'flex' : 'none';
   if (!val.trim()) {
     hideSuggest();
     return;
