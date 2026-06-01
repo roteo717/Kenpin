@@ -392,6 +392,22 @@ a{color:inherit;text-decoration:none}
 .ocr-cn.bl{bottom:-1px;left:-1px;border-right:none;border-top:none;border-radius:0 0 0 5px}
 .ocr-cn.br{bottom:-1px;right:-1px;border-left:none;border-top:none;border-radius:0 0 5px 0}
 
+/* リアルタイム シャープネスメーター */
+.ocr-sharp-wrap{
+  position:absolute;bottom:-22px;left:50%;transform:translateX(-50%);
+  display:flex;align-items:center;gap:5px;pointer-events:none;
+}
+.ocr-sharp-dots{display:flex;gap:3px}
+.ocr-sharp-dot{
+  width:6px;height:6px;border-radius:50%;
+  background:rgba(255,255,255,.25);
+  transition:background .25s;
+}
+.ocr-sharp-label{
+  font-size:10px;color:rgba(255,255,255,.55);font-weight:600;
+  white-space:nowrap;letter-spacing:.2px;
+}
+
 /* スキャンライン（撮影ボタン押下後のみアニメーション） */
 .ocr-scan-line{
   position:absolute;left:3px;right:3px;height:2px;border-radius:2px;
@@ -2254,6 +2270,8 @@ let _ocrFacing = 'environment';
 let _ocrAutoTimer = null;   // 自動スキャン用タイマー
 let _ocrScanning = false;   // 自動スキャン稼働フラグ
 let _ocrTorchOn  = false;   // トーチ状態
+let _sharpTimer  = null;    // ライブシャープネス更新タイマー
+let _ocrIsRetry  = false;   // 自動リトライフラグ
 
 /** OCR カメラモーダルを開く */
 function startProductOCR() {
@@ -2312,12 +2330,28 @@ async function _openOCRCamera(facing) {
 
     const v = document.getElementById('ocrVideo');
     v.srcObject = stream;
-    // カメラ安定後に撮影ボタンを有効化
+
+    // タップでフォーカスポイント指定
+    v.onclick = async (e) => {
+      if (!_ocrStream) return;
+      const tr2 = _ocrStream.getVideoTracks()[0];
+      if (!tr2 || typeof tr2.applyConstraints !== 'function') return;
+      try {
+        const rect = v.getBoundingClientRect();
+        const x = (e.clientX - rect.left) / rect.width;
+        const y = (e.clientY - rect.top)  / rect.height;
+        await tr2.applyConstraints({ advanced: [{ focusMode: 'manual', pointOfInterest: { x, y } }] });
+        setTimeout(() => tr2.applyConstraints({ advanced: [{ focusMode: 'continuous' }] }).catch(()=>{}), 1500);
+      } catch(_) {}
+    };
+
+    // カメラ安定後に撮影ボタンを有効化 + シャープネスモニター開始
     v.onloadedmetadata = () => {
       setTimeout(() => {
         const btn = document.getElementById('ocrShootBtn');
         if (btn) { btn.disabled = false; btn.style.opacity = '1'; }
         _setOCRGuide('ready');
+        _startSharpnessMonitor();
       }, 800);
     };
   } catch(e) {
@@ -2349,6 +2383,7 @@ async function toggleOCRTorch() {
 
 function closeOCRModal() {
   _stopAutoScan();
+  _stopSharpnessMonitor();
   // トーチをOFFにしてからストリームを停止
   if (_ocrStream) {
     if (_ocrTorchOn) {
@@ -2394,6 +2429,61 @@ function _setOCRGuide(state) {
 function _stopAutoScan() {
   _ocrScanning = false;
   if (_ocrAutoTimer) { clearTimeout(_ocrAutoTimer); _ocrAutoTimer = null; }
+}
+
+/**
+ * ライブシャープネスモニター
+ * 500ms ごとにフレームのラプラシアン分散を計測し、
+ * ドット5個でピント状態を色表示（赤→橙→緑）
+ */
+function _startSharpnessMonitor() {
+  _stopSharpnessMonitor();
+  const GOOD = 200, OK = 80; // しきい値
+  _sharpTimer = setInterval(() => {
+    const video = document.getElementById('ocrVideo');
+    const frame = document.getElementById('ocrScanFrame');
+    if (!video || !video.videoWidth || !frame) return;
+
+    // フレーム中央 160×60px をサンプリング（軽量）
+    const cv = document.createElement('canvas');
+    cv.width = 160; cv.height = 60;
+    const ctx = cv.getContext('2d', { willReadFrequently: true });
+    const vr = video.getBoundingClientRect(), fr = frame.getBoundingClientRect();
+    const vw = video.videoWidth, vh = video.videoHeight;
+    const dw = vr.width, dh = vr.height;
+    const vAsp = vw/vh, dAsp = dw/dh;
+    let sc, ox, oy;
+    if (vAsp > dAsp) { sc = vh/dh; ox = (vw - dw*sc)/2; oy = 0; }
+    else              { sc = vw/dw; ox = 0; oy = (vh - dh*sc)/2; }
+    const fx = (fr.left - vr.left)*sc + ox;
+    const fy = (fr.top  - vr.top )*sc + oy;
+    const fw = fr.width*sc, fh = fr.height*sc;
+    const sx = Math.max(0, Math.round(fx + fw/2 - 80*sc));
+    const sy = Math.max(0, Math.round(fy + fh/2 - 30*sc));
+    try {
+      ctx.drawImage(video, sx, sy, 160*sc, 60*sc, 0, 0, 160, 60);
+    } catch(_) { return; }
+    const sharp = _measureSharpness(ctx, 160, 60);
+
+    // ドット更新（5段階）
+    const level = sharp >= GOOD   ? 5
+                : sharp >= GOOD*0.6? 4
+                : sharp >= OK     ? 3
+                : sharp >= OK*0.5 ? 2
+                                  : 1;
+    const color = level >= 4 ? '#22c55e' : level >= 3 ? '#f59e0b' : '#ef4444';
+    const label = level >= 4 ? '鮮明' : level >= 3 ? '普通' : '近づける';
+    for (let i = 0; i < 5; i++) {
+      const dot = document.getElementById(`sd${i}`);
+      if (dot) dot.style.background = i < level ? color : 'rgba(255,255,255,.2)';
+    }
+    const lbl = document.getElementById('ocrSharpLabel');
+    if (lbl) { lbl.textContent = label; lbl.style.color = level >= 4 ? 'rgba(34,197,94,.85)' : level >= 3 ? 'rgba(245,158,11,.85)' : 'rgba(239,68,68,.85)'; }
+  }, 500);
+}
+
+function _stopSharpnessMonitor() {
+  if (_sharpTimer) { clearInterval(_sharpTimer); _sharpTimer = null; }
 }
 
 /**
@@ -2589,9 +2679,10 @@ async function captureOCRFrame() {
     return;
   }
 
-  // シャープネス降順でソートし最良フレームを選択
+  // シャープネス降順でソートし上位2フレームを選択（デュアルフレームVision用）
   frames.sort((a, b) => b.sharpness - a.sharpness);
-  const best = frames[0];
+  const best   = frames[0];
+  const second = frames[1] || null;  // 2枚目（デュアルフレーム用）
 
   // ① ぼけ検出: 最良フレームが閾値未満なら警告して中断
   const BLUR_THRESHOLD = 75;
@@ -2602,7 +2693,7 @@ async function captureOCRFrame() {
   }
 
   closeOCRModal();
-  await processOCR(best.blob);
+  await processOCR(best.blob, second?.blob ?? null);
 }
 
 /** モーダル内ファイル選択フォールバック */
@@ -2610,14 +2701,14 @@ async function handleOCRFileFb(inputEl) {
   if (!inputEl.files || !inputEl.files[0]) return;
   const file = inputEl.files[0]; inputEl.value = '';
   closeOCRModal();
-  await processOCR(file);
+  await processOCR(file, null, false);
 }
 
 /** 旧 input[file] 経由（後方互換） */
 async function handleOCRCapture(inputEl) {
   if (!inputEl.files || !inputEl.files[0]) return;
   const file = inputEl.files[0]; inputEl.value = '';
-  await processOCR(file);
+  await processOCR(file, null, false);
 }
 
 // ============================================================
@@ -2696,19 +2787,42 @@ async function _enhanceColorForVision(blob) {
  * ◆ system プロンプト追加 → AI の役割を明確化
  * ◆ JSON 構造化出力 → 製品名・品番を確実に分離
  * ◆ 送信前に自動レベル補正 → コントラスト不足を解消
+ * ◆ デュアルフレーム対応 → 2枚を同時送信し文字を相互検証
  */
-async function _runClaudeVisionOCR(imageBlob) {
+async function _runClaudeVisionOCR(primaryBlob, secondaryBlob = null) {
   // ── 送信前に自動レベル補正（カラー保持）──
-  const enhanced = await _enhanceColorForVision(imageBlob);
-  const { base64, mimeType } = await _blobToBase64(enhanced);
-  const validMime = ['image/jpeg','image/png','image/gif','image/webp'].includes(mimeType)
-    ? mimeType : 'image/jpeg';
+  const enhanced1 = await _enhanceColorForVision(primaryBlob);
+  const { base64: b1, mimeType: m1 } = await _blobToBase64(enhanced1);
+  const vm1 = ['image/jpeg','image/png','image/gif','image/webp'].includes(m1) ? m1 : 'image/jpeg';
 
   // ── 選択中メーカーをコンテキストとして注入 ──
   const mfrObj  = S.selectedMfr ? MANUFACTURERS.find(m => m.id === S.selectedMfr) : null;
   const mfrHint = mfrObj
     ? `\n【メーカー補足】選択中のメーカーは「${mfrObj.name}」です。このメーカーの製品ラベルである可能性が高いため、型番・品番の書式をそのメーカーの慣例に合わせて読み取ってください。`
     : '';
+
+  // ── コンテンツ配列を組み立て ──
+  const content = [];
+
+  // 1枚目（必須）
+  content.push({ type: 'image', source: { type: 'base64', media_type: vm1, data: b1 } });
+
+  // 2枚目（任意: デュアルフレーム）
+  let dualNote = '';
+  if (secondaryBlob) {
+    try {
+      const enhanced2 = await _enhanceColorForVision(secondaryBlob);
+      const { base64: b2, mimeType: m2 } = await _blobToBase64(enhanced2);
+      const vm2 = ['image/jpeg','image/png','image/gif','image/webp'].includes(m2) ? m2 : 'image/jpeg';
+      content.push({ type: 'image', source: { type: 'base64', media_type: vm2, data: b2 } });
+      dualNote = '\n【補足】2枚の画像は同じ製品ラベルを連続撮影したものです。1枚目で不明瞭な文字は2枚目と照合し、最も正確な文字を特定してください。';
+    } catch(_) {}
+  }
+
+  content.push({
+    type: 'text',
+    text: `製品ラベルまたは製品本体に印字・刻印されているテキストを読み取り、指定のJSON形式で出力してください。${mfrHint}${dualNote}\n\n優先度:\n1. product_name: 最も目立つ製品名・商品名・モデル名（英数混在可）\n2. model_number: 品番・型番・JANコード・ロット番号（英数字・ハイフン・スラッシュ含む文字列）\n3. candidates: 上記以外で読み取れた製品関連文字列（最大5件）\n\nJSONのみ出力。`
+  });
 
   const response = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
@@ -2717,19 +2831,7 @@ async function _runClaudeVisionOCR(imageBlob) {
       model: 'claude-sonnet-4-20250514',
       max_tokens: 512,
       system: 'あなたは製品ラベル・製品本体から製品名・品番・型番を正確に読み取るOCR専門AIです。\n必ず以下のJSON形式のみで回答してください。説明文・前置き・Markdownコードブロックは一切不要です。\n{"product_name":"製品名またはモデル名","model_number":"品番・型番・ロット番号","candidates":["その他読み取れたテキスト"]}\n読み取れない項目は空文字列 "" にしてください。',
-      messages: [{
-        role: 'user',
-        content: [
-          {
-            type: 'image',
-            source: { type: 'base64', media_type: validMime, data: base64 }
-          },
-          {
-            type: 'text',
-            text: `製品ラベルまたは製品本体に印字・刻印されているテキストを読み取り、指定のJSON形式で出力してください。${mfrHint}\n\n優先度:\n1. product_name: 最も目立つ製品名・商品名・モデル名（英数混在可）\n2. model_number: 品番・型番・JANコード・ロット番号（英数字・ハイフン・スラッシュ含む文字列）\n3. candidates: 上記以外で読み取れた製品関連文字列（最大5件）\n\nJSONのみ出力。`
-          }
-        ]
-      }]
+      messages: [{ role: 'user', content }]
     })
   });
 
@@ -2841,8 +2943,34 @@ function _scoreOCRLine(line) {
   return ratio * lenScore * Math.max(0, 1 - noise / line.length * 2);
 }
 
-/** Tesseract.js で日本語+英語 OCR を実行 → 読み取ったテキスト行をそのまま表示 */
-async function processOCR(imageData) {
+/**
+ * 全角英数字→半角 / 前後空白除去 などの正規化
+ * 日本語製品ラベルで多発する全角混在を統一する
+ */
+function _normalizeOCRText(text) {
+  if (!text) return text;
+  return text
+    // 全角英大文字→半角
+    .replace(/[Ａ-Ｚ]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0))
+    // 全角英小文字→半角
+    .replace(/[ａ-ｚ]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0))
+    // 全角数字→半角
+    .replace(/[０-９]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0))
+    // 全角記号（！〜範囲）→半角
+    .replace(/[！-～]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0))
+    // 全角スペース→半角
+    .replace(/　/g, ' ')
+    // 連続スペース圧縮 & 前後トリム
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/** OCR 処理メイン
+ *  primaryData:   撮影最良フレーム Blob
+ *  secondaryData: 2番目フレーム Blob (デュアルフレーム Vision 用、省略可)
+ *  isRetry:       自動リトライか否か（無限ループ防止）
+ */
+async function processOCR(primaryData, secondaryData = null, isRetry = false) {
   const loadingEl = document.getElementById('ocrLoading');
   const resultEl  = document.getElementById('ocrResultArea');
   if (loadingEl) loadingEl.style.display = 'flex';
@@ -2851,16 +2979,15 @@ async function processOCR(imageData) {
     let lines = null;
 
     // ── ① Claude Vision API（主要 OCR） ────────────────────
-    // カラー画像をAIに渡して製品名を直接読み取る（Tesseractより高精度）
     try {
-      lines = await _runClaudeVisionOCR(imageData);
+      lines = await _runClaudeVisionOCR(primaryData, isRetry ? null : secondaryData);
     } catch(apiErr) {
       console.warn('Claude Vision OCR failed, falling back to Tesseract:', apiErr);
     }
 
     // ── ② Tesseract（フォールバック） ──────────────────────
     if (!lines || !lines.length) {
-      lines = await _runTesseractOCR(imageData);
+      lines = await _runTesseractOCR(primaryData);
     }
 
     if (loadingEl) loadingEl.style.display = 'none';
@@ -2870,10 +2997,24 @@ async function processOCR(imageData) {
       return;
     }
 
+    // ── ③ 全角→半角 正規化 ────────────────────────────────
+    lines = lines.map(_normalizeOCRText).filter(l => l.length > 0);
+
     // スコアリングで最適な行を先頭に並べ替え
     const scored = [...new Set(lines)]  // 重複除去
       .map(l => ({ line: l, score: _scoreOCRLine(l) }))
       .sort((a, b) => b.score - a.score);
+
+    // ── ④ 自動リトライ（1回限り） ────────────────────────
+    // 最良候補のスコアが低い、または文字数が短すぎる場合に再解析
+    const topScore = scored[0]?.score ?? 0;
+    const topLen   = scored[0]?.line.length ?? 0;
+    if (!isRetry && (topScore < 0.25 || topLen < 3)) {
+      console.log('[OCR] weak result, auto-retrying with single frame...');
+      showToast('精度が低いため再解析中...', 'default');
+      await processOCR(primaryData, null, true);
+      return;
+    }
 
     showOCRResult(scored[0].line, scored.map(s => s.line));
 
@@ -4558,6 +4699,17 @@ init();
         <div class="ocr-cn br"></div>
         <!-- スキャンライン: 撮影待ち時はアイドル表示 -->
         <div class="ocr-scan-line"></div>
+        <!-- ライブシャープネスメーター -->
+        <div class="ocr-sharp-wrap">
+          <div class="ocr-sharp-dots" id="ocrSharpDots">
+            <div class="ocr-sharp-dot" id="sd0"></div>
+            <div class="ocr-sharp-dot" id="sd1"></div>
+            <div class="ocr-sharp-dot" id="sd2"></div>
+            <div class="ocr-sharp-dot" id="sd3"></div>
+            <div class="ocr-sharp-dot" id="sd4"></div>
+          </div>
+          <span class="ocr-sharp-label" id="ocrSharpLabel">測定中</span>
+        </div>
       </div>
       <!-- 処理中バッジ -->
       <div class="ocr-status-badge" id="ocrStatusBadge" style="display:none"></div>
