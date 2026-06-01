@@ -151,7 +151,9 @@ a{color:inherit;text-decoration:none}
   letter-spacing:.5px;text-transform:uppercase;margin-bottom:7px;
 }
 .mfr-recent-row{
-  display:flex;gap:7px;overflow-x:auto;
+  display:grid;
+  grid-template-columns:repeat(3, 1fr);
+  gap:7px;
   padding-bottom:3px;margin-bottom:10px;
 }
 .mfr-recent-chip{
@@ -173,9 +175,19 @@ a{color:inherit;text-decoration:none}
 }
 .mfr-toggle-btn:active{background:var(--primary-dim);border-color:var(--primary);color:var(--primary)}
 .mfr-scroll{
-  display:flex;gap:9px;flex-wrap:wrap;
+  display:grid;
+  grid-template-columns:repeat(3, 1fr);
+  gap:9px;
   padding-bottom:3px;
   margin-top:4px;padding-top:10px;
+}
+/* グリッド内チップ：セル幅に合わせて伸ばす */
+.mfr-recent-row .mfr-recent-chip,
+.mfr-scroll .mfr-recent-chip{
+  width:100% !important;
+  height:75px;
+  box-sizing:border-box;
+  justify-content:center;
 }
 .mfr-card{
   flex-shrink:0;width:88px;min-height:48px;
@@ -1096,6 +1108,14 @@ a{color:inherit;text-decoration:none}
   border-top:1px solid var(--border);
   display:flex;align-items:stretch;z-index:100;
   padding-bottom:env(safe-area-inset-bottom,0);
+  /* キーボード開閉アニメーション用 */
+  transition:bottom .2s ease, opacity .15s ease;
+}
+/* 製品名入力中はボトムナビを画面外に退避 */
+#app.keyboard-open .bottom-nav{
+  bottom:calc(-1 * var(--nav-h) - env(safe-area-inset-bottom, 0px));
+  opacity:0;
+  pointer-events:none;
 }
 .nav-item{
   flex:1;display:flex;flex-direction:column;
@@ -1471,7 +1491,7 @@ a{color:inherit;text-decoration:none}
           style="padding-right:80px"
           onfocus="onProductFocus()"
           oninput="onProductInput(this.value)"
-          onblur="setTimeout(hideSuggest,200)">
+          onblur="onProductBlur()">
         <!-- クリアボタン -->
         <button class="input-clear-btn" id="productClearBtn" onclick="clearProductInput()" title="クリア">✕</button>
         <!-- マイクボタン -->
@@ -2104,7 +2124,7 @@ function getRecentMfrs() {
 }
 
 function renderMfr() {
-  const cardStyle = 'border-radius:13px;width:88px;height:75px;padding:8px;box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;overflow:hidden;';
+  const cardStyle = 'border-radius:13px;width:100%;height:75px;padding:8px;box-sizing:border-box;display:flex;align-items:center;justify-content:center;overflow:hidden;';
   const recent = getRecentMfrs();
   const lbl = document.getElementById('mfrSectionLbl');
   const btn = document.getElementById('mfrToggleBtn');
@@ -2151,7 +2171,7 @@ function renderMfr() {
 
   // 展開状態を維持
   if (S.showAllMfr) {
-    document.getElementById('mfrScroll').style.display = 'flex';
+    document.getElementById('mfrScroll').style.display = 'grid';
   }
 }
 
@@ -2164,7 +2184,7 @@ function toggleAllMfr() {
   S.showAllMfr = !S.showAllMfr;
   const scroll = document.getElementById('mfrScroll');
   const btn    = document.getElementById('mfrToggleBtn');
-  scroll.style.display = S.showAllMfr ? 'flex' : 'none';
+  scroll.style.display = S.showAllMfr ? 'grid' : 'none';
   btn.innerHTML = S.showAllMfr
     ? `閉じる <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="13" height="13" stroke-linecap="round"><polyline points="18 15 12 9 6 15"/></svg>`
     : `すべて見る <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="13" height="13" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>`;
@@ -3265,6 +3285,110 @@ function pickProduct(name) {
   if (cb) cb.style.display = 'flex';
 }
 
+// ============================================================
+// 音声入力（Web Speech API）
+// ============================================================
+
+let _voiceRec       = null;
+let _voiceListening = false;
+
+/** マイクボタン：録音中なら停止、停止中なら開始 */
+function toggleVoiceInput() {
+  if (_voiceListening) {
+    stopVoiceInput();
+  } else {
+    _startVoiceInput();
+  }
+}
+
+function _startVoiceInput() {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) {
+    showToast('このブラウザは音声入力に対応していません', 'error');
+    return;
+  }
+
+  // 既存インスタンスをクリア
+  if (_voiceRec) { try { _voiceRec.abort(); } catch(_) {} }
+
+  _voiceRec = new SR();
+  _voiceRec.lang            = 'ja-JP';
+  _voiceRec.continuous      = false;   // 1発話で停止
+  _voiceRec.interimResults  = true;    // 途中経過も表示
+  _voiceRec.maxAlternatives = 1;
+
+  // ── 開始 ──────────────────────────────────────────────────
+  _voiceRec.onstart = () => {
+    _voiceListening = true;
+    document.getElementById('micBtn').classList.add('listening');
+    document.getElementById('voiceBar').style.display = 'flex';
+    document.getElementById('voiceBarTxt').textContent = '聞いています...';
+  };
+
+  // ── 認識結果 ─────────────────────────────────────────────
+  _voiceRec.onresult = (e) => {
+    let finalText = '', interimText = '';
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      const t = e.results[i][0].transcript;
+      if (e.results[i].isFinal) finalText += t;
+      else                       interimText += t;
+    }
+    const text = (finalText || interimText).trim();
+    if (!text) return;
+
+    const input = document.getElementById('productInput');
+    input.value = text;
+    S.productName = text;
+    document.getElementById('voiceBarTxt').textContent = `「${text}」`;
+    const cb = document.getElementById('productClearBtn');
+    if (cb) cb.style.display = 'flex';
+  };
+
+  // ── 終了 ──────────────────────────────────────────────────
+  _voiceRec.onend = () => {
+    _voiceListening = false;
+    _voiceRec = null;
+    document.getElementById('micBtn').classList.remove('listening');
+    document.getElementById('voiceBar').style.display = 'none';
+    // 入力値でサジェストを更新
+    const val = document.getElementById('productInput').value.trim();
+    if (val) onProductInput(val);
+  };
+
+  // ── エラー ────────────────────────────────────────────────
+  _voiceRec.onerror = (e) => {
+    _voiceListening = false;
+    _voiceRec = null;
+    document.getElementById('micBtn').classList.remove('listening');
+    document.getElementById('voiceBar').style.display = 'none';
+    const msgs = {
+      'not-allowed': 'マイクの許可が必要です。ブラウザの設定を確認してください',
+      'no-speech':   '音声が検出されませんでした。もう一度お試しください',
+      'network':     'ネットワークエラーが発生しました',
+      'aborted':     null,  // 意図的な停止なのでトースト不要
+    };
+    const msg = msgs[e.error];
+    if (msg) showToast(msg, 'error');
+  };
+
+  try {
+    _voiceRec.start();
+  } catch(err) {
+    showToast('音声入力を開始できませんでした', 'error');
+  }
+}
+
+/** 録音を強制停止 */
+function stopVoiceInput() {
+  if (_voiceRec) {
+    try { _voiceRec.stop(); } catch(_) {}
+    _voiceRec = null;
+  }
+  _voiceListening = false;
+  document.getElementById('micBtn').classList.remove('listening');
+  document.getElementById('voiceBar').style.display = 'none';
+}
+
 // フォーカス時：何もしない（1文字入力後から候補を表示）
 function onProductFocus() {
   const val = document.getElementById('productInput').value;
@@ -3273,8 +3397,18 @@ function onProductFocus() {
     const hits = history.filter(p => p.toLowerCase().includes(val.toLowerCase()));
     showSuggest(hits.length ? hits : history, val);
   }
+  // ボトムナビを隠す
+  document.getElementById('app').classList.add('keyboard-open');
   // キーボードが開いたあと、入力欄＋候補リストが見えるようにスクロール
   _scrollInputIntoView();
+}
+
+// ブラー時：候補を隠してボトムナビを戻す
+function onProductBlur() {
+  setTimeout(() => {
+    hideSuggest();
+    document.getElementById('app').classList.remove('keyboard-open');
+  }, 200);
 }
 
 /**
