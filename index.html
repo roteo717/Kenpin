@@ -721,8 +721,8 @@ a{color:inherit;text-decoration:none}
   box-shadow:0 4px 14px rgba(99,102,241,.5);
 }
 .photo-grid{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
-.photo-wrap{position:relative;width:62px;height:62px}
-.photo-thumb{width:100%;height:100%;border-radius:10px;object-fit:cover}
+.photo-wrap{position:relative;width:80px;display:flex;flex-direction:column;align-items:center;gap:5px}
+.photo-thumb{width:80px;height:80px;border-radius:10px;object-fit:cover;display:block}
 .photo-del{
   position:absolute;top:-5px;right:-5px;
   width:20px;height:20px;background:var(--fail);
@@ -730,6 +730,16 @@ a{color:inherit;text-decoration:none}
   color:#fff;font-size:11px;display:flex;align-items:center;justify-content:center;
   font-weight:700;
 }
+.photo-judge-label{
+  font-size:11px;font-weight:800;
+  padding:3px 8px;border-radius:6px;
+  width:100%;text-align:center;letter-spacing:.2px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.photo-judge-label.pass{background:var(--pass-dim);color:var(--pass);border:1.5px solid var(--pass)}
+.photo-judge-label.fail{background:var(--fail-dim);color:var(--fail);border:1.5px solid var(--fail)}
+.photo-judge-label.perm{background:#eff6ff;color:#3b82f6;border:1.5px solid #3b82f6}
+.photo-judge-label.prov{background:var(--review-dim);color:var(--review);border:1.5px solid var(--review)}
 .file-pick{
   margin-top:9px;width:100%;padding:10px;
   background:var(--surface-2);border:1.5px dashed var(--border);
@@ -1219,49 +1229,6 @@ a{color:inherit;text-decoration:none}
 .annot-undo{display:flex;align-items:center;gap:7px;font-size:14px;font-weight:600;color:#fff;background:rgba(255,255,255,.13);border:none;padding:10px 18px;border-radius:100px}
 .annot-clear{font-size:13px;font-weight:500;color:rgba(255,255,255,.4);background:none;border:none;padding:10px 8px}
 .photo-annot-btn{position:absolute;bottom:-5px;left:-5px;width:22px;height:22px;background:var(--primary);border-radius:50%;border:2px solid var(--surface);display:flex;align-items:center;justify-content:center;cursor:pointer}
-
-/* =====================================================
-   スタンプ機能
-   ===================================================== */
-.annot-mode-row{
-  display:flex;gap:6px;padding:0 16px 8px;flex-shrink:0;justify-content:center;
-}
-.annot-mode-btn{
-  flex:1;max-width:130px;
-  padding:9px 6px;border-radius:12px;font-size:12px;font-weight:700;
-  border:1.5px solid rgba(255,255,255,.18);
-  color:rgba(255,255,255,.55);background:rgba(255,255,255,.08);
-  cursor:pointer;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:5px;
-}
-.annot-mode-btn.active{
-  background:rgba(255,255,255,.2);border-color:rgba(255,255,255,.5);color:#fff;
-}
-.stamp-row{
-  display:flex;gap:7px;padding:0 14px 10px;
-  flex-shrink:0;flex-wrap:wrap;justify-content:center;
-}
-.stamp-btn{
-  padding:8px 14px;border-radius:100px;
-  font-size:12px;font-weight:800;border:2px solid;
-  opacity:0.6;transition:all .15s;cursor:pointer;
-  letter-spacing:.3px;
-}
-.stamp-btn:active{transform:scale(.93)}
-.stamp-btn.active{opacity:1;transform:scale(1.05);box-shadow:0 3px 12px rgba(0,0,0,.5)}
-.stamp-btn.s-pass{background:rgba(34,197,94,.15);border-color:#22c55e;color:#22c55e}
-.stamp-btn.s-pass.active{background:#22c55e;color:#fff}
-.stamp-btn.s-fail{background:rgba(239,68,68,.15);border-color:#ef4444;color:#ef4444}
-.stamp-btn.s-fail.active{background:#ef4444;color:#fff}
-.stamp-btn.s-perm{background:rgba(59,130,246,.15);border-color:#3b82f6;color:#3b82f6}
-.stamp-btn.s-perm.active{background:#3b82f6;color:#fff}
-.stamp-btn.s-prov{background:rgba(245,158,11,.15);border-color:#f59e0b;color:#f59e0b}
-.stamp-btn.s-prov.active{background:#f59e0b;color:#fff}
-.photo-stamp-badge{
-  position:absolute;bottom:-4px;right:-4px;
-  font-size:9px;font-weight:800;padding:2px 5px;
-  border-radius:5px;border:1.5px solid var(--surface);
-  line-height:1;white-space:nowrap;
-}
 
 /* =====================================================
    ログイン画面
@@ -1835,31 +1802,12 @@ a{color:inherit;text-decoration:none}
 <div class="annot-bg" id="annotBg">
   <div class="annot-bar">
     <button class="annot-cancel" onclick="closeAnnotator()">キャンセル</button>
-    <span class="annot-title" id="annotTitle">🔴 赤丸注釈</span>
+    <span class="annot-title">🔴 赤丸注釈</span>
     <button class="annot-save" onclick="saveAnnotation()">保存</button>
   </div>
-  <!-- モード切替 -->
-  <div class="annot-mode-row">
-    <button class="annot-mode-btn active" id="modeBtnCircle" onclick="switchAnnotPanel('circle')">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="13" height="13" stroke-linecap="round"><circle cx="12" cy="12" r="10"/></svg>
-      赤丸注釈
-    </button>
-    <button class="annot-mode-btn" id="modeBtnStamp" onclick="switchAnnotPanel('stamp')">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="13" height="13" stroke-linecap="round"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M9 11V7a3 3 0 016 0v4"/></svg>
-      判定スタンプ
-    </button>
-  </div>
-  <!-- ヒント -->
   <div class="annot-hint" id="annotHint">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
     丸をタップ→移動・リサイズ　／　「丸を追加」で新規
-  </div>
-  <!-- スタンプ選択（stamp モード時に表示） -->
-  <div class="stamp-row" id="stampRow" style="display:none">
-    <button class="stamp-btn s-pass"  id="stampPass"  onclick="selectStampType('pass')">✓ 使用可</button>
-    <button class="stamp-btn s-fail"  id="stampFail"  onclick="selectStampType('fail')">✕ 使用否</button>
-    <button class="stamp-btn s-perm"  id="stampPerm"  onclick="selectStampType('permanent')">● 恒久判断</button>
-    <button class="stamp-btn s-prov"  id="stampProv"  onclick="selectStampType('provisional')">● 暫定判断</button>
   </div>
   <div class="annot-canvas-area">
     <canvas id="annotCanvas"
@@ -1872,8 +1820,7 @@ a{color:inherit;text-decoration:none}
       ontouchend="annotPointerUp(event)">
     </canvas>
   </div>
-  <!-- 赤丸モード用ボトムバー -->
-  <div class="annot-bottom" id="annotBottomCircle">
+  <div class="annot-bottom">
     <button class="annot-undo" onclick="undoAnnotation()">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="14" height="14" stroke-linecap="round"><polyline points="9 14 4 9 9 4"/><path d="M20 20v-7a4 4 0 00-4-4H4"/></svg>
       元に戻す
@@ -1888,17 +1835,6 @@ a{color:inherit;text-decoration:none}
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="14" height="14" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
       丸を追加
     </button>
-    <button class="annot-clear" onclick="clearAnnotations()">全て消す</button>
-  </div>
-  <!-- スタンプモード用ボトムバー -->
-  <div class="annot-bottom" id="annotBottomStamp" style="display:none">
-    <button class="annot-undo" onclick="undoAnnotation()">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="14" height="14" stroke-linecap="round"><polyline points="9 14 4 9 9 4"/><path d="M20 20v-7a4 4 0 00-4-4H4"/></svg>
-      元に戻す
-    </button>
-    <div style="font-size:12px;font-weight:600;color:rgba(255,255,255,.5);text-align:center;line-height:1.4">
-      スタンプを選んで<br>写真をタップ
-    </div>
     <button class="annot-clear" onclick="clearAnnotations()">全て消す</button>
   </div>
 </div>
@@ -3508,12 +3444,14 @@ function selectUsability(val) {
   document.getElementById('jUnusable').classList.toggle('active', S.usability === 'fail');
   // 使用否の場合は写真必須バッジ表示
   document.getElementById('reqBadge').style.display = S.usability === 'fail' ? 'block' : 'none';
+  renderPhotoGrid();
 }
 
 function selectJudgeType(val) {
   S.judgeType = S.judgeType === val ? null : val;
   document.getElementById('jPermanent').classList.toggle('active', S.judgeType === '恒久判断');
   document.getElementById('jProvisional').classList.toggle('active', S.judgeType === '暫定判断');
+  renderPhotoGrid();
 }
 
 // ============================================================
@@ -3647,9 +3585,12 @@ function removePhoto(i) {
 }
 
 function renderPhotoGrid() {
-  // 判定から自動でスタンプ種別を推定（バッジ表示用）
-  const autoStampType = S.usability === 'pass' ? 'pass' : S.usability === 'fail' ? 'fail' : null;
-  const stampDef = autoStampType ? STAMP_DEFS[autoStampType] : null;
+  const usabilityLabel = S.usability === 'pass' ? { cls: 'pass', txt: '✓ 使用可' }
+                       : S.usability === 'fail' ? { cls: 'fail', txt: '✕ 使用否' }
+                       : null;
+  const judgeLabel = S.judgeType === '恒久判断'  ? { cls: 'perm', txt: '● 恒久' }
+                   : S.judgeType === '暫定判断'  ? { cls: 'prov', txt: '● 暫定' }
+                   : null;
 
   document.getElementById('photoGrid').innerHTML = S.photos.map((url, i) => `
     <div class="photo-wrap">
@@ -3658,7 +3599,8 @@ function renderPhotoGrid() {
       <div class="photo-annot-btn" onclick="openAnnotator(${i})">
         <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" width="11" height="11" stroke-linecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
       </div>
-      ${stampDef ? `<div class="photo-stamp-badge" style="background:${stampDef.bg};color:${stampDef.text};border-color:${stampDef.border}">${stampDef.label}</div>` : ''}
+      ${usabilityLabel ? `<div class="photo-judge-label ${usabilityLabel.cls}">${usabilityLabel.txt}</div>` : ''}
+      ${judgeLabel ? `<div class="photo-judge-label ${judgeLabel.cls}">${judgeLabel.txt}</div>` : ''}
     </div>
   `).join('');
 }
@@ -3671,37 +3613,15 @@ const annotState = {
   photoIdx: -1, circles: [],
   drawing: false, startX: 0, startY: 0, img: null,
   addMode: false,
+  // 移動・リサイズ用
   selectedIdx: -1,
-  dragMode: null,
+  dragMode: null,      // 'move' | 'resize' | null
   dragStartX: 0, dragStartY: 0,
   dragOrigCx: 0, dragOrigCy: 0, dragOrigR: 0,
-  // スタンプ
-  stamps: [],
-  stampMode: null,
-  history: [],        // 操作履歴 {kind:'circle'|'stamp'}
-  panelMode: 'circle',
-};
-
-const STAMP_DEFS = {
-  pass:        { label: '✓ 使用可',   bg: '#22c55e', border: '#166534', text: '#fff', rot: -12 },
-  fail:        { label: '✕ 使用否',   bg: '#ef4444', border: '#7f1d1d', text: '#fff', rot: -12 },
-  permanent:   { label: '● 恒久判断', bg: '#3b82f6', border: '#1e3a5f', text: '#fff', rot: -8  },
-  provisional: { label: '● 暫定判断', bg: '#f59e0b', border: '#78350f', text: '#fff', rot: -8  },
 };
 
 function updateAnnotHint() {
   const hint = document.getElementById('annotHint');
-  if (annotState.panelMode === 'stamp') {
-    const type = annotState.stampMode;
-    if (type) {
-      const def = STAMP_DEFS[type];
-      hint.innerHTML = `<span style="display:inline-block;padding:2px 9px;border-radius:6px;background:${def.bg};color:${def.text};font-size:11px;font-weight:800">${def.label}</span>&nbsp; 写真をタップしてスタンプを貼る`;
-    } else {
-      hint.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12" stroke-linecap="round"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M9 11V7a3 3 0 016 0v4"/></svg>
-        上からスタンプを選んでタップ`;
-    }
-    return;
-  }
   if (annotState.addMode) {
     hint.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2" width="12" height="12" stroke-linecap="round"><circle cx="12" cy="12" r="10"/></svg>
       <span style="color:#ef4444;font-weight:700">追加モード：ドラッグで丸を描く</span>`;
@@ -3745,26 +3665,10 @@ function toggleAddMode() {
 function openAnnotator(i) {
   annotState.photoIdx = i;
   annotState.circles  = [];
-  annotState.stamps   = [];
-  annotState.history  = [];
   annotState.drawing  = false;
   annotState.addMode  = false;
   annotState.selectedIdx = -1;
   annotState.dragMode = null;
-  annotState.stampMode = null;
-  annotState.panelMode = 'circle';
-
-  // UIリセット
-  document.getElementById('modeBtnCircle').classList.add('active');
-  document.getElementById('modeBtnStamp').classList.remove('active');
-  document.getElementById('stampRow').style.display = 'none';
-  document.getElementById('annotBottomCircle').style.display = 'flex';
-  document.getElementById('annotBottomStamp').style.display  = 'none';
-  document.getElementById('annotTitle').textContent = '🔴 赤丸注釈';
-  ['stampPass','stampFail','stampPerm','stampProv'].forEach(id => {
-    document.getElementById(id).classList.remove('active');
-  });
-
   const canvas = document.getElementById('annotCanvas');
   const img = new Image();
   img.onload = () => {
@@ -3772,20 +3676,11 @@ function openAnnotator(i) {
     canvas.width      = img.naturalWidth;
     canvas.height     = img.naturalHeight;
     redrawAnnotCanvas();
+    // ボタン外観をリセット
     const btn = document.getElementById('annotAddBtn');
     btn.style.background = '#fee2e2';
     btn.style.borderColor = '#fca5a5';
     btn.style.color = '#ef4444';
-
-    // 判定が既に選択されていればスタンプモードで自動選択
-    const autoType = S.usability === 'pass' ? 'pass'
-                   : S.usability === 'fail' ? 'fail'
-                   : null;
-    if (autoType) {
-      switchAnnotPanel('stamp');
-      selectStampType(autoType);
-    }
-
     updateAnnotHint();
     document.getElementById('annotBg').classList.add('show');
   };
@@ -3818,16 +3713,19 @@ function redrawAnnotCanvas() {
   if (annotState.img) ctx.drawImage(annotState.img, 0, 0);
   const lw = Math.max(4, canvas.width / 100);
 
-  // 赤丸を描画
   for (let i = 0; i < annotState.circles.length; i++) {
     const c = annotState.circles[i];
     const isSelected = (i === annotState.selectedIdx);
+
+    // メイン円
     ctx.beginPath();
     ctx.arc(c.cx, c.cy, c.r, 0, Math.PI * 2);
     ctx.strokeStyle = '#ff1f1f';
     ctx.lineWidth   = lw;
     ctx.stroke();
+
     if (isSelected) {
+      // 選択中：外側に白い点線リング
       ctx.save();
       ctx.beginPath();
       ctx.arc(c.cx, c.cy, c.r + lw * 1.2, 0, Math.PI * 2);
@@ -3836,6 +3734,8 @@ function redrawAnnotCanvas() {
       ctx.setLineDash([lw * 2.5, lw * 1.2]);
       ctx.stroke();
       ctx.restore();
+
+      // 中央ハンドル（移動用 ●）
       ctx.beginPath();
       ctx.arc(c.cx, c.cy, lw * 2.2, 0, Math.PI * 2);
       ctx.fillStyle = '#ff1f1f';
@@ -3843,6 +3743,8 @@ function redrawAnnotCanvas() {
       ctx.strokeStyle = '#fff';
       ctx.lineWidth = lw * 0.5;
       ctx.stroke();
+
+      // 端ハンドル（リサイズ用 ○）
       const hx = c.cx + c.r;
       const hy = c.cy;
       ctx.beginPath();
@@ -3854,67 +3756,6 @@ function redrawAnnotCanvas() {
       ctx.stroke();
     }
   }
-
-  // スタンプを描画
-  for (const s of annotState.stamps) {
-    _drawStampOnCanvas(ctx, s, canvas.width);
-  }
-}
-
-function _drawStampOnCanvas(ctx, s, canvasW) {
-  const def  = STAMP_DEFS[s.type];
-  if (!def) return;
-  const size = Math.max(32, canvasW * 0.13);   // 画像幅の13%
-  const fontSize   = size * 0.28;
-  const padX       = size * 0.28;
-  const padY       = size * 0.22;
-  const borderW    = Math.max(2, size * 0.055);
-  const cornerR    = size * 0.14;
-
-  ctx.save();
-  ctx.translate(s.x, s.y);
-  ctx.rotate((def.rot * Math.PI) / 180);
-
-  // テキスト計測してボックスサイズを決定
-  ctx.font = `900 ${fontSize}px -apple-system, sans-serif`;
-  const textW = ctx.measureText(def.label).width;
-  const boxW  = textW + padX * 2;
-  const boxH  = fontSize + padY * 2;
-
-  // 外枠（二重線風）
-  ctx.beginPath();
-  _roundRect(ctx, -boxW / 2 - borderW, -boxH / 2 - borderW, boxW + borderW * 2, boxH + borderW * 2, cornerR + borderW);
-  ctx.fillStyle = def.border;
-  ctx.fill();
-
-  // 内塗り
-  ctx.beginPath();
-  _roundRect(ctx, -boxW / 2, -boxH / 2, boxW, boxH, cornerR);
-  ctx.fillStyle = def.bg;
-  ctx.fill();
-
-  // テキスト
-  ctx.fillStyle   = def.text;
-  ctx.textAlign   = 'center';
-  ctx.textBaseline= 'middle';
-  ctx.font        = `900 ${fontSize}px -apple-system, sans-serif`;
-  ctx.fillText(def.label, 0, 0);
-
-  ctx.restore();
-}
-
-function _roundRect(ctx, x, y, w, h, r) {
-  ctx.beginPath();
-  ctx.moveTo(x + r, y);
-  ctx.lineTo(x + w - r, y);
-  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
-  ctx.lineTo(x + w, y + h - r);
-  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
-  ctx.lineTo(x + r, y + h);
-  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
-  ctx.lineTo(x, y + r);
-  ctx.quadraticCurveTo(x, y, x + r, y);
-  ctx.closePath();
 }
 
 function annotPointerDown(e) {
@@ -3922,26 +3763,15 @@ function annotPointerDown(e) {
   const canvas = document.getElementById('annotCanvas');
   const pos = getEventPos(e, canvas);
 
-  // ── スタンプモード ──
-  if (annotState.panelMode === 'stamp') {
-    if (!annotState.stampMode) {
-      showToast('上からスタンプを選んでください', 'default');
-      return;
-    }
-    annotState.stamps.push({ x: pos.x, y: pos.y, type: annotState.stampMode });
-    annotState.history.push({ kind: 'stamp' });
-    redrawAnnotCanvas();
-    return;
-  }
-
-  // ── 赤丸モード ──
   if (annotState.addMode) {
+    // 描画モード
     annotState.drawing = true;
     annotState.startX  = pos.x;
     annotState.startY  = pos.y;
     return;
   }
 
+  // 既存の丸にヒットしているか確認（上から順に）
   let hitIdx = -1;
   let hitMode = null;
   for (let i = annotState.circles.length - 1; i >= 0; i--) {
@@ -3949,6 +3779,7 @@ function annotPointerDown(e) {
     const dist = Math.hypot(pos.x - c.cx, pos.y - c.cy);
     if (dist <= c.r * 1.35) {
       hitIdx = i;
+      // 中心寄り → 移動、端寄り → リサイズ
       hitMode = dist <= c.r * 0.6 ? 'move' : 'resize';
       break;
     }
@@ -4021,7 +3852,6 @@ function annotPointerUp(e) {
     const r  = Math.hypot(pos.x - annotState.startX, pos.y - annotState.startY) / 2;
     if (r > canvas.width / 80) {
       annotState.circles.push({ cx, cy, r });
-      annotState.history.push({ kind: 'circle' });
       // 描いたら追加モードをオフ
       annotState.addMode = true;
       toggleAddMode();
@@ -4035,23 +3865,19 @@ function annotPointerUp(e) {
 }
 
 function undoAnnotation() {
-  const last = annotState.history.pop();
-  if (!last) { showToast('元に戻す操作がありません', 'default'); return; }
-  if (last.kind === 'circle') annotState.circles.pop();
-  else if (last.kind === 'stamp') annotState.stamps.pop();
+  if (!annotState.circles.length) { showToast('元に戻す操作がありません', 'default'); return; }
+  annotState.circles.pop();
   redrawAnnotCanvas();
 }
 
 function clearAnnotations() {
-  if (!annotState.circles.length && !annotState.stamps.length) return;
+  if (!annotState.circles.length) return;
   annotState.circles = [];
-  annotState.stamps  = [];
-  annotState.history = [];
   redrawAnnotCanvas();
 }
 
 async function saveAnnotation() {
-  if (!annotState.circles.length && !annotState.stamps.length) { closeAnnotator(); return; }
+  if (!annotState.circles.length) { closeAnnotator(); return; }
   const canvas = document.getElementById('annotCanvas');
   const raw    = canvas.toDataURL('image/jpeg', 0.92);
   const compressed = await compressImage(raw, 1280, 0.85);
@@ -4059,42 +3885,6 @@ async function saveAnnotation() {
   renderPhotoGrid();
   closeAnnotator();
   showToast('注釈を保存しました', 'success');
-}
-
-// パネルモード切替（赤丸 ↔ スタンプ）
-function switchAnnotPanel(mode) {
-  annotState.panelMode = mode;
-  annotState.addMode   = false;
-
-  const isStamp = mode === 'stamp';
-  document.getElementById('modeBtnCircle').classList.toggle('active', !isStamp);
-  document.getElementById('modeBtnStamp').classList.toggle('active',  isStamp);
-  document.getElementById('stampRow').style.display           = isStamp ? 'flex'  : 'none';
-  document.getElementById('annotBottomCircle').style.display  = isStamp ? 'none'  : 'flex';
-  document.getElementById('annotBottomStamp').style.display   = isStamp ? 'flex'  : 'none';
-  document.getElementById('annotTitle').textContent           = isStamp ? '🏷 判定スタンプ' : '🔴 赤丸注釈';
-
-  // 赤丸モードに戻ったらドラッグ状態リセット
-  if (!isStamp) {
-    const btn = document.getElementById('annotAddBtn');
-    btn.style.background  = '#fee2e2';
-    btn.style.borderColor = '#fca5a5';
-    btn.style.color       = '#ef4444';
-    annotState.selectedIdx = -1;
-    annotState.dragMode    = null;
-    redrawAnnotCanvas();
-  }
-  updateAnnotHint();
-}
-
-// スタンプ種別選択
-function selectStampType(type) {
-  annotState.stampMode = annotState.stampMode === type ? null : type;
-  const map = { pass:'stampPass', fail:'stampFail', permanent:'stampPerm', provisional:'stampProv' };
-  Object.entries(map).forEach(([k, id]) => {
-    document.getElementById(id).classList.toggle('active', k === annotState.stampMode);
-  });
-  updateAnnotHint();
 }
 
 // ============================================================
