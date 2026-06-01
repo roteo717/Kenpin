@@ -244,9 +244,9 @@ a{color:inherit;text-decoration:none}
 .hist-chip{display:none}
 
 /* =====================================================
-   OCRカメラボタン / クリアボタン
+   マイクボタン / 音声入力
    ===================================================== */
-.ocr-cam-btn{
+.mic-btn{
   position:absolute;right:8px;top:50%;transform:translateY(-50%);
   width:34px;height:34px;
   display:flex;align-items:center;justify-content:center;
@@ -254,7 +254,45 @@ a{color:inherit;text-decoration:none}
   color:var(--primary);border-radius:9px;
   transition:background .15s;
 }
-.ocr-cam-btn:active{background:var(--primary-dim)}
+.mic-btn:active{background:var(--primary-dim)}
+.mic-btn.listening{
+  color:#ef4444;
+  background:#fef2f2;
+  animation:micPulse 1s ease-in-out infinite;
+}
+@keyframes micPulse{
+  0%,100%{box-shadow:0 0 0 0 rgba(239,68,68,.35)}
+  50%{box-shadow:0 0 0 7px rgba(239,68,68,0)}
+}
+.voice-bar{
+  margin-top:8px;padding:10px 14px;
+  background:#fef2f2;border:1.5px solid #fca5a5;
+  border-radius:12px;
+  display:flex;align-items:center;gap:10px;
+}
+.voice-waves{display:flex;align-items:center;gap:3px;flex-shrink:0}
+.voice-waves span{
+  display:block;width:3px;border-radius:3px;
+  background:#ef4444;
+  animation:voiceWave 0.8s ease-in-out infinite;
+}
+.voice-waves span:nth-child(1){height:8px;animation-delay:0s}
+.voice-waves span:nth-child(2){height:14px;animation-delay:.1s}
+.voice-waves span:nth-child(3){height:20px;animation-delay:.2s}
+.voice-waves span:nth-child(4){height:14px;animation-delay:.3s}
+.voice-waves span:nth-child(5){height:8px;animation-delay:.4s}
+@keyframes voiceWave{
+  0%,100%{transform:scaleY(0.5);opacity:.5}
+  50%{transform:scaleY(1.2);opacity:1}
+}
+.voice-bar-txt{flex:1;font-size:13px;font-weight:600;color:#dc2626}
+.voice-bar-stop{
+  padding:5px 12px;border-radius:8px;
+  background:#ef4444;color:#fff;border:none;
+  font-size:12px;font-weight:700;cursor:pointer;flex-shrink:0;
+  transition:opacity .15s;
+}
+.voice-bar-stop:active{opacity:.8}
 .input-clear-btn{
   position:absolute;right:48px;top:50%;transform:translateY(-50%);
   width:20px;height:20px;
@@ -1425,43 +1463,31 @@ a{color:inherit;text-decoration:none}
         </button>
       </div>
       <div class="search-wrap">
-        <input type="text" class="search-input" id="productInput" placeholder="製品名を入力してください"
+        <input type="text" class="search-input" id="productInput" placeholder="製品名を入力 または マイクで話す"
           style="padding-right:80px"
           onfocus="onProductFocus()"
           oninput="onProductInput(this.value)"
           onblur="setTimeout(hideSuggest,200)">
-        <!-- クリアボタン（テキスト入力時に表示） -->
+        <!-- クリアボタン -->
         <button class="input-clear-btn" id="productClearBtn" onclick="clearProductInput()" title="クリア">✕</button>
-        <!-- OCR カメラボタン -->
-        <button class="ocr-cam-btn" onclick="startProductOCR()" title="カメラで製品名を読み取る">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/>
-            <circle cx="12" cy="13" r="4"/>
+        <!-- マイクボタン -->
+        <button class="mic-btn" id="micBtn" onclick="toggleVoiceInput()" title="音声入力">
+          <svg id="micIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20" stroke-linecap="round">
+            <rect x="9" y="2" width="6" height="12" rx="3"/>
+            <path d="M5 10a7 7 0 0014 0"/>
+            <line x1="12" y1="19" x2="12" y2="22"/>
+            <line x1="9" y1="22" x2="15" y2="22"/>
           </svg>
         </button>
-        <!-- hidden camera input -->
-        <input type="file" accept="image/*" capture="environment" id="ocrFileInput" onchange="handleOCRCapture(this)" style="display:none">
         <div class="suggest-dd" id="suggestDd" style="display:none"></div>
       </div>
-      <!-- OCRローディング -->
-      <div class="ocr-loading" id="ocrLoading">
-        <span class="ocr-spin"></span>
-        製品名を読み取り中（日本語・英数字）...
-      </div>
-      <!-- OCR結果エリア -->
-      <div class="ocr-result-area" id="ocrResultArea">
-        <span class="ocr-chk">
-          <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" width="11" height="11" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
-        </span>
-        <div class="ocr-info">
-          <div class="ocr-title">読み取り結果</div>
-          <div class="ocr-cand">テキスト：<span id="ocrCandidateText"></span></div>
-          <div class="ocr-multi-row" id="ocrMultiRow">
-            <span class="ocr-multi-lbl">他の候補：</span>
-          </div>
+      <!-- 音声入力状態バー -->
+      <div class="voice-bar" id="voiceBar" style="display:none">
+        <div class="voice-waves" id="voiceWaves">
+          <span></span><span></span><span></span><span></span><span></span>
         </div>
-        <button class="ocr-confirm-btn" onclick="confirmOCR()">確定</button>
-        <button class="ocr-dismiss" onclick="dismissOCR()" title="閉じる">✕</button>
+        <span class="voice-bar-txt" id="voiceBarTxt">聞いています...</span>
+        <button class="voice-bar-stop" onclick="stopVoiceInput()">停止</button>
       </div>
       <div class="hist-label" id="histLabel" style="display:none">最近使用した製品名</div>
       <div class="hist-chips" id="histChips" style="display:none"></div>
@@ -4767,100 +4793,6 @@ init();
   </div>
 </div>
 
-<!-- =================== OCR カメラモーダル =================== -->
-<div class="ocr-modal" id="ocrModal">
-  <!-- ヘッダー -->
-  <div class="ocr-modal-hdr">
-    <button class="ocr-close-btn" onclick="closeOCRModal()">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8"
-           width="12" height="12" stroke-linecap="round">
-        <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-      </svg>
-      キャンセル
-    </button>
-    <span class="ocr-modal-title">製品名スキャン</span>
-    <div style="width:88px"></div>
-  </div>
-
-  <!-- ライブビュー -->
-  <div class="ocr-viewfinder">
-    <video id="ocrVideo" autoplay playsinline muted></video>
-
-    <!-- オーバーレイ＋フレーム -->
-    <div class="ocr-frame-wrap">
-      <div class="ocr-scan-frame" id="ocrScanFrame">
-        <div class="ocr-cn tl"></div>
-        <div class="ocr-cn tr"></div>
-        <div class="ocr-cn bl"></div>
-        <div class="ocr-cn br"></div>
-        <!-- スキャンライン: 撮影待ち時はアイドル表示 -->
-        <div class="ocr-scan-line"></div>
-        <!-- ライブシャープネスメーター -->
-        <div class="ocr-sharp-wrap">
-          <div class="ocr-sharp-dots" id="ocrSharpDots">
-            <div class="ocr-sharp-dot" id="sd0"></div>
-            <div class="ocr-sharp-dot" id="sd1"></div>
-            <div class="ocr-sharp-dot" id="sd2"></div>
-            <div class="ocr-sharp-dot" id="sd3"></div>
-            <div class="ocr-sharp-dot" id="sd4"></div>
-          </div>
-          <span class="ocr-sharp-label" id="ocrSharpLabel">測定中</span>
-        </div>
-      </div>
-      <!-- 処理中バッジ -->
-      <div class="ocr-status-badge" id="ocrStatusBadge" style="display:none"></div>
-      <p class="ocr-guide" id="ocrGuideMain">製品名をフレーム内に合わせて撮影</p>
-      <p class="ocr-guide-sub" id="ocrGuideSub">AI が製品名・品番を自動認識します</p>
-    </div>
-  </div>
-
-  <!-- フッター -->
-  <div class="ocr-modal-footer">
-    <!-- ファイル選択（左） -->
-    <button class="ocr-side-btn" onclick="document.getElementById('ocrFileInputFb').click()"
-            title="ファイルから選択">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-           width="20" height="20" stroke-linecap="round">
-        <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66
-                 l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/>
-      </svg>
-      選択
-    </button>
-
-    <!-- 撮影ボタン（中央） -->
-    <button class="ocr-shoot-btn" id="ocrShootBtn" onclick="captureOCRFrame()">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-           width="26" height="26" stroke-linecap="round">
-        <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/>
-        <circle cx="12" cy="13" r="4"/>
-      </svg>
-      撮影
-    </button>
-
-    <!-- フリップ（右） -->
-    <button class="ocr-side-btn" id="ocrFlipBtn" onclick="flipOCRCamera()" title="カメラ切替">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-           width="20" height="20" stroke-linecap="round">
-        <polyline points="1 4 1 10 7 10"/>
-        <path d="M3.51 15a9 9 0 102.13-9.36L1 10"/>
-      </svg>
-      切替
-    </button>
-  </div>
-
-  <!-- トーチ（フラッシュ）ボタン - サポートされている場合のみ表示 -->
-  <button class="ocr-torch-btn" id="ocrTorchBtn" onclick="toggleOCRTorch()" title="ライト" style="display:none">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-         width="20" height="20" stroke-linecap="round">
-      <path d="M9 2l-6 9h7l-2 11 12-13h-7z"/>
-    </svg>
-  </button>
-
-  <!-- 非表示要素 -->
-  <canvas id="ocrCanvas" style="display:none"></canvas>
-  <input type="file" accept="image/*" id="ocrFileInputFb"
-         onchange="handleOCRFileFb(this)" style="display:none">
-</div>
 
 </body>
 </html>
