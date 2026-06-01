@@ -2269,9 +2269,20 @@ async function _openOCRCamera(facing) {
         facingMode: { ideal: facing },
         width:  { ideal: 3840, min: 1280 },
         height: { ideal: 2160, min: 720 },
+        focusMode: { ideal: 'continuous' },   // オートフォーカス常時ON
+        zoom:      { ideal: 1.0 },            // ズームなし（全体表示）
       }
     });
     _ocrStream = stream;
+
+    // 対応していればオートフォーカスをロック解除
+    const track = stream.getVideoTracks()[0];
+    if (track && typeof track.applyConstraints === 'function') {
+      try {
+        await track.applyConstraints({ advanced: [{ focusMode: 'continuous' }] });
+      } catch(_) {}
+    }
+
     const v = document.getElementById('ocrVideo');
     v.srcObject = stream;
     // カメラ安定後に撮影ボタンを有効化
@@ -2317,8 +2328,8 @@ function _setOCRGuide(state) {
   const st       = document.getElementById('ocrStatusBadge');
   const map = {
     loading:  { main:'カメラを起動中...', sub:'しばらくお待ちください', badge:'', btnOff:true },
-    ready:    { main:'製品名をフレーム内に合わせて撮影', sub:'文字がはっきり見えるようにカメラを近づけてください', badge:'', btnOff:false },
-    scanning: { main:'読み取り中...', sub:'そのままお待ちください', badge:'処理中', btnOff:true },
+    ready:    { main:'製品名をフレーム内に合わせて撮影', sub:'AI が製品名・品番を自動認識します', badge:'', btnOff:false },
+    scanning: { main:'AI が読み取り中...', sub:'そのままお待ちください', badge:'処理中', btnOff:true },
     done:     { main:'読み取り完了', sub:'結果を確認してください', badge:'完了', btnOff:false },
   };
   const m = map[state] || map.ready;
@@ -2368,19 +2379,17 @@ async function _captureFrameBlob(video) {
     ctx.imageSmoothingQuality = 'high';
     ctx.drawImage(video, sx, sy, sw, sh, 0, 0, sw * SCALE, sh * SCALE);
 
-    // OCR向け前処理
-    _applyOCRPreprocess(ctx, canvas.width, canvas.height);
-
-    // PNG で返す（可逆圧縮 → JPEG アーティファクトなし）
+    // カラーのまま返す（Claude Vision用）。Tesseract使用時は processOCR 内で前処理する
     return new Promise(r => canvas.toBlob(r, 'image/png'));
   } catch(e) { console.error('capture error:', e); return null; }
 }
 
 /**
- * OCR 精度向上のための画像前処理
+ * OCR 精度向上のための画像前処理（Tesseract 用）
  *   1. グレースケール化 (Rec.601 輝度重み)
- *   2. コントラストストレッチ (線形 min–max 正規化)
- *   3. シャープ化 (ラプラシアンフィルタ)
+ *   2. メディアンフィルタ 3×3（ノイズ除去）
+ *   3. Otsu 法による2領域コントラストストレッチ（照明ムラ対応）
+ *   4. アンシャープマスク（USM）シャープ化
  * ※ Tesseract 自身が二値化を行うため、ここでは二値化しない
  */
 function _applyOCRPreprocess(ctx, w, h) {
@@ -2388,32 +2397,71 @@ function _applyOCRPreprocess(ctx, w, h) {
   const d = imgData.data;
   const n = w * h;
 
-  // ── Step 1: グレースケール化 ───────────────────────────
+  // ── Step 1: グレースケール化 (Rec.601) ────────────────────
   const gray = new Uint8ClampedArray(n);
   for (let i = 0; i < n; i++) {
     gray[i] = Math.round(0.299 * d[i*4] + 0.587 * d[i*4+1] + 0.114 * d[i*4+2]);
   }
 
-  // ── Step 2: コントラストストレッチ (線形正規化) ────────
-  let lo = 255, hi = 0;
-  for (let i = 0; i < n; i++) { if (gray[i] < lo) lo = gray[i]; if (gray[i] > hi) hi = gray[i]; }
-  const range = hi - lo || 1;
-  for (let i = 0; i < n; i++) {
-    gray[i] = Math.round((gray[i] - lo) / range * 255);
-  }
-
-  // ── Step 3: シャープ化 (ラプラシアン 3×3) ─────────────
-  // カーネル: [0,-1,0 / -1,5,-1 / 0,-1,0]
-  const sharp = new Uint8ClampedArray(n);
+  // ── Step 2: メディアンフィルタ 3×3（衝撃性ノイズ除去）──────
+  const med = new Uint8ClampedArray(n);
   for (let y = 0; y < h; y++) {
     for (let x = 0; x < w; x++) {
       const i = y * w + x;
-      if (x === 0 || x === w-1 || y === 0 || y === h-1) { sharp[i] = gray[i]; continue; }
-      const v = 5 * gray[i]
-        - gray[(y-1)*w + x] - gray[(y+1)*w + x]
-        - gray[y*w + (x-1)] - gray[y*w + (x+1)];
-      sharp[i] = Math.max(0, Math.min(255, v));
+      if (x === 0 || x === w-1 || y === 0 || y === h-1) { med[i] = gray[i]; continue; }
+      const nb = [
+        gray[(y-1)*w+(x-1)], gray[(y-1)*w+x], gray[(y-1)*w+(x+1)],
+        gray[y*w+(x-1)],     gray[i],          gray[y*w+(x+1)],
+        gray[(y+1)*w+(x-1)], gray[(y+1)*w+x],  gray[(y+1)*w+(x+1)],
+      ].sort((a,b) => a-b);
+      med[i] = nb[4];
     }
+  }
+
+  // ── Step 3: Otsu 法で自動閾値を算出しコントラストストレッチ ──
+  const hist = new Float32Array(256);
+  for (let i = 0; i < n; i++) hist[med[i]]++;
+  let sumAll = 0;
+  for (let k = 0; k < 256; k++) sumAll += k * hist[k];
+  let sumB = 0, wB = 0, maxBetween = 0, otsuT = 128;
+  for (let k = 0; k < 256; k++) {
+    wB += hist[k];
+    if (!wB) continue;
+    const wF = n - wB;
+    if (!wF) break;
+    sumB += k * hist[k];
+    const mB = sumB / wB, mF = (sumAll - sumB) / wF;
+    const between = wB * wF * (mB - mF) ** 2;
+    if (between > maxBetween) { maxBetween = between; otsuT = k; }
+  }
+  // 暗領域(テキスト)は 0〜127 へ圧縮、明領域(背景)は 128〜255 へ拡張
+  const stretched = new Uint8ClampedArray(n);
+  for (let i = 0; i < n; i++) {
+    const v = med[i];
+    stretched[i] = v <= otsuT
+      ? Math.round(v / (otsuT || 1) * 127)
+      : 128 + Math.round((v - otsuT) / (255 - otsuT || 1) * 127);
+  }
+
+  // ── Step 4: アンシャープマスク（USM）シャープ化 ─────────────
+  // 3×3 ガウスぼかし → 元画像 + amount×(元画像 - ぼかし)
+  const GAUSS = [1,2,1, 2,4,2, 1,2,1]; const GW = 16;
+  const blur = new Uint8ClampedArray(n);
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const i = y * w + x;
+      if (x === 0 || x === w-1 || y === 0 || y === h-1) { blur[i] = stretched[i]; continue; }
+      const sum =
+        GAUSS[0]*stretched[(y-1)*w+(x-1)] + GAUSS[1]*stretched[(y-1)*w+x] + GAUSS[2]*stretched[(y-1)*w+(x+1)] +
+        GAUSS[3]*stretched[y*w+(x-1)]     + GAUSS[4]*stretched[i]          + GAUSS[5]*stretched[y*w+(x+1)]     +
+        GAUSS[6]*stretched[(y+1)*w+(x-1)] + GAUSS[7]*stretched[(y+1)*w+x]  + GAUSS[8]*stretched[(y+1)*w+(x+1)];
+      blur[i] = Math.round(sum / GW);
+    }
+  }
+  const USM = 1.8;
+  const sharp = new Uint8ClampedArray(n);
+  for (let i = 0; i < n; i++) {
+    sharp[i] = Math.max(0, Math.min(255, Math.round(stretched[i] + USM * (stretched[i] - blur[i]))));
   }
 
   // グレー画像として書き戻す
@@ -2460,6 +2508,139 @@ async function handleOCRCapture(inputEl) {
   await processOCR(file);
 }
 
+// ============================================================
+// OCR ヘルパー関数群
+// ============================================================
+
+/** Blob/File を { base64, mimeType } に変換 */
+function _blobToBase64(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result;
+      resolve({ base64: result.split(',')[1], mimeType: blob.type || 'image/jpeg' });
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
+
+/**
+ * Claude Vision API で OCR（主要エンジン）
+ * カラー画像をそのまま送りAIに製品名を読み取らせる
+ */
+async function _runClaudeVisionOCR(imageBlob) {
+  const { base64, mimeType } = await _blobToBase64(imageBlob);
+  const validMime = ['image/jpeg','image/png','image/gif','image/webp'].includes(mimeType)
+    ? mimeType : 'image/jpeg';
+
+  const response = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 300,
+      messages: [{
+        role: 'user',
+        content: [
+          {
+            type: 'image',
+            source: { type: 'base64', media_type: validMime, data: base64 }
+          },
+          {
+            type: 'text',
+            text: '製品ラベルや製品本体に印字・刻印されている製品名・品番・型番のテキストを正確に読み取ってください。\n最も重要な製品名または品番を1行目に出力し、他に読み取れる候補があれば改行して2行目以降に追記してください。\n説明・注釈・句読点は不要です。読み取ったテキストのみ出力してください。'
+          }
+        ]
+      }]
+    })
+  });
+
+  if (!response.ok) throw new Error(`Claude API ${response.status}`);
+  const data = await response.json();
+  const text = (data.content || []).map(c => c.text || '').join('');
+  return text.trim().split('\n').map(l => l.trim()).filter(l => l.length > 0);
+}
+
+/**
+ * Tesseract.js フォールバック OCR
+ * 前処理済み画像に対して PSM 7→6→11 を試し、結果をスコア順で返す
+ */
+async function _runTesseractOCR(imageData) {
+  if (!window.Tesseract) {
+    showToast('OCR ライブラリを読み込み中...', 'default');
+    await new Promise((ok, ng) => {
+      const s = document.createElement('script');
+      s.src = 'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';
+      s.onload = ok; s.onerror = ng;
+      document.head.appendChild(s);
+    });
+  }
+
+  // Tesseract 用前処理（グレー化+Otsu+USM）
+  const processedBlob = await _preprocessBlobForTesseract(imageData);
+
+  const worker = await Tesseract.createWorker(['jpn', 'eng'], 1, { logger: () => {} });
+  const lineMap = new Map(); // line → score（重複排除）
+
+  // PSM 7: 単一テキスト行  PSM 6: 均一ブロック  PSM 11: まばらなテキスト
+  for (const psm of ['7', '6', '11']) {
+    await worker.setParameters({ tessedit_pageseg_mode: psm });
+    const { data: { text } } = await worker.recognize(processedBlob);
+    text.split('\n').map(l => l.trim()).filter(l => l.length > 1).forEach(l => {
+      if (!lineMap.has(l)) lineMap.set(l, _scoreOCRLine(l));
+    });
+  }
+  await worker.terminate();
+
+  return [...lineMap.entries()].sort((a, b) => b[1] - a[1]).map(([line]) => line);
+}
+
+/**
+ * 画像 Blob に Tesseract 向け前処理を施したBlobを返す
+ * ファイルアップロード時も同一パイプラインを適用
+ */
+async function _preprocessBlobForTesseract(imageData) {
+  return new Promise(resolve => {
+    const img = new Image();
+    img.onload = () => {
+      // 短辺が1200px未満なら2倍以上にスケール
+      const scale = Math.max(1, Math.ceil(1200 / Math.min(img.width, img.height)));
+      const w = img.width * scale, h = img.height * scale;
+      const cv = document.createElement('canvas');
+      cv.width = w; cv.height = h;
+      const ctx = cv.getContext('2d', { willReadFrequently: true });
+      ctx.imageSmoothingQuality = 'high';
+      ctx.drawImage(img, 0, 0, w, h);
+      _applyOCRPreprocess(ctx, w, h);
+      cv.toBlob(b => { URL.revokeObjectURL(img.src); resolve(b || imageData); }, 'image/png');
+    };
+    img.onerror = () => resolve(imageData);
+    img.src = URL.createObjectURL(imageData);
+  });
+}
+
+/**
+ * OCR 結果行をスコアリング（製品名らしさ）
+ * 高いほど製品名・品番として適切な行
+ */
+function _scoreOCRLine(line) {
+  if (!line || line.length < 2) return 0;
+  if (line.length > 80) return 0.1;
+
+  // 有効文字（漢字・カナ・英数・ハイフン等）の割合
+  const useful = (line.match(/[ぁ-んァ-ヶ一-龠a-zA-ZａＺ0-9０-９ー・\-_.\/]/g) || []).length;
+  const ratio = useful / line.length;
+
+  // ノイズ文字（制御文字・パイプ等）
+  const noise = (line.match(/[\x00-\x1f|\\]/g) || []).length;
+
+  // 長さボーナス：4〜35文字が製品名として最も自然
+  const lenScore = line.length >= 4 && line.length <= 35 ? 1.0 : 0.5;
+
+  return ratio * lenScore * Math.max(0, 1 - noise / line.length * 2);
+}
+
 /** Tesseract.js で日本語+英語 OCR を実行 → 読み取ったテキスト行をそのまま表示 */
 async function processOCR(imageData) {
   const loadingEl = document.getElementById('ocrLoading');
@@ -2467,31 +2648,35 @@ async function processOCR(imageData) {
   if (loadingEl) loadingEl.style.display = 'flex';
   if (resultEl)  resultEl.style.display  = 'none';
   try {
-    if (!window.Tesseract) {
-      showToast('OCR ライブラリを読み込み中...', 'default');
-      await new Promise((ok, ng) => {
-        const s = document.createElement('script');
-        s.src = 'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';
-        s.onload = ok; s.onerror = ng;
-        document.head.appendChild(s);
-      });
+    let lines = null;
+
+    // ── ① Claude Vision API（主要 OCR） ────────────────────
+    // カラー画像をAIに渡して製品名を直接読み取る（Tesseractより高精度）
+    try {
+      lines = await _runClaudeVisionOCR(imageData);
+    } catch(apiErr) {
+      console.warn('Claude Vision OCR failed, falling back to Tesseract:', apiErr);
     }
 
-    const worker = await Tesseract.createWorker(['jpn', 'eng'], 1, { logger: () => {} });
-    await worker.setParameters({ tessedit_pageseg_mode: '6' });
-    const { data: { text } } = await worker.recognize(imageData);
-    await worker.terminate();
+    // ── ② Tesseract（フォールバック） ──────────────────────
+    if (!lines || !lines.length) {
+      lines = await _runTesseractOCR(imageData);
+    }
 
     if (loadingEl) loadingEl.style.display = 'none';
 
-    // 空行を除くだけ — フィルタ・スコアリングなし
-    const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
-
-    if (!lines.length) {
+    if (!lines || !lines.length) {
       showToast('文字を認識できませんでした。再撮影してください。', 'error');
       return;
     }
-    showOCRResult(lines[0], lines);
+
+    // スコアリングで最適な行を先頭に並べ替え
+    const scored = [...new Set(lines)]  // 重複除去
+      .map(l => ({ line: l, score: _scoreOCRLine(l) }))
+      .sort((a, b) => b.score - a.score);
+
+    showOCRResult(scored[0].line, scored.map(s => s.line));
+
   } catch(e) {
     console.error('OCR error:', e);
     if (loadingEl) loadingEl.style.display = 'none';
@@ -4177,7 +4362,7 @@ init();
       <!-- 処理中バッジ -->
       <div class="ocr-status-badge" id="ocrStatusBadge" style="display:none"></div>
       <p class="ocr-guide" id="ocrGuideMain">製品名をフレーム内に合わせて撮影</p>
-      <p class="ocr-guide-sub" id="ocrGuideSub">文字がはっきり見えるようにカメラを近づけてください</p>
+      <p class="ocr-guide-sub" id="ocrGuideSub">AI が製品名・品番を自動認識します</p>
     </div>
   </div>
 
