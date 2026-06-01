@@ -2379,9 +2379,42 @@ async function _captureFrameBlob(video) {
     ctx.imageSmoothingQuality = 'high';
     ctx.drawImage(video, sx, sy, sw, sh, 0, 0, sw * SCALE, sh * SCALE);
 
+    // ① ぼけ検出用シャープネスをキャプチャ直後に計測
+    const sharpness = _measureSharpness(ctx, canvas.width, canvas.height);
+
     // カラーのまま返す（Claude Vision用）。Tesseract使用時は processOCR 内で前処理する
-    return new Promise(r => canvas.toBlob(r, 'image/png'));
+    const blob = await new Promise(r => canvas.toBlob(r, 'image/png'));
+    return { blob, sharpness };
   } catch(e) { console.error('capture error:', e); return null; }
+}
+
+/**
+ * ① ぼけ検出: ラプラシアン分散でシャープネスを計測
+ * 高いほど鮮明。中心領域 200×100px をサンプリングして高速化
+ */
+function _measureSharpness(ctx, w, h) {
+  const rw = Math.min(200, w), rh = Math.min(100, h);
+  const rx = Math.max(0, Math.floor((w - rw) / 2));
+  const ry = Math.max(0, Math.floor((h - rh) / 2));
+  const d  = ctx.getImageData(rx, ry, rw, rh).data;
+  const n  = rw * rh;
+
+  const gray = new Float32Array(n);
+  for (let i = 0; i < n; i++) {
+    gray[i] = 0.299*d[i*4] + 0.587*d[i*4+1] + 0.114*d[i*4+2];
+  }
+
+  let sum = 0, sum2 = 0, cnt = 0;
+  for (let y = 1; y < rh-1; y++) {
+    for (let x = 1; x < rw-1; x++) {
+      const i   = y*rw + x;
+      const lap = 4*gray[i] - gray[(y-1)*rw+x] - gray[(y+1)*rw+x]
+                             - gray[y*rw+(x-1)] - gray[y*rw+(x+1)];
+      sum += lap; sum2 += lap*lap; cnt++;
+    }
+  }
+  const mean = sum / cnt;
+  return sum2/cnt - mean*mean; // 分散（大きいほど鮮明）
 }
 
 /**
@@ -2473,24 +2506,51 @@ function _applyOCRPreprocess(ctx, w, h) {
 }
 
 /**
- * 撮影ボタン押下: フレーム内の映像をキャプチャして OCR実行
+ * 撮影ボタン押下
+ * ③ 150ms 間隔で3フレームを連続撮影し、最もシャープなものを選択
+ * ① 最良フレームでも閾値未満ならぼけ警告を出して中断
  */
 async function captureOCRFrame() {
   const video = document.getElementById('ocrVideo');
   if (!video || !video.videoWidth) { showToast('カメラが準備中です', 'error'); return; }
 
-  // 撮影フィードバック
-  const fr = document.getElementById('ocrScanFrame');
-  if (fr) fr.classList.add('processing');
+  const fr  = document.getElementById('ocrScanFrame');
+  const btn = document.getElementById('ocrShootBtn');
+  if (fr)  fr.classList.add('processing');
+  if (btn) { btn.disabled = true; btn.style.opacity = '0.45'; }
   _setOCRGuide('scanning');
 
-  const blob = await _captureFrameBlob(video);
-  if (fr) fr.classList.remove('processing');
+  // ③ 3フレーム連続撮影（150ms 間隔）
+  const frames = [];
+  for (let i = 0; i < 3; i++) {
+    const result = await _captureFrameBlob(video);
+    if (result?.blob) frames.push(result);
+    if (i < 2) await new Promise(r => setTimeout(r, 150));
+  }
 
-  if (!blob) { _setOCRGuide('ready'); showToast('撮影に失敗しました。再度お試しください。', 'error'); return; }
+  if (fr)  fr.classList.remove('processing');
+  if (btn) { btn.disabled = false; btn.style.opacity = '1'; }
+
+  if (!frames.length) {
+    _setOCRGuide('ready');
+    showToast('撮影に失敗しました。再度お試しください。', 'error');
+    return;
+  }
+
+  // シャープネス降順でソートし最良フレームを選択
+  frames.sort((a, b) => b.sharpness - a.sharpness);
+  const best = frames[0];
+
+  // ① ぼけ検出: 最良フレームが閾値未満なら警告して中断
+  const BLUR_THRESHOLD = 75;
+  if (best.sharpness < BLUR_THRESHOLD) {
+    _setOCRGuide('ready');
+    showToast('ぼけています。カメラをもっと近づけて再撮影してください。', 'warning');
+    return;
+  }
 
   closeOCRModal();
-  await processOCR(blob);
+  await processOCR(best.blob);
 }
 
 /** モーダル内ファイル選択フォールバック */
@@ -2527,12 +2587,17 @@ function _blobToBase64(blob) {
 
 /**
  * Claude Vision API で OCR（主要エンジン）
+ * ② 選択中のメーカー名をプロンプトに注入して認識精度を向上
  * カラー画像をそのまま送りAIに製品名を読み取らせる
  */
 async function _runClaudeVisionOCR(imageBlob) {
   const { base64, mimeType } = await _blobToBase64(imageBlob);
   const validMime = ['image/jpeg','image/png','image/gif','image/webp'].includes(mimeType)
     ? mimeType : 'image/jpeg';
+
+  // ② 選択中メーカーをコンテキストとして注入
+  const mfrObj  = S.selectedMfr ? MANUFACTURERS.find(m => m.id === S.selectedMfr) : null;
+  const mfrHint = mfrObj ? `\nメーカー: ${mfrObj.name}（このメーカーの製品ラベルです）` : '';
 
   const response = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
@@ -2549,7 +2614,7 @@ async function _runClaudeVisionOCR(imageBlob) {
           },
           {
             type: 'text',
-            text: '製品ラベルや製品本体に印字・刻印されている製品名・品番・型番のテキストを正確に読み取ってください。\n最も重要な製品名または品番を1行目に出力し、他に読み取れる候補があれば改行して2行目以降に追記してください。\n説明・注釈・句読点は不要です。読み取ったテキストのみ出力してください。'
+            text: `製品ラベルや製品本体に印字・刻印されている製品名・品番・型番のテキストを正確に読み取ってください。${mfrHint}\n最も重要な製品名または品番を1行目に出力し、他に読み取れる候補があれば改行して2行目以降に追記してください。\n説明・注釈・句読点は不要です。読み取ったテキストのみ出力してください。`
           }
         ]
       }]
