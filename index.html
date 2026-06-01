@@ -2265,7 +2265,11 @@ async function _openOCRCamera(facing) {
   try {
     if (_ocrStream) { _ocrStream.getTracks().forEach(t => t.stop()); _ocrStream = null; }
     const stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: { ideal: facing }, width: { ideal: 1920 }, height: { ideal: 1080 } }
+      video: {
+        facingMode: { ideal: facing },
+        width:  { ideal: 3840, min: 1280 },
+        height: { ideal: 2160, min: 720 },
+      }
     });
     _ocrStream = stream;
     const v = document.getElementById('ocrVideo');
@@ -2329,8 +2333,11 @@ function _stopAutoScan() {
   if (_ocrAutoTimer) { clearTimeout(_ocrAutoTimer); _ocrAutoTimer = null; }
 }
 
-/** フレーム領域をキャンバスに描画して Promise<Blob> を返す */
-function _captureFrameBlob(video) {
+/**
+ * フレーム領域を 2倍スケールでキャプチャし、OCR向け前処理を施した PNG Blob を返す
+ * ① 2× アップスケール  ② グレースケール化  ③ コントラストストレッチ  ④ シャープ化
+ */
+async function _captureFrameBlob(video) {
   try {
     const frame  = document.getElementById('ocrScanFrame');
     const canvas = document.getElementById('ocrCanvas');
@@ -2346,17 +2353,75 @@ function _captureFrameBlob(video) {
     const fy = (fr.top  - vr.top ) * scale + offY;
     const fw = fr.width  * scale;
     const fh = fr.height * scale;
-    const pv = Math.round(14 * scale), ph = Math.round(8 * scale);
-    const sx = Math.max(0, Math.round(fx - ph));
-    const sy = Math.max(0, Math.round(fy - pv));
-    const sw = Math.min(vw - sx, Math.round(fw + ph * 2));
-    const sh = Math.min(vh - sy, Math.round(fh + pv * 2));
-    canvas.width = sw; canvas.height = sh;
-    const ctx = canvas.getContext('2d');
-    ctx.filter = 'contrast(1.4) brightness(1.05)';
-    ctx.drawImage(video, sx, sy, sw, sh, 0, 0, sw, sh);
-    return new Promise(r => canvas.toBlob(r, 'image/jpeg', 0.93));
-  } catch(e) { return null; }
+    const pad = Math.round(10 * scale);
+    const sx = Math.max(0, Math.round(fx - pad));
+    const sy = Math.max(0, Math.round(fy - pad));
+    const sw = Math.min(vw - sx, Math.round(fw + pad * 2));
+    const sh = Math.min(vh - sy, Math.round(fh + pad * 2));
+
+    // 2× スケールアップ（小さい文字の認識精度向上）
+    const SCALE = 2;
+    canvas.width  = sw * SCALE;
+    canvas.height = sh * SCALE;
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(video, sx, sy, sw, sh, 0, 0, sw * SCALE, sh * SCALE);
+
+    // OCR向け前処理
+    _applyOCRPreprocess(ctx, canvas.width, canvas.height);
+
+    // PNG で返す（可逆圧縮 → JPEG アーティファクトなし）
+    return new Promise(r => canvas.toBlob(r, 'image/png'));
+  } catch(e) { console.error('capture error:', e); return null; }
+}
+
+/**
+ * OCR 精度向上のための画像前処理
+ *   1. グレースケール化 (Rec.601 輝度重み)
+ *   2. コントラストストレッチ (線形 min–max 正規化)
+ *   3. シャープ化 (ラプラシアンフィルタ)
+ * ※ Tesseract 自身が二値化を行うため、ここでは二値化しない
+ */
+function _applyOCRPreprocess(ctx, w, h) {
+  const imgData = ctx.getImageData(0, 0, w, h);
+  const d = imgData.data;
+  const n = w * h;
+
+  // ── Step 1: グレースケール化 ───────────────────────────
+  const gray = new Uint8ClampedArray(n);
+  for (let i = 0; i < n; i++) {
+    gray[i] = Math.round(0.299 * d[i*4] + 0.587 * d[i*4+1] + 0.114 * d[i*4+2]);
+  }
+
+  // ── Step 2: コントラストストレッチ (線形正規化) ────────
+  let lo = 255, hi = 0;
+  for (let i = 0; i < n; i++) { if (gray[i] < lo) lo = gray[i]; if (gray[i] > hi) hi = gray[i]; }
+  const range = hi - lo || 1;
+  for (let i = 0; i < n; i++) {
+    gray[i] = Math.round((gray[i] - lo) / range * 255);
+  }
+
+  // ── Step 3: シャープ化 (ラプラシアン 3×3) ─────────────
+  // カーネル: [0,-1,0 / -1,5,-1 / 0,-1,0]
+  const sharp = new Uint8ClampedArray(n);
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const i = y * w + x;
+      if (x === 0 || x === w-1 || y === 0 || y === h-1) { sharp[i] = gray[i]; continue; }
+      const v = 5 * gray[i]
+        - gray[(y-1)*w + x] - gray[(y+1)*w + x]
+        - gray[y*w + (x-1)] - gray[y*w + (x+1)];
+      sharp[i] = Math.max(0, Math.min(255, v));
+    }
+  }
+
+  // グレー画像として書き戻す
+  for (let i = 0; i < n; i++) {
+    d[i*4] = d[i*4+1] = d[i*4+2] = sharp[i];
+    d[i*4+3] = 255;
+  }
+  ctx.putImageData(imgData, 0, 0);
 }
 
 /**
@@ -2395,7 +2460,11 @@ async function handleOCRCapture(inputEl) {
   await processOCR(file);
 }
 
-/** Tesseract.js で日本語+英語 OCR を実行して結果を表示 */
+/** Tesseract.js で日本語+英語 OCR を実行して結果を表示
+ *  Pass 1: PSM 6（ブロック想定）
+ *  Pass 2: 平均信頼度が低ければ PSM 11（スパーステキスト）で再試行
+ *  単語レベルの信頼度データを候補スコアリングに渡す
+ */
 async function processOCR(imageData) {
   const loadingEl = document.getElementById('ocrLoading');
   const resultEl  = document.getElementById('ocrResultArea');
@@ -2411,12 +2480,33 @@ async function processOCR(imageData) {
         document.head.appendChild(s);
       });
     }
-    // 日本語（漢字・ひらがな・カタカナ）＋英数字 を同時認識
+
     const worker = await Tesseract.createWorker(['jpn', 'eng'], 1, { logger: () => {} });
-    const { data: { text } } = await worker.recognize(imageData);
+
+    // Pass 1: PSM 6 — 均一なテキストブロック
+    await worker.setParameters({ tessedit_pageseg_mode: '6' });
+    const res1 = await worker.recognize(imageData);
+    let words   = res1.data.words   || [];
+    let rawText = res1.data.text    || '';
+
+    // 平均信頼度を算出
+    const avgConf = words.length
+      ? words.reduce((a, w) => a + w.confidence, 0) / words.length : 0;
+
+    // Pass 2: 信頼度が低い場合は PSM 11（スパーステキスト）で再試行
+    if (avgConf < 50 || words.filter(w => w.confidence >= 40).length === 0) {
+      await worker.setParameters({ tessedit_pageseg_mode: '11' });
+      const res2   = await worker.recognize(imageData);
+      const words2 = res2.data.words || [];
+      const avg2   = words2.length
+        ? words2.reduce((a, w) => a + w.confidence, 0) / words2.length : 0;
+      if (avg2 > avgConf) { words = words2; rawText = res2.data.text || ''; }
+    }
+
     await worker.terminate();
     if (loadingEl) loadingEl.style.display = 'none';
-    const candidates = extractProductCandidates(text);
+
+    const candidates = extractProductCandidates(rawText, words);
     if (!candidates.length) {
       showToast('製品名を認識できませんでした。再撮影か手入力してください。', 'error');
       return;
@@ -2429,80 +2519,127 @@ async function processOCR(imageData) {
   }
 }
 
-// 製品名候補を抽出（日本語（漢字・ひらがな・カタカナ）＋英数字コードに対応）
-function extractProductCandidates(rawText) {
-  const seen = new Set();
-  const result = [];
+/**
+ * OCR 結果から製品名候補を信頼度スコア順に抽出
+ *  @param {string}   rawText  Tesseract が返した全文テキスト
+ *  @param {Array}    words    Tesseract の単語レベルデータ（confidence 付き）
+ *  @returns {string[]} スコア降順の候補リスト（最大 6 件）
+ */
+function extractProductCandidates(rawText, words = []) {
+  const seen   = new Set();
+  const scored = [];
 
-  // テキストを行に分割してクリーン処理
-  const lines = rawText.split('\n')
-    .map(l => l.trim())
-    .filter(l => l.length >= 2);
+  // ── 単語→信頼度マップを構築 ──────────────────────────
+  const confMap = {};
+  for (const w of words) {
+    const key = w.text.trim().toUpperCase();
+    if (key) confMap[key] = Math.max(confMap[key] || 0, w.confidence);
+  }
 
-  // ── 日本語パターン（優先） ──────────────────────────────
-  // 漢字・ひらがな・カタカナを含む行を製品名候補として抽出
-  const jpRegex = /[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF\uFF65-\uFF9F]/;
-  for (const line of lines) {
-    if (!jpRegex.test(line)) continue;
-    // 明らかに日付・数字列だけの行を除外
-    if (/^\d{4}[-\/年]\d{1,2}[-\/月]\d{1,2}日?$/.test(line)) continue;
-    if (/^\d{6,}$/.test(line)) continue;
-    const clean = line.replace(/[^\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF\uFF65-\uFF9FA-Za-z0-9\-\/（）()・ ]/g, '').trim();
-    if (clean.length >= 2 && clean.length <= 50 && !seen.has(clean)) {
+  // ── 単語をライン単位に再構成（y 座標が近いものをグループ化）──
+  const highConf = words.filter(w => w.confidence >= 35 && w.text.trim().length >= 1);
+  const lines = [];
+  for (const w of highConf) {
+    const cy = (w.bbox.y0 + w.bbox.y1) / 2;
+    let hit = null;
+    for (const ln of lines) { if (Math.abs(cy - ln.cy) < 22) { hit = ln; break; } }
+    if (hit) {
+      hit.words.push(w);
+      hit.cy = hit.words.reduce((s, x) => s + (x.bbox.y0 + x.bbox.y1) / 2, 0) / hit.words.length;
+    } else {
+      lines.push({ cy, words: [w] });
+    }
+  }
+
+  const lineTexts = lines.map(ln => {
+    const sorted = [...ln.words].sort((a, b) => a.bbox.x0 - b.bbox.x0);
+    const text = sorted.map(w => w.text).join(' ').trim();
+    const conf = sorted.reduce((s, w) => s + w.confidence, 0) / sorted.length;
+    return { text, conf };
+  }).filter(l => l.text.length >= 2);
+
+  // ── スコアリング関数 ──────────────────────────────────
+  const JP = /[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF\uFF65-\uFF9F]/;
+  function score(text, baseConf) {
+    let s = baseConf;
+    const t   = text.toUpperCase();
+    const len = text.length;
+
+    // 製品コードパターン加点
+    if (/[A-Z]{1,6}[0-9]{0,4}-[A-Z0-9]{2,12}/.test(t))  s += 35; // ハイフン付き型番
+    if (/[A-Z][0-9]{2,4}-[0-9]{3,6}/.test(t))            s += 30; // 部品コード
+    if (/[0-9]{4,6}[A-Z]{1,4}[0-9A-Z]{0,4}/.test(t))    s += 22; // 数字+英字
+    if (/[A-Z]{2,4}[0-9]{3,6}[A-Z0-9]{0,4}/.test(t))    s += 22; // 英字+数字
+    if (JP.test(text) && len >= 3 && len <= 20)           s += 18; // 日本語製品名
+    if (JP.test(text) && /[A-Za-z0-9]/.test(text))        s += 10; // 日本語+英数混在
+
+    // 長さ評価
+    if (len >= 4 && len <= 22)       s += 12;
+    else if (len < 3 || len > 35)    s -= 25;
+
+    // ノイズ・除外パターン減点
+    if (/^\d{6,8}$/.test(t))                               s -= 60; // 日付・ロット
+    if (/^\d{4}[-\/年]\d{1,2}[-\/月]\d{1,2}/.test(text))  s -= 60; // 日付形式
+    if (/^[A-Z]{1,2}$/.test(t))                            s -= 40; // 英字1-2文字のみ
+    if (!/[A-Za-z0-9\u3040-\u9FAF]/.test(text))           s -= 30; // 記号のみ
+    if (/^[A-Z]{1,3}[0-9]{1,3}$/.test(t) && len <= 4)    s -= 15; // 短すぎる英数混在
+
+    return s;
+  }
+
+  // ── ライン単位でスコアリング ──────────────────────────
+  const CLEAN_RE = /[^\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF\uFF65-\uFF9FA-Za-z0-9\-\/（）()・ ]/g;
+
+  for (const { text, conf } of lineTexts) {
+    const clean = text.replace(CLEAN_RE, '').trim();
+    if (clean.length < 2 || seen.has(clean)) continue;
+    const s = score(clean, conf);
+    if (s > 5) { seen.add(clean); scored.push({ text: clean, score: s }); }
+  }
+
+  // ── rawText 行からも補完（confidence 情報が欠けた行をカバー）─
+  for (const line of rawText.split('\n').map(l => l.trim()).filter(l => l.length >= 2)) {
+    const clean = line.replace(CLEAN_RE, '').trim();
+    if (clean.length < 2 || seen.has(clean)) continue;
+    const conf = confMap[clean.toUpperCase()] || 32;
+    const s = score(clean, conf);
+    if (s > 12) { seen.add(clean); scored.push({ text: clean, score: s }); }
+  }
+
+  // ── 英数字コードパターンにも追加ボーナス ─────────────
+  const tu = rawText.toUpperCase();
+  const patterns = [
+    { re: /\b[A-Z]{1,6}[0-9]{0,4}-[A-Z0-9]{2,12}(?:-[A-Z0-9]+)?\b/g, bonus: 35 },
+    { re: /[A-Z][0-9]{2,4}-[0-9]{3,6}/g,                               bonus: 30 },
+    { re: /\b[0-9]{4,6}[A-Z]{1,4}[0-9A-Z]{0,4}\b/g,                   bonus: 22 },
+    { re: /\b[A-Z]{2,4}[0-9]{3,6}[A-Z0-9]{0,4}\b/g,                   bonus: 22 },
+  ];
+  for (const { re, bonus } of patterns) {
+    for (const m of tu.match(re) || []) {
+      const c = m.trim();
+      if (c.length < 4 || c.length > 22 || /^\d{6,8}$/.test(c)) continue;
+      const ex = scored.find(x => x.text.toUpperCase() === c);
+      if (ex) { ex.score += bonus; }
+      else if (!seen.has(c)) {
+        seen.add(c);
+        scored.push({ text: c, score: (confMap[c] || 35) + bonus });
+      }
+    }
+  }
+
+  // ── フォールバック（何も見つからない場合）──────────────
+  if (!scored.length) {
+    for (const line of rawText.split('\n').map(l => l.trim()).filter(l => l.length >= 2)) {
+      const clean = line.replace(CLEAN_RE, '').trim();
+      if (clean.length < 2 || seen.has(clean)) continue;
       seen.add(clean);
-      result.push(clean);
-    }
-    if (result.length >= 6) break;
-  }
-
-  // ── 英数字コードパターン ────────────────────────────────
-  const text = rawText.toUpperCase();
-  // パターン1: ハイフン付きコード（GT-C2052SAWX, SKF-6205, RUF-A2405SAW）
-  const p1 = /\b[A-Z]{1,6}[0-9]{0,4}-[A-Z0-9]{2,12}(?:-[A-Z0-9]+)?\b/g;
-  // パターン2: 数字＋アルファベット（6204ZZ, 7203BEP, 32207J2）
-  const p2 = /\b[0-9]{4,6}[A-Z]{1,4}[0-9A-Z]{0,4}\b/g;
-  // パターン3: アルファベット＋数字混合（NJ208EG, EZ9L48, NU1010ECM）
-  const p3 = /\b[A-Z]{1,4}[A-Z0-9][0-9]{2,6}[A-Z0-9]{0,6}\b/g;
-  // パターン4: 給水H113-0123 スタイル
-  const p4 = /[A-Z][0-9]{2,4}-[0-9]{3,6}/g;
-
-  for (const pat of [p1, p4, p2, p3]) {
-    const matches = text.match(pat) || [];
-    for (const m of matches) {
-      const clean = m.trim();
-      if (!seen.has(clean) && clean.length >= 4 && clean.length <= 22) {
-        // 日付・ロット番号らしきもの（YYYYMMDD形式）を除外
-        if (!/^\d{8}$/.test(clean) && !/^\d{6}$/.test(clean)) {
-          seen.add(clean);
-          result.push(clean);
-        }
-      }
+      scored.push({ text: clean, score: 1 });
+      if (scored.length >= 5) break;
     }
   }
 
-  // フォールバック：英数字混在の行 or 日本語行を抽出
-  if (!result.length) {
-    const fallbackLines = rawText.split('\n').map(l => l.trim()).filter(l => l.length >= 2);
-    const jpReg = /[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/;
-    for (const line of fallbackLines) {
-      // 日本語を含む行
-      if (jpReg.test(line)) {
-        const clean = line.replace(/[^\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF\uFF65-\uFF9FA-Za-z0-9\-\/（）()・ ]/g, '').trim();
-        if (clean.length >= 2 && clean.length <= 50 && !seen.has(clean)) {
-          seen.add(clean); result.push(clean);
-        }
-      } else {
-        // 英数字混在行
-        const clean = line.replace(/[^A-Za-z0-9\-\/]/g, '').toUpperCase();
-        if (clean.length >= 4 && clean.length <= 22 && /[A-Z]/.test(clean) && /[0-9]/.test(clean)) {
-          if (!seen.has(clean)) { seen.add(clean); result.push(clean); }
-        }
-      }
-      if (result.length >= 5) break;
-    }
-  }
-
-  return result;
+  scored.sort((a, b) => b.score - a.score);
+  return scored.slice(0, 6).map(s => s.text);
 }
 
 // OCR結果エリアに表示
