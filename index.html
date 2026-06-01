@@ -1414,8 +1414,8 @@ a{color:inherit;text-decoration:none}
           <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" width="11" height="11" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
         </span>
         <div class="ocr-info">
-          <div class="ocr-title">OCRで読み取りました</div>
-          <div class="ocr-cand">候補：<span id="ocrCandidateText"></span></div>
+          <div class="ocr-title">読み取り結果</div>
+          <div class="ocr-cand">テキスト：<span id="ocrCandidateText"></span></div>
           <div class="ocr-multi-row" id="ocrMultiRow">
             <span class="ocr-multi-lbl">他の候補：</span>
           </div>
@@ -2460,11 +2460,7 @@ async function handleOCRCapture(inputEl) {
   await processOCR(file);
 }
 
-/** Tesseract.js で日本語+英語 OCR を実行して結果を表示
- *  Pass 1: PSM 6（ブロック想定）
- *  Pass 2: 平均信頼度が低ければ PSM 11（スパーステキスト）で再試行
- *  単語レベルの信頼度データを候補スコアリングに渡す
- */
+/** Tesseract.js で日本語+英語 OCR を実行 → 読み取ったテキスト行をそのまま表示 */
 async function processOCR(imageData) {
   const loadingEl = document.getElementById('ocrLoading');
   const resultEl  = document.getElementById('ocrResultArea');
@@ -2482,36 +2478,20 @@ async function processOCR(imageData) {
     }
 
     const worker = await Tesseract.createWorker(['jpn', 'eng'], 1, { logger: () => {} });
-
-    // Pass 1: PSM 6 — 均一なテキストブロック
     await worker.setParameters({ tessedit_pageseg_mode: '6' });
-    const res1 = await worker.recognize(imageData);
-    let words   = res1.data.words   || [];
-    let rawText = res1.data.text    || '';
-
-    // 平均信頼度を算出
-    const avgConf = words.length
-      ? words.reduce((a, w) => a + w.confidence, 0) / words.length : 0;
-
-    // Pass 2: 信頼度が低い場合は PSM 11（スパーステキスト）で再試行
-    if (avgConf < 50 || words.filter(w => w.confidence >= 40).length === 0) {
-      await worker.setParameters({ tessedit_pageseg_mode: '11' });
-      const res2   = await worker.recognize(imageData);
-      const words2 = res2.data.words || [];
-      const avg2   = words2.length
-        ? words2.reduce((a, w) => a + w.confidence, 0) / words2.length : 0;
-      if (avg2 > avgConf) { words = words2; rawText = res2.data.text || ''; }
-    }
-
+    const { data: { text } } = await worker.recognize(imageData);
     await worker.terminate();
+
     if (loadingEl) loadingEl.style.display = 'none';
 
-    const candidates = extractProductCandidates(rawText, words);
-    if (!candidates.length) {
-      showToast('製品名を認識できませんでした。再撮影か手入力してください。', 'error');
+    // 空行を除くだけ — フィルタ・スコアリングなし
+    const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+
+    if (!lines.length) {
+      showToast('文字を認識できませんでした。再撮影してください。', 'error');
       return;
     }
-    showOCRResult(candidates[0], candidates);
+    showOCRResult(lines[0], lines);
   } catch(e) {
     console.error('OCR error:', e);
     if (loadingEl) loadingEl.style.display = 'none';
@@ -2519,136 +2499,14 @@ async function processOCR(imageData) {
   }
 }
 
-/**
- * OCR 結果から製品名候補を信頼度スコア順に抽出
- *  @param {string}   rawText  Tesseract が返した全文テキスト
- *  @param {Array}    words    Tesseract の単語レベルデータ（confidence 付き）
- *  @returns {string[]} スコア降順の候補リスト（最大 6 件）
- */
-function extractProductCandidates(rawText, words = []) {
-  const seen   = new Set();
-  const scored = [];
 
-  // ── 単語→信頼度マップを構築 ──────────────────────────
-  const confMap = {};
-  for (const w of words) {
-    const key = w.text.trim().toUpperCase();
-    if (key) confMap[key] = Math.max(confMap[key] || 0, w.confidence);
-  }
-
-  // ── 単語をライン単位に再構成（y 座標が近いものをグループ化）──
-  const highConf = words.filter(w => w.confidence >= 35 && w.text.trim().length >= 1);
-  const lines = [];
-  for (const w of highConf) {
-    const cy = (w.bbox.y0 + w.bbox.y1) / 2;
-    let hit = null;
-    for (const ln of lines) { if (Math.abs(cy - ln.cy) < 22) { hit = ln; break; } }
-    if (hit) {
-      hit.words.push(w);
-      hit.cy = hit.words.reduce((s, x) => s + (x.bbox.y0 + x.bbox.y1) / 2, 0) / hit.words.length;
-    } else {
-      lines.push({ cy, words: [w] });
-    }
-  }
-
-  const lineTexts = lines.map(ln => {
-    const sorted = [...ln.words].sort((a, b) => a.bbox.x0 - b.bbox.x0);
-    const text = sorted.map(w => w.text).join(' ').trim();
-    const conf = sorted.reduce((s, w) => s + w.confidence, 0) / sorted.length;
-    return { text, conf };
-  }).filter(l => l.text.length >= 2);
-
-  // ── スコアリング関数 ──────────────────────────────────
-  const JP = /[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF\uFF65-\uFF9F]/;
-  function score(text, baseConf) {
-    let s = baseConf;
-    const t   = text.toUpperCase();
-    const len = text.length;
-
-    // 製品コードパターン加点
-    if (/[A-Z]{1,6}[0-9]{0,4}-[A-Z0-9]{2,12}/.test(t))  s += 35; // ハイフン付き型番
-    if (/[A-Z][0-9]{2,4}-[0-9]{3,6}/.test(t))            s += 30; // 部品コード
-    if (/[0-9]{4,6}[A-Z]{1,4}[0-9A-Z]{0,4}/.test(t))    s += 22; // 数字+英字
-    if (/[A-Z]{2,4}[0-9]{3,6}[A-Z0-9]{0,4}/.test(t))    s += 22; // 英字+数字
-    if (JP.test(text) && len >= 3 && len <= 20)           s += 18; // 日本語製品名
-    if (JP.test(text) && /[A-Za-z0-9]/.test(text))        s += 10; // 日本語+英数混在
-
-    // 長さ評価
-    if (len >= 4 && len <= 22)       s += 12;
-    else if (len < 3 || len > 35)    s -= 25;
-
-    // ノイズ・除外パターン減点
-    if (/^\d{6,8}$/.test(t))                               s -= 60; // 日付・ロット
-    if (/^\d{4}[-\/年]\d{1,2}[-\/月]\d{1,2}/.test(text))  s -= 60; // 日付形式
-    if (/^[A-Z]{1,2}$/.test(t))                            s -= 40; // 英字1-2文字のみ
-    if (!/[A-Za-z0-9\u3040-\u9FAF]/.test(text))           s -= 30; // 記号のみ
-    if (/^[A-Z]{1,3}[0-9]{1,3}$/.test(t) && len <= 4)    s -= 15; // 短すぎる英数混在
-
-    return s;
-  }
-
-  // ── ライン単位でスコアリング ──────────────────────────
-  const CLEAN_RE = /[^\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF\uFF65-\uFF9FA-Za-z0-9\-\/（）()・ ]/g;
-
-  for (const { text, conf } of lineTexts) {
-    const clean = text.replace(CLEAN_RE, '').trim();
-    if (clean.length < 2 || seen.has(clean)) continue;
-    const s = score(clean, conf);
-    if (s > 5) { seen.add(clean); scored.push({ text: clean, score: s }); }
-  }
-
-  // ── rawText 行からも補完（confidence 情報が欠けた行をカバー）─
-  for (const line of rawText.split('\n').map(l => l.trim()).filter(l => l.length >= 2)) {
-    const clean = line.replace(CLEAN_RE, '').trim();
-    if (clean.length < 2 || seen.has(clean)) continue;
-    const conf = confMap[clean.toUpperCase()] || 32;
-    const s = score(clean, conf);
-    if (s > 12) { seen.add(clean); scored.push({ text: clean, score: s }); }
-  }
-
-  // ── 英数字コードパターンにも追加ボーナス ─────────────
-  const tu = rawText.toUpperCase();
-  const patterns = [
-    { re: /\b[A-Z]{1,6}[0-9]{0,4}-[A-Z0-9]{2,12}(?:-[A-Z0-9]+)?\b/g, bonus: 35 },
-    { re: /[A-Z][0-9]{2,4}-[0-9]{3,6}/g,                               bonus: 30 },
-    { re: /\b[0-9]{4,6}[A-Z]{1,4}[0-9A-Z]{0,4}\b/g,                   bonus: 22 },
-    { re: /\b[A-Z]{2,4}[0-9]{3,6}[A-Z0-9]{0,4}\b/g,                   bonus: 22 },
-  ];
-  for (const { re, bonus } of patterns) {
-    for (const m of tu.match(re) || []) {
-      const c = m.trim();
-      if (c.length < 4 || c.length > 22 || /^\d{6,8}$/.test(c)) continue;
-      const ex = scored.find(x => x.text.toUpperCase() === c);
-      if (ex) { ex.score += bonus; }
-      else if (!seen.has(c)) {
-        seen.add(c);
-        scored.push({ text: c, score: (confMap[c] || 35) + bonus });
-      }
-    }
-  }
-
-  // ── フォールバック（何も見つからない場合）──────────────
-  if (!scored.length) {
-    for (const line of rawText.split('\n').map(l => l.trim()).filter(l => l.length >= 2)) {
-      const clean = line.replace(CLEAN_RE, '').trim();
-      if (clean.length < 2 || seen.has(clean)) continue;
-      seen.add(clean);
-      scored.push({ text: clean, score: 1 });
-      if (scored.length >= 5) break;
-    }
-  }
-
-  scored.sort((a, b) => b.score - a.score);
-  return scored.slice(0, 6).map(s => s.text);
-}
-
-// OCR結果エリアに表示
-function showOCRResult(best, all) {
+// OCR結果エリアに表示（読み取った行をそのまま表示）
+function showOCRResult(best, allLines) {
   const resultEl = document.getElementById('ocrResultArea');
   const candEl   = document.getElementById('ocrCandidateText');
   const multiRow = document.getElementById('ocrMultiRow');
 
-  // 入力欄に仮セット
+  // 入力欄にセット
   const input = document.getElementById('productInput');
   input.value = best;
   S.productName = best;
@@ -2658,13 +2516,13 @@ function showOCRResult(best, all) {
   if (candEl) candEl.textContent = best;
   if (resultEl) resultEl.style.display = 'flex';
 
-  // 他の候補チップ
+  // 他の行をチップとして表示（同じ内容は除く）
   if (multiRow) {
-    const others = all.filter(c => c !== best);
+    const others = allLines.filter(l => l !== best);
     if (others.length) {
       multiRow.style.display = 'flex';
-      multiRow.innerHTML = `<span class="ocr-multi-lbl">他の候補：</span>` +
-        others.slice(0, 4).map(c => {
+      multiRow.innerHTML = `<span class="ocr-multi-lbl">他の行：</span>` +
+        others.slice(0, 5).map(c => {
           const esc = c.replace(/'/g, "\\'");
           return `<button class="product-chip" style="font-size:11px;padding:3px 10px" onclick="selectOCRCandidate('${esc}')">${c}</button>`;
         }).join('');
