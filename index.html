@@ -151,9 +151,7 @@ a{color:inherit;text-decoration:none}
   letter-spacing:.5px;text-transform:uppercase;margin-bottom:7px;
 }
 .mfr-recent-row{
-  display:grid;
-  grid-template-columns:repeat(3, 1fr);
-  gap:7px;
+  display:flex;gap:7px;overflow-x:auto;
   padding-bottom:3px;margin-bottom:10px;
 }
 .mfr-recent-chip{
@@ -175,19 +173,9 @@ a{color:inherit;text-decoration:none}
 }
 .mfr-toggle-btn:active{background:var(--primary-dim);border-color:var(--primary);color:var(--primary)}
 .mfr-scroll{
-  display:grid;
-  grid-template-columns:repeat(3, 1fr);
-  gap:9px;
+  display:flex;gap:9px;flex-wrap:wrap;
   padding-bottom:3px;
   margin-top:4px;padding-top:10px;
-}
-/* グリッド内チップ：セル幅に合わせて伸ばす */
-.mfr-recent-row .mfr-recent-chip,
-.mfr-scroll .mfr-recent-chip{
-  width:100% !important;
-  height:75px;
-  box-sizing:border-box;
-  justify-content:center;
 }
 .mfr-card{
   flex-shrink:0;width:88px;min-height:48px;
@@ -789,11 +777,55 @@ a{color:inherit;text-decoration:none}
   padding:3px 8px;border-radius:6px;
   width:100%;text-align:center;letter-spacing:.2px;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  cursor:pointer;transition:opacity .15s;
 }
+.photo-judge-label:active{opacity:.7}
 .photo-judge-label.pass{background:var(--pass-dim);color:var(--pass);border:1.5px solid var(--pass)}
 .photo-judge-label.fail{background:var(--fail-dim);color:var(--fail);border:1.5px solid var(--fail)}
 .photo-judge-label.perm{background:#eff6ff;color:#3b82f6;border:1.5px solid #3b82f6}
 .photo-judge-label.prov{background:var(--review-dim);color:var(--review);border:1.5px solid var(--review)}
+
+/* 写真個別判定設定ボタン（ラベル未設定時） */
+.photo-judge-set-btn{
+  width:100%;font-size:10px;font-weight:700;
+  color:var(--text-3);background:var(--surface-2);
+  border:1px dashed var(--border);border-radius:5px;
+  padding:3px 2px;margin-top:2px;cursor:pointer;
+  transition:all .15s;text-align:center;line-height:1.4;
+}
+.photo-judge-set-btn:active{
+  background:var(--primary-dim);border-color:var(--primary);color:var(--primary);
+}
+
+/* 写真個別判定ボトムシート */
+.photo-judge-sheet-bg{
+  position:fixed;inset:0;background:rgba(0,0,0,.5);
+  z-index:600;opacity:0;pointer-events:none;
+  transition:opacity .25s;
+  display:flex;align-items:flex-end;justify-content:center;
+}
+.photo-judge-sheet-bg.show{opacity:1;pointer-events:all}
+.photo-judge-sheet{
+  background:var(--surface);
+  border-radius:24px 24px 0 0;
+  padding:0 20px max(env(safe-area-inset-bottom),28px);
+  width:100%;max-width:430px;
+  transform:translateY(100%);
+  transition:transform .32s cubic-bezier(.34,1.15,.64,1);
+}
+.photo-judge-sheet-bg.show .photo-judge-sheet{transform:translateY(0)}
+.pjs-handle{
+  width:40px;height:4px;background:var(--border);
+  border-radius:100px;margin:12px auto 0;
+}
+.pjs-title{font-size:17px;font-weight:800;color:var(--text);margin:16px 0 2px}
+.pjs-subtitle{font-size:12px;color:var(--text-3);font-weight:500;margin-bottom:16px}
+.pjs-photo-num{
+  display:inline-flex;align-items:center;gap:5px;
+  font-size:12px;font-weight:700;color:var(--primary);
+  background:var(--primary-dim);border-radius:100px;
+  padding:3px 11px;margin-bottom:14px;
+}
 .file-pick{
   margin-top:9px;width:100%;padding:10px;
   background:var(--surface-2);border:1.5px dashed var(--border);
@@ -1108,14 +1140,6 @@ a{color:inherit;text-decoration:none}
   border-top:1px solid var(--border);
   display:flex;align-items:stretch;z-index:100;
   padding-bottom:env(safe-area-inset-bottom,0);
-  /* キーボード開閉アニメーション用 */
-  transition:bottom .2s ease, opacity .15s ease;
-}
-/* 製品名入力中はボトムナビを画面外に退避 */
-#app.keyboard-open .bottom-nav{
-  bottom:calc(-1 * var(--nav-h) - env(safe-area-inset-bottom, 0px));
-  opacity:0;
-  pointer-events:none;
 }
 .nav-item{
   flex:1;display:flex;flex-direction:column;
@@ -1491,7 +1515,7 @@ a{color:inherit;text-decoration:none}
           style="padding-right:80px"
           onfocus="onProductFocus()"
           oninput="onProductInput(this.value)"
-          onblur="onProductBlur()">
+          onblur="setTimeout(hideSuggest,200)">
         <!-- クリアボタン -->
         <button class="input-clear-btn" id="productClearBtn" onclick="clearProductInput()" title="クリア">✕</button>
         <!-- マイクボタン -->
@@ -2124,7 +2148,7 @@ function getRecentMfrs() {
 }
 
 function renderMfr() {
-  const cardStyle = 'border-radius:13px;width:100%;height:75px;padding:8px;box-sizing:border-box;display:flex;align-items:center;justify-content:center;overflow:hidden;';
+  const cardStyle = 'border-radius:13px;width:88px;height:75px;padding:8px;box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;overflow:hidden;';
   const recent = getRecentMfrs();
   const lbl = document.getElementById('mfrSectionLbl');
   const btn = document.getElementById('mfrToggleBtn');
@@ -2171,7 +2195,7 @@ function renderMfr() {
 
   // 展開状態を維持
   if (S.showAllMfr) {
-    document.getElementById('mfrScroll').style.display = 'grid';
+    document.getElementById('mfrScroll').style.display = 'flex';
   }
 }
 
@@ -2184,7 +2208,7 @@ function toggleAllMfr() {
   S.showAllMfr = !S.showAllMfr;
   const scroll = document.getElementById('mfrScroll');
   const btn    = document.getElementById('mfrToggleBtn');
-  scroll.style.display = S.showAllMfr ? 'grid' : 'none';
+  scroll.style.display = S.showAllMfr ? 'flex' : 'none';
   btn.innerHTML = S.showAllMfr
     ? `閉じる <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="13" height="13" stroke-linecap="round"><polyline points="18 15 12 9 6 15"/></svg>`
     : `すべて見る <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="13" height="13" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>`;
@@ -3285,110 +3309,6 @@ function pickProduct(name) {
   if (cb) cb.style.display = 'flex';
 }
 
-// ============================================================
-// 音声入力（Web Speech API）
-// ============================================================
-
-let _voiceRec       = null;
-let _voiceListening = false;
-
-/** マイクボタン：録音中なら停止、停止中なら開始 */
-function toggleVoiceInput() {
-  if (_voiceListening) {
-    stopVoiceInput();
-  } else {
-    _startVoiceInput();
-  }
-}
-
-function _startVoiceInput() {
-  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SR) {
-    showToast('このブラウザは音声入力に対応していません', 'error');
-    return;
-  }
-
-  // 既存インスタンスをクリア
-  if (_voiceRec) { try { _voiceRec.abort(); } catch(_) {} }
-
-  _voiceRec = new SR();
-  _voiceRec.lang            = 'ja-JP';
-  _voiceRec.continuous      = false;   // 1発話で停止
-  _voiceRec.interimResults  = true;    // 途中経過も表示
-  _voiceRec.maxAlternatives = 1;
-
-  // ── 開始 ──────────────────────────────────────────────────
-  _voiceRec.onstart = () => {
-    _voiceListening = true;
-    document.getElementById('micBtn').classList.add('listening');
-    document.getElementById('voiceBar').style.display = 'flex';
-    document.getElementById('voiceBarTxt').textContent = '聞いています...';
-  };
-
-  // ── 認識結果 ─────────────────────────────────────────────
-  _voiceRec.onresult = (e) => {
-    let finalText = '', interimText = '';
-    for (let i = e.resultIndex; i < e.results.length; i++) {
-      const t = e.results[i][0].transcript;
-      if (e.results[i].isFinal) finalText += t;
-      else                       interimText += t;
-    }
-    const text = (finalText || interimText).trim();
-    if (!text) return;
-
-    const input = document.getElementById('productInput');
-    input.value = text;
-    S.productName = text;
-    document.getElementById('voiceBarTxt').textContent = `「${text}」`;
-    const cb = document.getElementById('productClearBtn');
-    if (cb) cb.style.display = 'flex';
-  };
-
-  // ── 終了 ──────────────────────────────────────────────────
-  _voiceRec.onend = () => {
-    _voiceListening = false;
-    _voiceRec = null;
-    document.getElementById('micBtn').classList.remove('listening');
-    document.getElementById('voiceBar').style.display = 'none';
-    // 入力値でサジェストを更新
-    const val = document.getElementById('productInput').value.trim();
-    if (val) onProductInput(val);
-  };
-
-  // ── エラー ────────────────────────────────────────────────
-  _voiceRec.onerror = (e) => {
-    _voiceListening = false;
-    _voiceRec = null;
-    document.getElementById('micBtn').classList.remove('listening');
-    document.getElementById('voiceBar').style.display = 'none';
-    const msgs = {
-      'not-allowed': 'マイクの許可が必要です。ブラウザの設定を確認してください',
-      'no-speech':   '音声が検出されませんでした。もう一度お試しください',
-      'network':     'ネットワークエラーが発生しました',
-      'aborted':     null,  // 意図的な停止なのでトースト不要
-    };
-    const msg = msgs[e.error];
-    if (msg) showToast(msg, 'error');
-  };
-
-  try {
-    _voiceRec.start();
-  } catch(err) {
-    showToast('音声入力を開始できませんでした', 'error');
-  }
-}
-
-/** 録音を強制停止 */
-function stopVoiceInput() {
-  if (_voiceRec) {
-    try { _voiceRec.stop(); } catch(_) {}
-    _voiceRec = null;
-  }
-  _voiceListening = false;
-  document.getElementById('micBtn').classList.remove('listening');
-  document.getElementById('voiceBar').style.display = 'none';
-}
-
 // フォーカス時：何もしない（1文字入力後から候補を表示）
 function onProductFocus() {
   const val = document.getElementById('productInput').value;
@@ -3397,18 +3317,8 @@ function onProductFocus() {
     const hits = history.filter(p => p.toLowerCase().includes(val.toLowerCase()));
     showSuggest(hits.length ? hits : history, val);
   }
-  // ボトムナビを隠す
-  document.getElementById('app').classList.add('keyboard-open');
   // キーボードが開いたあと、入力欄＋候補リストが見えるようにスクロール
   _scrollInputIntoView();
-}
-
-// ブラー時：候補を隠してボトムナビを戻す
-function onProductBlur() {
-  setTimeout(() => {
-    hideSuggest();
-    document.getElementById('app').classList.remove('keyboard-open');
-  }, 200);
 }
 
 /**
@@ -3783,7 +3693,7 @@ function onFileSelected(files) {
 }
 
 function addPhoto(dataUrl) {
-  S.photos.push(dataUrl);
+  S.photos.push({ url: dataUrl, usability: S.usability, judgeType: S.judgeType });
   renderPhotoGrid();
 }
 
@@ -3793,24 +3703,70 @@ function removePhoto(i) {
 }
 
 function renderPhotoGrid() {
-  const usabilityLabel = S.usability === 'pass' ? { cls: 'pass', txt: '✓ 使用可' }
-                       : S.usability === 'fail' ? { cls: 'fail', txt: '✕ 使用否' }
-                       : null;
-  const judgeLabel = S.judgeType === '恒久判断'  ? { cls: 'perm', txt: '● 恒久' }
-                   : S.judgeType === '暫定判断'  ? { cls: 'prov', txt: '● 暫定' }
-                   : null;
-
-  document.getElementById('photoGrid').innerHTML = S.photos.map((url, i) => `
+  document.getElementById('photoGrid').innerHTML = S.photos.map((photo, i) => {
+    const usabilityLabel = photo.usability === 'pass' ? { cls: 'pass', txt: '✓ 使用可' }
+                         : photo.usability === 'fail' ? { cls: 'fail', txt: '✕ 使用否' }
+                         : null;
+    const judgeLabel = photo.judgeType === '恒久判断' ? { cls: 'perm', txt: '● 恒久' }
+                     : photo.judgeType === '暫定判断' ? { cls: 'prov', txt: '● 暫定' }
+                     : null;
+    const hasAnyLabel = usabilityLabel || judgeLabel;
+    return `
     <div class="photo-wrap">
-      <img src="${url}" class="photo-thumb" onclick="openAnnotator(${i})">
+      <img src="${photo.url}" class="photo-thumb" onclick="openAnnotator(${i})">
       <button class="photo-del" onclick="removePhoto(${i})">✕</button>
       <div class="photo-annot-btn" onclick="openAnnotator(${i})">
         <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" width="11" height="11" stroke-linecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
       </div>
-      ${usabilityLabel ? `<div class="photo-judge-label ${usabilityLabel.cls}">${usabilityLabel.txt}</div>` : ''}
-      ${judgeLabel ? `<div class="photo-judge-label ${judgeLabel.cls}">${judgeLabel.txt}</div>` : ''}
-    </div>
-  `).join('');
+      ${usabilityLabel ? `<div class="photo-judge-label ${usabilityLabel.cls}" onclick="openPhotoJudge(${i})">${usabilityLabel.txt}</div>` : ''}
+      ${judgeLabel ? `<div class="photo-judge-label ${judgeLabel.cls}" onclick="openPhotoJudge(${i})">${judgeLabel.txt}</div>` : ''}
+      ${!hasAnyLabel ? `<button class="photo-judge-set-btn" onclick="openPhotoJudge(${i})">＋判定設定</button>` : ''}
+    </div>`;
+  }).join('');
+}
+
+// ============================================================
+// 写真個別判定エディター
+// ============================================================
+
+let _editingPhotoIdx = -1;
+
+function openPhotoJudge(i) {
+  _editingPhotoIdx = i;
+  const photo = S.photos[i];
+  document.getElementById('pjsUsable').classList.toggle('active',    photo.usability === 'pass');
+  document.getElementById('pjsUnusable').classList.toggle('active',  photo.usability === 'fail');
+  document.getElementById('pjsPermanent').classList.toggle('active', photo.judgeType === '恒久判断');
+  document.getElementById('pjsProvisional').classList.toggle('active', photo.judgeType === '暫定判断');
+  document.getElementById('pjsPhotoNum').textContent = `写真 ${i + 1} / ${S.photos.length}`;
+  document.getElementById('photoJudgeSheetBg').classList.add('show');
+}
+
+function closePhotoJudge() {
+  document.getElementById('photoJudgeSheetBg').classList.remove('show');
+  _editingPhotoIdx = -1;
+}
+
+function setPhotoJudge(field, val) {
+  if (_editingPhotoIdx < 0 || !S.photos[_editingPhotoIdx]) return;
+  const photo = S.photos[_editingPhotoIdx];
+  if (field === 'usability') {
+    photo.usability = photo.usability === val ? null : val;
+    document.getElementById('pjsUsable').classList.toggle('active',   photo.usability === 'pass');
+    document.getElementById('pjsUnusable').classList.toggle('active', photo.usability === 'fail');
+  } else {
+    photo.judgeType = photo.judgeType === val ? null : val;
+    document.getElementById('pjsPermanent').classList.toggle('active',   photo.judgeType === '恒久判断');
+    document.getElementById('pjsProvisional').classList.toggle('active', photo.judgeType === '暫定判断');
+  }
+  renderPhotoGrid();
+}
+
+function applyGlobalJudgeToAllPhotos() {
+  S.photos.forEach(p => { p.usability = S.usability; p.judgeType = S.judgeType; });
+  closePhotoJudge();
+  renderPhotoGrid();
+  showToast('全写真に判定を適用しました', 'success');
 }
 
 // ============================================================
@@ -3892,7 +3848,7 @@ function openAnnotator(i) {
     updateAnnotHint();
     document.getElementById('annotBg').classList.add('show');
   };
-  img.src = S.photos[i];
+  img.src = S.photos[i].url;
 }
 
 function closeAnnotator() {
@@ -4089,7 +4045,7 @@ async function saveAnnotation() {
   const canvas = document.getElementById('annotCanvas');
   const raw    = canvas.toDataURL('image/jpeg', 0.92);
   const compressed = await compressImage(raw, 1280, 0.85);
-  S.photos[annotState.photoIdx] = compressed;
+  S.photos[annotState.photoIdx].url = compressed;
   renderPhotoGrid();
   closeAnnotator();
   showToast('注釈を保存しました', 'success');
@@ -4180,7 +4136,7 @@ async function saveInspection() {
 
   // 写真を Storage にアップロード
   showToast('保存中...','default');
-  const uploadedPhotos = await Promise.all(S.photos.map(p => uploadPhoto(p)));
+  const uploadedPhotos = await Promise.all(S.photos.map(p => uploadPhoto(p.url)));
 
   const record = {
     id: uid(),
@@ -4775,7 +4731,7 @@ function closePhotoViewer() {
 // ============================================================
 
 document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') { closeInspModal(); closeConfirm(); closeDetail(); closeAnnotator(); closeUserEditModal(); closePhotoViewer(); }
+  if (e.key === 'Escape') { closeInspModal(); closeConfirm(); closeDetail(); closeAnnotator(); closeUserEditModal(); closePhotoViewer(); closePhotoJudge(); }
 });
 
 // ============================================================
@@ -4974,6 +4930,50 @@ function authErrMsg(code) {
 
 init();
 </script>
+<!-- =================== 写真個別判定ボトムシート =================== -->
+<div class="photo-judge-sheet-bg" id="photoJudgeSheetBg" onclick="if(event.target===this)closePhotoJudge()">
+  <div class="photo-judge-sheet">
+    <div class="pjs-handle"></div>
+    <div class="pjs-title">写真の判定を設定</div>
+    <div class="pjs-subtitle">この写真に個別の判定ラベルを設定できます</div>
+    <div class="pjs-photo-num" id="pjsPhotoNum">写真 1 / 1</div>
+    <!-- 使用可否 -->
+    <div class="judge-group-label">使用可否</div>
+    <div class="judge-toggle-row">
+      <button class="judge-toggle usable" id="pjsUsable" onclick="setPhotoJudge('usability','pass')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" width="16" height="16" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+        使用可
+      </button>
+      <button class="judge-toggle unusable" id="pjsUnusable" onclick="setPhotoJudge('usability','fail')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" width="15" height="15" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        使用否
+      </button>
+    </div>
+    <!-- 判断区分 -->
+    <div class="judge-group-label" style="margin-top:14px">判断区分</div>
+    <div class="judge-toggle-row">
+      <button class="judge-toggle permanent" id="pjsPermanent" onclick="setPhotoJudge('judgeType','恒久判断')">
+        <span class="judge-dot blue"></span>
+        恒久判断
+      </button>
+      <button class="judge-toggle provisional" id="pjsProvisional" onclick="setPhotoJudge('judgeType','暫定判断')">
+        <span class="judge-dot yellow"></span>
+        暫定判断
+      </button>
+    </div>
+    <div style="display:flex;gap:9px;margin-top:18px">
+      <button class="m-btn cancel" onclick="closePhotoJudge()">閉じる</button>
+      <button class="m-btn ok" onclick="closePhotoJudge()">確定</button>
+    </div>
+    <div style="margin-top:10px;text-align:center">
+      <button onclick="applyGlobalJudgeToAllPhotos()" style="font-size:12px;color:var(--text-3);font-weight:600;background:none;border:none;cursor:pointer;padding:4px 8px;border-radius:8px;transition:color .15s">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="11" height="11" stroke-linecap="round" style="vertical-align:middle;margin-right:3px"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        全写真に判定ページの設定を適用
+      </button>
+    </div>
+  </div>
+</div>
+
 <!-- =================== 保存確認ボトムシート =================== -->
 <div class="save-confirm-bg" id="saveConfirmBg" onclick="if(event.target===this)closeSaveConfirm()">
   <div class="save-confirm-sheet">
