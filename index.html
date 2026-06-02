@@ -1577,40 +1577,6 @@ a{color:inherit;text-decoration:none}
       <div class="inspector-scroll" id="inspScroll"></div>
     </div>
 
-    <!-- 判定ボタン -->
-    <div class="card">
-      <div class="card-head">
-        <div class="head-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2" stroke-linecap="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>
-        </div>
-        判定
-      </div>
-      <!-- 使用可否 -->
-      <div class="judge-group-label">使用可否</div>
-      <div class="judge-toggle-row">
-        <button class="judge-toggle usable" id="jUsable" onclick="selectUsability('pass')">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" width="16" height="16" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
-          使用可
-        </button>
-        <button class="judge-toggle unusable" id="jUnusable" onclick="selectUsability('fail')">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" width="15" height="15" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-          使用否
-        </button>
-      </div>
-      <!-- 判断区分 -->
-      <div class="judge-group-label" style="margin-top:14px">判断区分</div>
-      <div class="judge-toggle-row">
-        <button class="judge-toggle permanent" id="jPermanent" onclick="selectJudgeType('恒久判断')">
-          <span class="judge-dot blue"></span>
-          恒久判断
-        </button>
-        <button class="judge-toggle provisional" id="jProvisional" onclick="selectJudgeType('暫定判断')">
-          <span class="judge-dot yellow"></span>
-          暫定判断
-        </button>
-      </div>
-    </div>
-
     <!-- カメラ -->
     <div class="card">
       <div class="card-head between">
@@ -1619,12 +1585,6 @@ a{color:inherit;text-decoration:none}
             <svg viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2" stroke-linecap="round"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
           </div>
           カメラ起動
-        </div>
-        <div id="reqBadge" style="display:none">
-          <span class="req-badge">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="10" height="10"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-            写真必須
-          </span>
         </div>
       </div>
 
@@ -3553,26 +3513,6 @@ function addInspector() {
 }
 
 // ============================================================
-// 判定選択
-// ============================================================
-
-function selectUsability(val) {
-  S.usability = S.usability === val ? null : val;
-  document.getElementById('jUsable').classList.toggle('active', S.usability === 'pass');
-  document.getElementById('jUnusable').classList.toggle('active', S.usability === 'fail');
-  // 使用否の場合は写真必須バッジ表示
-  document.getElementById('reqBadge').style.display = S.usability === 'fail' ? 'block' : 'none';
-  renderPhotoGrid();
-}
-
-function selectJudgeType(val) {
-  S.judgeType = S.judgeType === val ? null : val;
-  document.getElementById('jPermanent').classList.toggle('active', S.judgeType === '恒久判断');
-  document.getElementById('jProvisional').classList.toggle('active', S.judgeType === '暫定判断');
-  renderPhotoGrid();
-}
-
-// ============================================================
 // カメラ機能
 // ============================================================
 
@@ -3760,13 +3700,6 @@ function setPhotoJudge(field, val) {
     document.getElementById('pjsProvisional').classList.toggle('active', photo.judgeType === '暫定判断');
   }
   renderPhotoGrid();
-}
-
-function applyGlobalJudgeToAllPhotos() {
-  S.photos.forEach(p => { p.usability = S.usability; p.judgeType = S.judgeType; });
-  closePhotoJudge();
-  renderPhotoGrid();
-  showToast('全写真に判定を適用しました', 'success');
 }
 
 // ============================================================
@@ -4052,47 +3985,78 @@ async function saveAnnotation() {
 }
 
 // ============================================================
+// 写真判定から総合結果を導出
+// ============================================================
+
+function deriveOverallResult() {
+  const vals = S.photos.map(p => p.usability).filter(Boolean);
+  if (!vals.length) return null;
+  if (vals.includes('fail')) return 'fail';
+  return 'pass';
+}
+
+function deriveOverallJudgeType() {
+  const vals = S.photos.map(p => p.judgeType).filter(Boolean);
+  if (!vals.length) return null;
+  if (vals.includes('暫定判断')) return '暫定判断';
+  return '恒久判断';
+}
+
+// ============================================================
 // 保存確認ボトムシート
 // ============================================================
 
 function showSaveConfirm() {
   const productName = document.getElementById('productInput').value.trim();
 
-  // バリデーション（保存前と同じ）
   if (!S.selectedMfr)  { showToast('メーカーを選択してください','error');   scrollToCard('mfr-card'); return; }
   if (!productName)     { showToast('製品名を入力してください','error');      return; }
   if (!S.selectedInsp) { showToast('確認者を選択してください','error');      return; }
-  if (!S.usability)    { showToast('使用可否を選択してください','error');    return; }
-  if (!S.judgeType)    { showToast('判断区分を選択してください','error');    return; }
-  if (S.usability === 'fail' && S.photos.length === 0) {
-    showToast('使用否の場合は写真が必須です','error'); return;
-  }
 
   const mfr  = MANUFACTURERS.find(m => m.id === S.selectedMfr);
   const insp = getInspectors().find(i => i.id === S.selectedInsp);
 
-  const usabilityBadge = S.usability === 'pass'
-    ? `<span class="sc-badge pass">✓ 使用可</span>`
-    : `<span class="sc-badge fail">✕ 使用否</span>`;
+  const derived      = deriveOverallResult();
+  const derivedJudge = deriveOverallJudgeType();
 
-  const judgeBadge = S.judgeType === '恒久判断'
+  const resultBadge = derived === 'pass'
+    ? `<span class="sc-badge pass">✓ 使用可</span>`
+    : derived === 'fail'
+    ? `<span class="sc-badge fail">✕ 使用否</span>`
+    : `<span class="sc-badge" style="background:var(--surface-2);color:var(--text-2)">未設定</span>`;
+
+  const judgeBadge = derivedJudge === '恒久判断'
     ? `<span class="sc-badge perm">● 恒久判断</span>`
-    : `<span class="sc-badge prov">● 暫定判断</span>`;
+    : derivedJudge === '暫定判断'
+    ? `<span class="sc-badge prov">● 暫定判断</span>`
+    : '';
+
+  // 写真判定サマリー
+  const passCount = S.photos.filter(p => p.usability === 'pass').length;
+  const failCount = S.photos.filter(p => p.usability === 'fail').length;
+  const noneCount = S.photos.filter(p => !p.usability).length;
+  const photoSummaryParts = [];
+  if (passCount) photoSummaryParts.push(`使用可 ${passCount}枚`);
+  if (failCount) photoSummaryParts.push(`使用否 ${failCount}枚`);
+  if (noneCount) photoSummaryParts.push(`未設定 ${noneCount}枚`);
 
   const rows = [
-    { lbl: 'メーカー',   val: mfr  ? mfr.name  : '—' },
-    { lbl: '製品名',     val: productName },
-    { lbl: '確認者',     val: insp ? insp.name : '—' },
-    { lbl: '使用可否',   html: usabilityBadge },
-    { lbl: '判断区分',   html: judgeBadge },
+    { lbl: 'メーカー', val: mfr  ? mfr.name  : '—' },
+    { lbl: '製品名',   val: productName },
+    { lbl: '確認者',   val: insp ? insp.name : '—' },
   ];
 
+  if (S.photos.length) {
+    rows.push({
+      lbl: '写真判定',
+      html: `<span class="sc-val">${S.photos.length}枚 ／ ${photoSummaryParts.join('・') || '未設定'}</span>`
+    });
+  }
+  if (derived) {
+    rows.push({ lbl: '総合判定', html: resultBadge + (judgeBadge ? '&nbsp;' + judgeBadge : '') });
+  }
   if (S.defects.length) {
     rows.push({ lbl: '不良内容', val: S.defects.join('、') });
-  }
-  if (S.photos.length) {
-    rows.push({ lbl: '写真',
-      html: `<span class="sc-val" style="color:var(--primary)">${S.photos.length}枚</span>` });
   }
 
   document.getElementById('scRows').innerHTML = rows.map(r => `
@@ -4124,17 +4088,14 @@ async function saveInspection() {
   if (!S.selectedMfr)   { showToast('メーカーを選択してください','error'); scrollToCard('mfr-card'); return; }
   if (!productName)      { showToast('製品名を入力してください','error'); return; }
   if (!S.selectedInsp)  { showToast('確認者を選択してください','error'); return; }
-  if (!S.usability)      { showToast('使用可否を選択してください','error'); return; }
-  if (!S.judgeType)      { showToast('判断区分を選択してください','error'); return; }
-  if (S.usability === 'fail' && S.photos.length === 0) {
-    showToast('使用否の場合は写真が必須です','error');
-    return;
-  }
 
   const mfr  = MANUFACTURERS.find(m => m.id === S.selectedMfr);
   const insp = getInspectors().find(i => i.id === S.selectedInsp);
 
-  // 写真を Storage にアップロード
+  const overallResult    = deriveOverallResult();
+  const overallJudgeType = deriveOverallJudgeType();
+
+  // 写真を圧縮保存
   showToast('保存中...','default');
   const uploadedPhotos = await Promise.all(S.photos.map(p => uploadPhoto(p.url)));
 
@@ -4145,8 +4106,8 @@ async function saveInspection() {
     productName,
     inspectorId:      S.selectedInsp,
     inspectorName:    insp ? insp.name : '不明',
-    result:    S.usability,
-    judgeType: S.judgeType,
+    result:    overallResult || 'review',
+    judgeType: overallJudgeType,
     defects:   [...S.defects],
     comment:   '',
     photos:    uploadedPhotos,
@@ -4161,8 +4122,9 @@ async function saveInspection() {
   const ph = load('products', SAMPLE_PRODUCTS);
   save('products', [productName, ...ph.filter(p => p !== productName)].slice(0, 30));
 
-  const lbls = { pass:'使用可', fail:'使用否' };
-  showToast(`保存しました（${lbls[S.usability] || S.usability} / ${S.judgeType}）`, 'success');
+  const lbls = { pass:'使用可', fail:'使用否', review:'未判定' };
+  const judgeStr = overallJudgeType ? ` / ${overallJudgeType}` : '';
+  showToast(`保存しました（${lbls[overallResult] || '未判定'}${judgeStr}）`, 'success');
   resetForm();
 }
 
@@ -4184,10 +4146,6 @@ function resetForm() {
   renderDefects();
   renderHistChips();
   renderPhotoGrid();
-  ['jUsable','jUnusable','jPermanent','jProvisional'].forEach(id => {
-    document.getElementById(id).classList.remove('active');
-  });
-  document.getElementById('reqBadge').style.display = 'none';
   window.scrollTo({top:0, behavior:'smooth'});
 }
 
@@ -4964,12 +4922,6 @@ init();
     <div style="display:flex;gap:9px;margin-top:18px">
       <button class="m-btn cancel" onclick="closePhotoJudge()">閉じる</button>
       <button class="m-btn ok" onclick="closePhotoJudge()">確定</button>
-    </div>
-    <div style="margin-top:10px;text-align:center">
-      <button onclick="applyGlobalJudgeToAllPhotos()" style="font-size:12px;color:var(--text-3);font-weight:600;background:none;border:none;cursor:pointer;padding:4px 8px;border-radius:8px;transition:color .15s">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="11" height="11" stroke-linecap="round" style="vertical-align:middle;margin-right:3px"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-        全写真に判定ページの設定を適用
-      </button>
     </div>
   </div>
 </div>
