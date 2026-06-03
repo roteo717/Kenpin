@@ -2324,7 +2324,7 @@ function getRecentMfrs() {
   for (const insp of sorted) {
     if (!seen.includes(insp.manufacturerId)) {
       seen.push(insp.manufacturerId);
-      if (seen.length >= 3) break;
+      if (seen.length >= 5) break;
     }
   }
   return seen.map(id => allMfrs.find(m => m.id === id)).filter(Boolean);
@@ -2565,13 +2565,11 @@ function renderMfrResults(q) {
     // ③ すべてのメーカー表示（標準＋カスタム）
     const customMfrs = load('customMfrs', []);
     const allMfrs = [...ALL_MANUFACTURERS, ...customMfrs];
-    const chevUp = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="12" height="12" stroke-linecap="round"><polyline points="18 15 12 9 6 15"/></svg>`;
-    html += `<div class="mfr-sec-hdr" style="display:flex;align-items:center;justify-content:space-between">
+    html += `<div class="mfr-sec-hdr" style="display:flex;align-items:center;justify-content:space-between;">
       <span>すべてのメーカー（${allMfrs.length}件）</span>
-      <button onclick="hideAllMfr()" style="display:flex;align-items:center;gap:3px;font-size:12px;font-weight:700;color:var(--primary);background:none;border:none;cursor:pointer;padding:0">
-        閉じる ${chevUp}
-      </button>
+      <button onclick="hideAllMfr()" style="display:flex;align-items:center;gap:3px;font-size:13px;font-weight:600;color:var(--primary);background:none;border:none;cursor:pointer;padding:0;line-height:1;">閉じる <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="13" height="13" stroke-linecap="round"><polyline points="18 15 12 9 6 15"/></svg></button>
     </div>`;
+    html += allMfrs.map(m => {
       const sel = S.selectedMfr === m.id;
       return `<div class="mfr-result-item${sel ? ' selected-item' : ''}" onclick="pickMfrFromSearch('${m.id}')">
         <div class="mfr-result-icon">
@@ -2609,7 +2607,8 @@ function showAllMfr() {
 /** すべてのメーカーリストを閉じる */
 function hideAllMfr() {
   S.showAllMfr = false;
-  renderMfrResults('');
+  const inp = document.getElementById('mfrOverlayInput');
+  renderMfrResults(inp ? inp.value : '');
 }
 
 /** 未登録メーカーを新規登録して即選択 */
