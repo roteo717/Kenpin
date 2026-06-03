@@ -1338,12 +1338,6 @@ a{color:inherit;text-decoration:none}
 .nav-item.active{color:var(--primary)}
 .nav-item svg{width:23px;height:23px;stroke-width:1.8}
 .nav-icon-wrap{position:relative}
-.nav-item.active .nav-icon-wrap::before{
-  content:'';position:absolute;
-  width:36px;height:36px;background:var(--primary-dim);
-  border-radius:50%;top:50%;left:50%;
-  transform:translate(-50%,-50%);z-index:-1;
-}
 
 /* =====================================================
    トースト
@@ -2373,10 +2367,37 @@ function selectMfr(id) {
 }
 
 // ============================================================
+// スクロールロック（オーバーレイ表示中に背面スクロールを防止）
+// ============================================================
+let _overlayScrollY = 0;
+let _overlayCount   = 0;
+
+function _lockScroll() {
+  if (++_overlayCount > 1) return;
+  _overlayScrollY = window.scrollY;
+  document.body.style.overflow = 'hidden';
+  document.body.style.position = 'fixed';
+  document.body.style.top      = `-${_overlayScrollY}px`;
+  document.body.style.left     = '0';
+  document.body.style.right    = '0';
+}
+
+function _unlockScroll() {
+  if (--_overlayCount > 0) return;
+  document.body.style.overflow = '';
+  document.body.style.position = '';
+  document.body.style.top      = '';
+  document.body.style.left     = '';
+  document.body.style.right    = '';
+  window.scrollTo(0, _overlayScrollY);
+}
+
+// ============================================================
 // メーカー検索オーバーレイ
 // ============================================================
 
 function openMfrSearch() {
+  _lockScroll();
   S.showAllMfr = false;
   const overlay = document.getElementById('mfrOverlay');
   overlay.classList.add('open');
@@ -2390,6 +2411,7 @@ function openMfrSearch() {
 }
 
 function closeMfrSearch() {
+  _unlockScroll();
   document.getElementById('mfrOverlay').classList.remove('open');
 }
 
@@ -2513,6 +2535,17 @@ function renderMfrResults(q) {
   const checkIcon  = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" width="16" height="16" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>`;
   const chevRight  = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="14" height="14" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg>`;
 
+  // 検索文字列をハイライトするヘルパー
+  const hl = text => {
+    if (!raw) return text;
+    try {
+      return text.replace(
+        new RegExp(`(${raw.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')})`, 'gi'),
+        m => `<span style="color:var(--primary);font-weight:700">${m}</span>`
+      );
+    } catch(e) { return text; }
+  };
+
   // 最近の選択（最大5件）を取得 → クエリでフィルタリング
   const recent = getRecentMfrs();
   const filteredRecent = norm
@@ -2534,7 +2567,7 @@ function renderMfrResults(q) {
     html += filteredRecent.map(m =>
       `<div class="mfr-hist-row" onclick="pickMfrFromSearch('${m.id}')">
         <span class="mfr-hist-icon">${clockIcon}</span>
-        <span class="mfr-hist-name">${m.jaName || m.name}</span>
+        <span class="mfr-hist-name">${hl(m.jaName || m.name)}</span>
       </div>`
     ).join('');
   }
@@ -2561,7 +2594,7 @@ function renderMfrResults(q) {
             <span style="color:var(--primary);display:flex">${searchIcon}</span>
           </div>
           <div class="mfr-result-info">
-            <div class="mfr-result-name">${m.jaName || m.name}</div>
+            <div class="mfr-result-name">${hl(m.jaName || m.name)}</div>
           </div>
           ${sel ? `<span style="color:var(--primary);display:flex;align-items:center">${checkIcon}</span>` : ''}
         </div>`;
@@ -2649,6 +2682,7 @@ function renderProduct() {
 }
 
 function openProductSearch() {
+  _lockScroll();
   S.showAllProductsOverlay = false;
   const overlay = document.getElementById('productOverlay');
   overlay.classList.add('open');
@@ -2662,6 +2696,7 @@ function openProductSearch() {
 }
 
 function closeProductSearch() {
+  _unlockScroll();
   document.getElementById('productOverlay').classList.remove('open');
 }
 
