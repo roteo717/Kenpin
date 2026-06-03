@@ -2101,6 +2101,9 @@ let currentUser = null;
 let currentUserProfile = null; // { name, employeeId, color }
 // ログインタブ状態
 let loginMode = 'login'; // 'login' | 'register'
+// 履歴編集モード（削除ボタンの表示切り替え）
+let mfrHistEditMode     = false;
+let productHistEditMode = false;
 
 // ============================================================
 // 定数データ
@@ -2328,13 +2331,14 @@ function switchPage(page) {
 
 /** 最近使用したメーカーを最大5件取得 */
 function getRecentMfrs() {
-  const inspections = load('inspections', []);
-  const customMfrs  = load('customMfrs', []);
-  const allMfrs     = [...MANUFACTURERS, ...customMfrs];
+  const inspections  = load('inspections', []);
+  const customMfrs   = load('customMfrs', []);
+  const allMfrs      = [...MANUFACTURERS, ...customMfrs];
+  const hiddenMfrs   = load('hiddenMfrHistory', []);
   const seen = [];
   const sorted = [...inspections].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
   for (const insp of sorted) {
-    if (!seen.includes(insp.manufacturerId)) {
+    if (!seen.includes(insp.manufacturerId) && !hiddenMfrs.includes(insp.manufacturerId)) {
       seen.push(insp.manufacturerId);
       if (seen.length >= 5) break;
     }
@@ -2412,6 +2416,7 @@ function openMfrSearch() {
 
 function closeMfrSearch() {
   _unlockScroll();
+  mfrHistEditMode = false;
   document.getElementById('mfrOverlay').classList.remove('open');
 }
 
@@ -2563,13 +2568,28 @@ function renderMfrResults(q) {
 
   // ① 履歴セクション
   if (filteredRecent.length > 0) {
-    html += `<div class="mfr-sec-hdr">履歴（最近の選択）</div>`;
-    html += filteredRecent.map(m =>
-      `<div class="mfr-hist-row" onclick="pickMfrFromSearch('${m.id}')">
+    const editLbl = mfrHistEditMode
+      ? `<button onclick="toggleMfrHistEdit()" style="font-size:12px;font-weight:600;color:var(--primary);background:none;border:none;cursor:pointer;padding:0;line-height:1;">完了</button>`
+      : `<button onclick="toggleMfrHistEdit()" style="font-size:12px;font-weight:600;color:var(--text-3);background:none;border:none;cursor:pointer;padding:0;line-height:1;">編集</button>`;
+    html += `<div class="mfr-sec-hdr" style="display:flex;align-items:center;justify-content:space-between;">
+      <span>履歴（最近の選択）</span>${editLbl}</div>`;
+    html += filteredRecent.map(m => {
+      const safeId = m.id.replace(/'/g, "\\'");
+      const clickAttr = mfrHistEditMode ? '' : `onclick="pickMfrFromSearch('${safeId}')"`;
+      const delBtn = mfrHistEditMode
+        ? `<button onclick="event.stopPropagation();deleteMfrHistory('${safeId}')"
+             style="flex-shrink:0;width:28px;height:28px;display:flex;align-items:center;justify-content:center;
+                    background:var(--fail-dim);border-radius:50%;border:none;cursor:pointer;color:var(--fail);">
+             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="13" height="13" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+           </button>`
+        : '';
+      const rowStyle = mfrHistEditMode ? 'cursor:default;' : '';
+      return `<div class="mfr-hist-row" style="${rowStyle}" ${clickAttr}>
         <span class="mfr-hist-icon">${clockIcon}</span>
         <span class="mfr-hist-name">${hl(m.jaName || m.name)}</span>
-      </div>`
-    ).join('');
+        ${delBtn}
+      </div>`;
+    }).join('');
   }
 
   if (norm) {
@@ -2697,6 +2717,7 @@ function openProductSearch() {
 
 function closeProductSearch() {
   _unlockScroll();
+  productHistEditMode = false;
   document.getElementById('productOverlay').classList.remove('open');
 }
 
@@ -2733,7 +2754,11 @@ function renderProductResults(q) {
 
   // ① 履歴セクション
   if (filteredHist.length > 0) {
-    html += `<div class="mfr-sec-hdr">履歴（最近の選択）</div>`;
+    const editLbl = productHistEditMode
+      ? `<button onclick="toggleProductHistEdit()" style="font-size:12px;font-weight:600;color:var(--primary);background:none;border:none;cursor:pointer;padding:0;line-height:1;">完了</button>`
+      : `<button onclick="toggleProductHistEdit()" style="font-size:12px;font-weight:600;color:var(--text-3);background:none;border:none;cursor:pointer;padding:0;line-height:1;">編集</button>`;
+    html += `<div class="mfr-sec-hdr" style="display:flex;align-items:center;justify-content:space-between;">
+      <span>履歴（最近の選択）</span>${editLbl}</div>`;
     html += filteredHist.map(p => {
       const sel = S.productName === p;
       const esc = p.replace(/'/g, "\\'");
@@ -2741,10 +2766,19 @@ function renderProductResults(q) {
         ? p.replace(new RegExp(`(${raw.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')})`, 'gi'),
             m => `<span style="color:var(--primary);font-weight:700">${m}</span>`)
         : p;
-      return `<div class="mfr-hist-row${sel ? ' selected-item' : ''}" onclick="pickProductFromSearch('${esc}')">
+      const clickAttr = productHistEditMode ? '' : `onclick="pickProductFromSearch('${esc}')"`;
+      const delBtn = productHistEditMode
+        ? `<button onclick="event.stopPropagation();deleteProductHistory('${esc}')"
+             style="flex-shrink:0;width:28px;height:28px;display:flex;align-items:center;justify-content:center;
+                    background:var(--fail-dim);border-radius:50%;border:none;cursor:pointer;color:var(--fail);">
+             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="13" height="13" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+           </button>`
+        : (sel ? `<span style="color:var(--primary);display:flex;align-items:center">${checkIcon}</span>` : '');
+      const rowStyle = productHistEditMode ? 'cursor:default;' : '';
+      return `<div class="mfr-hist-row${sel && !productHistEditMode ? ' selected-item' : ''}" style="${rowStyle}" ${clickAttr}>
         <span class="mfr-hist-icon">${clockIcon}</span>
-        <span class="mfr-hist-name" style="${sel ? 'color:var(--primary)' : ''}">${disp}</span>
-        ${sel ? `<span style="color:var(--primary);display:flex;align-items:center">${checkIcon}</span>` : ''}
+        <span class="mfr-hist-name" style="${sel && !productHistEditMode ? 'color:var(--primary)' : ''}">${disp}</span>
+        ${delBtn}
       </div>`;
     }).join('');
   }
