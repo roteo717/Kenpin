@@ -222,15 +222,14 @@ a{color:inherit;text-decoration:none}
 }
 /* メーカー検索オーバーレイ */
 .mfr-overlay{
-  position:fixed;inset:0;z-index:500;
+  display:none;
+  position:fixed;top:0;bottom:0;z-index:500;
   background:var(--bg);
-  display:flex;flex-direction:column;
-  transform:translateX(100%);
-  transition:transform .28s cubic-bezier(.34,1,.64,1);
-  max-width:430px;left:50%;margin-left:-215px;
+  flex-direction:column;
+  width:430px;max-width:100vw;left:50%;margin-left:-215px;
 }
-@media(max-width:430px){.mfr-overlay{left:0;margin-left:0}}
-.mfr-overlay.open{transform:translateX(0)}
+@media(max-width:430px){.mfr-overlay{left:0;margin-left:0;width:100vw}}
+.mfr-overlay.open{display:flex;animation:fadeUp .25s ease}
 .mfr-overlay-header{
   display:flex;align-items:center;gap:8px;
   padding:10px 12px;
@@ -310,6 +309,84 @@ a{color:inherit;text-decoration:none}
 .mfr-result-chevron{
   color:var(--text-3);flex-shrink:0;
 }
+
+/* =====================================================
+   メーカー選択トリガー（ドロップダウン風ボタン）
+   ===================================================== */
+.mfr-select-trigger{
+  width:100%;margin-top:6px;
+  padding:12px 14px;
+  background:var(--surface-2);border:1.5px solid var(--border);
+  border-radius:12px;
+  text-align:left;cursor:pointer;
+  transition:border-color .15s,background .15s;
+  display:flex;align-items:center;justify-content:space-between;gap:8px;
+}
+.mfr-select-trigger:active,.mfr-select-trigger:hover{border-color:var(--primary)}
+.mfr-select-trigger.has-value{
+  border-color:var(--border);background:var(--surface);
+}
+.mfr-trigger-text{
+  flex:1;color:var(--text-3);font-size:14px;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.mfr-trigger-text.has-value{color:var(--text);font-weight:600;font-size:15px}
+.mfr-trigger-chevron{color:var(--text-3);flex-shrink:0}
+/* オーバーレイ内セクションヘッダー */
+.mfr-sec-hdr{
+  font-size:12px;font-weight:700;color:var(--text-2);letter-spacing:.3px;
+  padding:8px 16px;
+  background:var(--surface-2);border-bottom:1px solid var(--border);
+}
+/* 履歴行 */
+.mfr-hist-row{
+  display:flex;align-items:center;gap:12px;
+  padding:14px 16px;
+  background:var(--surface);border-bottom:1px solid var(--border);
+  cursor:pointer;transition:background .1s;
+}
+.mfr-hist-row:active,.mfr-hist-row:hover{background:var(--surface-2)}
+.mfr-hist-icon{
+  width:36px;height:36px;border-radius:50%;
+  background:var(--surface-2);flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;
+}
+.mfr-hist-icon svg{stroke:var(--text-3);width:17px;height:17px}
+.mfr-hist-name{flex:1;font-size:15px;color:var(--text);font-weight:700}
+/* すべて探すリンク行 */
+.mfr-all-link{
+  display:flex;align-items:center;gap:6px;
+  padding:14px 16px;
+  background:var(--surface);border-top:1px solid var(--border);
+  cursor:pointer;transition:background .1s;
+  font-size:14px;font-weight:600;color:var(--primary);
+}
+.mfr-all-link:active,.mfr-all-link:hover{background:var(--primary-dim)}
+/* ヒントテキスト */
+.mfr-hint-row{
+  padding:14px 16px;font-size:12px;color:var(--text-3);
+  background:var(--surface);text-align:center;
+}
+/* 該当なし＋登録セクション */
+.mfr-no-result-section{
+  margin:16px;
+  border:1.5px solid var(--border);
+  border-radius:14px;overflow:hidden;
+}
+.mfr-no-result-label{
+  padding:12px 16px;font-size:13px;color:var(--text-3);
+  background:var(--surface-2);border-bottom:1px solid var(--border);
+  text-align:center;
+}
+.mfr-register-btn{
+  width:100%;padding:15px 16px;
+  background:var(--surface);border:none;
+  font-size:15px;font-weight:700;color:var(--primary);
+  cursor:pointer;text-align:center;
+  display:flex;align-items:center;justify-content:center;gap:4px;
+  transition:background .15s;
+}
+.mfr-register-btn:active,.mfr-register-btn:hover{background:var(--primary-dim)}
 
 /* =====================================================
    製品名検索
@@ -1588,7 +1665,7 @@ a{color:inherit;text-decoration:none}
 
     <!-- メーカー選択 -->
     <div class="card" id="mfr-card">
-      <div class="card-head between">
+      <div class="card-head">
         <div style="display:flex;align-items:center;gap:9px">
           <div class="head-icon">
             <svg viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2" stroke-linecap="round"><path d="M3 21h18"/><path d="M9 8h1"/><path d="M9 12h1"/><path d="M9 16h1"/><path d="M14 8h1"/><path d="M14 12h1"/><path d="M14 16h1"/><rect x="2" y="3" width="20" height="18" rx="1.5"/></svg>
@@ -1596,14 +1673,16 @@ a{color:inherit;text-decoration:none}
           メーカー
           <span class="mfr-required-badge">必須</span>
         </div>
-        <button class="see-all" onclick="openMfrSearch()">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="13" height="13" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          メーカーを検索
-        </button>
       </div>
-      <!-- よく使う -->
-      <div class="mfr-section-lbl" id="mfrSectionLbl" style="display:none">よく使う</div>
-      <div class="mfr-recent-row" id="mfrRecentRow"></div>
+      <button class="mfr-select-trigger" id="mfrSelectTrigger" onclick="openMfrSearch()">
+        <span class="mfr-trigger-text" id="mfrTriggerText">メーカーを選択</span>
+        <span class="mfr-trigger-chevron">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="14" height="14" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </span>
+      </button>
+      <!-- 旧要素（互換のため保持・非表示） -->
+      <div class="mfr-section-lbl" id="mfrSectionLbl" style="display:none"></div>
+      <div class="mfr-recent-row" id="mfrRecentRow" style="display:none"></div>
     </div>
 
     <!-- 製品名入力 -->
@@ -1875,15 +1954,11 @@ a{color:inherit;text-decoration:none}
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
       </span>
       <input type="text" class="mfr-overlay-input" id="mfrOverlayInput"
-             placeholder="メーカーを検索"
+             placeholder="メーカー名を入力"
              oninput="filterMfrSearch(this.value)">
       <button class="mfr-overlay-clear" id="mfrOverlayClear" onclick="clearMfrSearch()">✕</button>
     </div>
     <button class="mfr-overlay-cancel" onclick="closeMfrSearch()">キャンセル</button>
-  </div>
-  <div class="mfr-result-header" id="mfrResultHeader">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14" stroke-linecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-    検索結果（0件）
   </div>
   <div class="mfr-result-list" id="mfrResultList"></div>
 </div>
@@ -2122,6 +2197,7 @@ const DB = {
   inspections: [],
   inspectors:  [...DEFAULT_INSPECTORS],
   products:    [...SAMPLE_PRODUCTS],
+  customMfrs:  [],
 };
 
 // dark モードだけは localStorage に保存（UI設定）
@@ -2238,9 +2314,11 @@ function switchPage(page) {
 // メーカー選択
 // ============================================================
 
-/** 最近使用したメーカーを最大3件取得 */
+/** 最近使用したメーカーを最大5件取得 */
 function getRecentMfrs() {
   const inspections = load('inspections', []);
+  const customMfrs  = load('customMfrs', []);
+  const allMfrs     = [...MANUFACTURERS, ...customMfrs];
   const seen = [];
   const sorted = [...inspections].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
   for (const insp of sorted) {
@@ -2249,43 +2327,25 @@ function getRecentMfrs() {
       if (seen.length >= 3) break;
     }
   }
-  return seen.map(id => MANUFACTURERS.find(m => m.id === id)).filter(Boolean);
+  return seen.map(id => allMfrs.find(m => m.id === id)).filter(Boolean);
 }
 
 function renderMfr() {
-  const recent = getRecentMfrs();
-  const lbl = document.getElementById('mfrSectionLbl');
+  const trigger = document.getElementById('mfrSelectTrigger');
+  const triggerText = document.getElementById('mfrTriggerText');
+  if (!trigger || !triggerText) return;
 
-  if (recent.length > 0) {
-    if (lbl) lbl.style.display = 'block';
-    document.getElementById('mfrRecentRow').innerHTML = recent.map(m => {
-      const sel = S.selectedMfr === m.id;
-      return `<button class="mfr-recent-chip ${sel ? 'selected' : ''}" onclick="selectMfr('${m.id}')">
-        ${m.name}${sel ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" width="13" height="13" stroke-linecap="round" style="margin-left:5px;vertical-align:middle"><polyline points="20 6 9 17 4 12"/></svg>' : ''}
-      </button>`;
-    }).join('');
-  } else {
-    if (lbl) lbl.style.display = 'block';
-    document.getElementById('mfrRecentRow').innerHTML = MANUFACTURERS.map(m => {
-      const sel = S.selectedMfr === m.id;
-      return `<button class="mfr-recent-chip ${sel ? 'selected' : ''}" onclick="selectMfr('${m.id}')">
-        ${m.name}${sel ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" width="13" height="13" stroke-linecap="round" style="margin-left:5px;vertical-align:middle"><polyline points="20 6 9 17 4 12"/></svg>' : ''}
-      </button>`;
-    }).join('');
-  }
-
-  // 選択済みがチップ行に無い場合は追加表示
   if (S.selectedMfr) {
-    const inRow = (recent.length > 0 ? recent : MANUFACTURERS).find(m => m.id === S.selectedMfr);
-    if (!inRow) {
-      const m = ALL_MANUFACTURERS.find(x => x.id === S.selectedMfr);
-      if (m) {
-        document.getElementById('mfrRecentRow').innerHTML =
-          `<button class="mfr-recent-chip selected" onclick="selectMfr('${m.id}')">
-            ${m.name}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" width="13" height="13" stroke-linecap="round" style="margin-left:5px;vertical-align:middle"><polyline points="20 6 9 17 4 12"/></svg>
-          </button>` + document.getElementById('mfrRecentRow').innerHTML;
-      }
-    }
+    const customMfrs = load('customMfrs', []);
+    const m = [...ALL_MANUFACTURERS, ...customMfrs].find(x => x.id === S.selectedMfr);
+    const name = m ? (m.jaName || m.name) : S.selectedMfr;
+    trigger.classList.add('has-value');
+    triggerText.classList.add('has-value');
+    triggerText.textContent = name;
+  } else {
+    trigger.classList.remove('has-value');
+    triggerText.classList.remove('has-value');
+    triggerText.textContent = 'メーカーを選択';
   }
 }
 
@@ -2299,12 +2359,14 @@ function selectMfr(id) {
 // ============================================================
 
 function openMfrSearch() {
+  S.showAllMfr = false;
   const overlay = document.getElementById('mfrOverlay');
   overlay.classList.add('open');
   // 少し待ってからフォーカス（アニメーション後）
   setTimeout(() => {
     const inp = document.getElementById('mfrOverlayInput');
     if (inp) { inp.value = ''; inp.focus(); }
+    document.getElementById('mfrOverlayClear').style.display = 'none';
   }, 50);
   renderMfrResults('');
 }
@@ -2320,6 +2382,98 @@ function clearMfrSearch() {
   renderMfrResults('');
 }
 
+/** ひらがな → カタカナ変換 */
+function _hiraToKata(s) {
+  return s.replace(/[ぁ-ゔ]/g, c => String.fromCharCode(c.charCodeAt(0) + 0x60));
+}
+/** カタカナ → ひらがな変換 */
+function _kataToHira(s) {
+  return s.replace(/[ァ-ヴ]/g, c => String.fromCharCode(c.charCodeAt(0) - 0x60));
+}
+
+/**
+ * 入力正規化：全角英数→半角、半角カタカナ→全角カタカナ（濁点合成あり）
+ * 例: "ＬＩＸＩＬ" → "LIXIL"、"ﾊﾟﾅｿﾆｯｸ" → "パナソニック"
+ */
+function _normalizeWidth(s) {
+  // 全角英数記号 → 半角（！-～ = U+FF01-FF5E → U+0021-007E）
+  s = s.replace(/[！-～]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0));
+  // 全角スペース → 半角スペース
+  s = s.replace(/　/g, ' ');
+  // 半角カタカナ → 全角カタカナ（濁点・半濁点の結合も処理）
+  const hkMap = {
+    'ｦ':'ヲ','ｧ':'ァ','ｨ':'ィ','ｩ':'ゥ','ｪ':'ェ','ｫ':'ォ',
+    'ｬ':'ャ','ｭ':'ュ','ｮ':'ョ','ｯ':'ッ','ｰ':'ー',
+    'ｱ':'ア','ｲ':'イ','ｳ':'ウ','ｴ':'エ','ｵ':'オ',
+    'ｶ':'カ','ｷ':'キ','ｸ':'ク','ｹ':'ケ','ｺ':'コ',
+    'ｻ':'サ','ｼ':'シ','ｽ':'ス','ｾ':'セ','ｿ':'ソ',
+    'ﾀ':'タ','ﾁ':'チ','ﾂ':'ツ','ﾃ':'テ','ﾄ':'ト',
+    'ﾅ':'ナ','ﾆ':'ニ','ﾇ':'ヌ','ﾈ':'ネ','ﾉ':'ノ',
+    'ﾊ':'ハ','ﾋ':'ヒ','ﾌ':'フ','ﾍ':'ヘ','ﾎ':'ホ',
+    'ﾏ':'マ','ﾐ':'ミ','ﾑ':'ム','ﾒ':'メ','ﾓ':'モ',
+    'ﾔ':'ヤ','ﾕ':'ユ','ﾖ':'ヨ',
+    'ﾗ':'ラ','ﾘ':'リ','ﾙ':'ル','ﾚ':'レ','ﾛ':'ロ',
+    'ﾜ':'ワ','ﾝ':'ン',
+  };
+  const dakuMap = {
+    'カ':'ガ','キ':'ギ','ク':'グ','ケ':'ゲ','コ':'ゴ',
+    'サ':'ザ','シ':'ジ','ス':'ズ','セ':'ゼ','ソ':'ゾ',
+    'タ':'ダ','チ':'ヂ','ツ':'ヅ','テ':'デ','ト':'ド',
+    'ハ':'バ','ヒ':'ビ','フ':'ブ','ヘ':'ベ','ホ':'ボ',
+    'ウ':'ヴ',
+  };
+  const handakuMap = {
+    'ハ':'パ','ヒ':'ピ','フ':'プ','ヘ':'ペ','ホ':'ポ',
+  };
+  let out = '';
+  for (let i = 0; i < s.length; i++) {
+    const c = s[i], next = s[i + 1], zk = hkMap[c];
+    if (zk) {
+      if      (next === 'ﾞ' && dakuMap[zk])   { out += dakuMap[zk];   i++; }
+      else if (next === 'ﾟ' && handakuMap[zk]) { out += handakuMap[zk]; i++; }
+      else                                      { out += zk; }
+    } else { out += c; }
+  }
+  return out;
+}
+
+/**
+ * メーカー横断検索テキスト
+ * カタカナ・ひらがな・英語（ローマ字）を含む検索用文字列
+ * 例：パナソニックは「ぱ」や「p」でもヒット
+ */
+const MFR_SEARCH_TEXT = {
+  panasonic:   'パナソニック ぱなそにっく panasonic',
+  noritz:      'ノーリツ のーりつ noritz',
+  rinnai:      'リンナイ りんない rinnai',
+  chofu:       'チョウフ ちょうふ 長府 chofu',
+  purpose:     'パーパス ぱーぱす purpose',
+  toto:        'トート とーとー TOTO toto',
+  lixil:       'リクシル りくしる LIXIL lixil',
+  paloma:      'パロマ ぱろま paloma',
+  corona:      'コロナ ころな corona',
+  hitachi:     'ヒタチ ひたち 日立 hitachi',
+  mitsubishi:  'ミツビシデンキ みつびしでんき 三菱電機 mitsubishi',
+  daikin:      'ダイキン だいきん daikin',
+  fujitsu:     'フジツウゼネラル ふじつうぜねらる 富士通 fujitsu',
+  toshiba:     'トシバ としば 東芝 toshiba',
+  sharp:       'シャープ しゃーぷ sharp',
+  yamaha:      'ヤマハリビング やまはりびんぐ yamaha',
+  takagi:      'タカギ たかぎ takagi',
+  cleanup:     'クリナップ くりなっぷ cleanup',
+  takara:      'タカラスタンダード たからすたんだーど takara',
+  toclas:      'トクラス とくらす toclas',
+  toyo:        'トーヨーキッチン とーよーきっちん toyo',
+  woodone:     'ウッドワン うっどわん woodone',
+  daiken:      'ダイケン だいけん 大建 daiken',
+  eidai:       'エイダイ えいだい 永大 eidai',
+  sanki:       'サンキ さんき 三機 sanki',
+  inax:        'イナックス いなっくす INAX inax',
+  aisin:       'アイシン あいしん aisin',
+  stiebel:     'スティーベルエルトロン すてぃーべるえるとろん stiebel',
+  mitsubishi2: 'ミツビシジュウコウ みつびしじゅうこう 三菱重工 mitsubishi',
+};
+
 function filterMfrSearch(q) {
   const clearBtn = document.getElementById('mfrOverlayClear');
   if (clearBtn) clearBtn.style.display = q ? 'flex' : 'none';
@@ -2327,40 +2481,155 @@ function filterMfrSearch(q) {
 }
 
 function renderMfrResults(q) {
-  const query = q.trim().toLowerCase();
-  const list = query
-    ? ALL_MANUFACTURERS.filter(m =>
-        m.name.toLowerCase().includes(query) ||
-        (m.jaName || '').includes(query))
-    : ALL_MANUFACTURERS;
+  const raw   = q.trim();
+  const norm  = _normalizeWidth(raw);   // 全角→半角、半角カナ→全角カナ
+  const lower = norm.toLowerCase();     // 英字を小文字統一
+  const kataQ = _hiraToKata(norm);      // ひらがな→カタカナ
+  const hiraQ = _kataToHira(norm);      // カタカナ→ひらがな
 
-  const header = document.getElementById('mfrResultHeader');
   const container = document.getElementById('mfrResultList');
-
-  if (header) {
-    header.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14" stroke-linecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-    検索結果（${list.length}件）`;
-  }
-
   if (!container) return;
 
-  const buildingIcon = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 21h18"/><path d="M9 8h1"/><path d="M9 12h1"/><path d="M9 16h1"/><path d="M14 8h1"/><path d="M14 12h1"/><path d="M14 16h1"/><rect x="2" y="3" width="20" height="18" rx="1.5"/></svg>`;
-  const chevron = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="16" height="16" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg>`;
+  const clockIcon = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>`;
+  const searchIcon = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>`;
+  const checkIcon  = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" width="16" height="16" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>`;
+  const chevRight  = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="14" height="14" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg>`;
 
-  container.innerHTML = list.map(m => {
-    const sel = S.selectedMfr === m.id;
-    return `<div class="mfr-result-item${sel ? ' selected-item' : ''}" onclick="pickMfrFromSearch('${m.id}')">
-      <div class="mfr-result-icon">${buildingIcon}</div>
-      <div class="mfr-result-info">
-        <div class="mfr-result-name">${m.jaName || m.name}</div>
-      </div>
-      <span class="mfr-result-chevron">${chevron}</span>
+  // 最近の選択（最大5件）を取得 → クエリでフィルタリング
+  const recent = getRecentMfrs();
+  const filteredRecent = norm
+    ? recent.filter(m => {
+        const st = MFR_SEARCH_TEXT[m.id] || '';
+        return m.name.toLowerCase().includes(lower)         ||
+               (m.jaName||'').toLowerCase().includes(lower) ||
+               m.name.includes(kataQ) || (m.jaName||'').includes(kataQ) ||
+               m.name.includes(hiraQ) || (m.jaName||'').includes(hiraQ) ||
+               st.includes(lower) || st.includes(kataQ)    || st.includes(hiraQ);
+      })
+    : recent;
+
+  let html = '';
+
+  // ① 履歴セクション
+  if (filteredRecent.length > 0) {
+    html += `<div class="mfr-sec-hdr">履歴（最近の選択）</div>`;
+    html += filteredRecent.map(m =>
+      `<div class="mfr-hist-row" onclick="pickMfrFromSearch('${m.id}')">
+        <span class="mfr-hist-icon">${clockIcon}</span>
+        <span class="mfr-hist-name">${m.jaName || m.name}</span>
+      </div>`
+    ).join('');
+  }
+
+  if (norm) {
+    // ② 入力あり → 検索候補セクション（標準＋カスタム）
+    const customMfrs = load('customMfrs', []);
+    const allSearchable = [...ALL_MANUFACTURERS, ...customMfrs];
+    const candidates = allSearchable.filter(m => {
+      const st = MFR_SEARCH_TEXT[m.id] || '';
+      return m.name.toLowerCase().includes(lower)         ||
+             (m.jaName||'').toLowerCase().includes(lower) ||
+             m.name.includes(kataQ) || (m.jaName||'').includes(kataQ) ||
+             m.name.includes(hiraQ) || (m.jaName||'').includes(hiraQ) ||
+             st.includes(lower) || st.includes(kataQ)    || st.includes(hiraQ);
+    });
+
+    if (candidates.length > 0) {
+      html += `<div class="mfr-sec-hdr">検索候補</div>`;
+      html += candidates.map(m => {
+        const sel = S.selectedMfr === m.id;
+        return `<div class="mfr-result-item${sel ? ' selected-item' : ''}" onclick="pickMfrFromSearch('${m.id}')">
+          <div class="mfr-result-icon">
+            <span style="color:var(--primary);display:flex">${searchIcon}</span>
+          </div>
+          <div class="mfr-result-info">
+            <div class="mfr-result-name">${m.jaName || m.name}</div>
+          </div>
+          ${sel ? `<span style="color:var(--primary);display:flex;align-items:center">${checkIcon}</span>` : ''}
+        </div>`;
+      }).join('');
+    } else {
+      // ヒットなし → 登録オプション表示
+      const safeId  = raw.replace(/'/g, "\\'");
+      const safeTxt = raw.replace(/</g,'&lt;').replace(/>/g,'&gt;');
+      html += `<div class="mfr-no-result-section">
+        <div class="mfr-no-result-label">該当なし</div>
+        <button class="mfr-register-btn" onclick="registerCustomMfr('${safeId}')">
+          ＋「${safeTxt}」を登録
+        </button>
+      </div>`;
+    }
+    html += `<div class="mfr-hint-row">※ 文字を入力すると検索候補を表示します</div>`;
+
+  } else if (S.showAllMfr) {
+    // ③ すべてのメーカー表示（標準＋カスタム）
+    const customMfrs = load('customMfrs', []);
+    const allMfrs = [...ALL_MANUFACTURERS, ...customMfrs];
+    const chevUp = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="12" height="12" stroke-linecap="round"><polyline points="18 15 12 9 6 15"/></svg>`;
+    html += `<div class="mfr-sec-hdr" style="display:flex;align-items:center;justify-content:space-between">
+      <span>すべてのメーカー（${allMfrs.length}件）</span>
+      <button onclick="hideAllMfr()" style="display:flex;align-items:center;gap:3px;font-size:12px;font-weight:700;color:var(--primary);background:none;border:none;cursor:pointer;padding:0">
+        閉じる ${chevUp}
+      </button>
     </div>`;
-  }).join('');
+      const sel = S.selectedMfr === m.id;
+      return `<div class="mfr-result-item${sel ? ' selected-item' : ''}" onclick="pickMfrFromSearch('${m.id}')">
+        <div class="mfr-result-icon">
+          <span style="color:var(--primary);display:flex">${searchIcon}</span>
+        </div>
+        <div class="mfr-result-info">
+          <div class="mfr-result-name">${m.jaName || m.name}</div>
+        </div>
+        ${sel ? `<span style="color:var(--primary);display:flex;align-items:center">${checkIcon}</span>` : ''}
+      </div>`;
+    }).join('');
+  } else {
+    // ④ 入力なし・すべて非表示 → 「すべてのメーカーから探す」リンク
+    html += `<div class="mfr-all-link" onclick="showAllMfr()">
+      すべてのメーカーから探す ${chevRight}
+    </div>`;
+  }
+
+  container.innerHTML = html;
 }
 
 function pickMfrFromSearch(id) {
   S.selectedMfr = S.selectedMfr === id ? null : id;
+  S.showAllMfr = false;
+  closeMfrSearch();
+  renderMfr();
+}
+
+/** すべてのメーカーリストを表示 */
+function showAllMfr() {
+  S.showAllMfr = true;
+  renderMfrResults('');
+}
+
+/** すべてのメーカーリストを閉じる */
+function hideAllMfr() {
+  S.showAllMfr = false;
+  renderMfrResults('');
+}
+
+/** 未登録メーカーを新規登録して即選択 */
+function registerCustomMfr(name) {
+  const trimmed = name.trim();
+  if (!trimmed) return;
+
+  // IDは「custom_」+正規化した名前
+  const id = 'custom_' + trimmed.replace(/\s+/g, '_');
+  const newMfr = { id, name: trimmed, jaName: trimmed, isCustom: true };
+
+  // 重複チェックして保存
+  const customs = load('customMfrs', []);
+  if (!customs.find(m => m.id === id)) {
+    customs.push(newMfr);
+    save('customMfrs', customs);
+  }
+
+  S.selectedMfr = id;
+  S.showAllMfr  = false;
   closeMfrSearch();
   renderMfr();
 }
