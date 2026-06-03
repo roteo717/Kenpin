@@ -1687,29 +1687,26 @@ a{color:inherit;text-decoration:none}
 
     <!-- 製品名入力 -->
     <div class="card">
-      <div class="card-head between">
+      <div class="card-head">
         <div style="display:flex;align-items:center;gap:9px">
           <div class="head-icon">
             <svg viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
           </div>
           製品名
         </div>
-        <button class="see-all" id="productToggleBtn" onclick="toggleAllProducts()">
-          履歴をすべて見る
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="13" height="13" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
-        </button>
       </div>
-      <div class="search-wrap">
-        <input type="text" class="search-input" id="productInput" placeholder="製品名を入力"
-          onfocus="onProductFocus()"
-          oninput="onProductInput(this.value)"
-          onblur="setTimeout(hideSuggest,200)">
-        <!-- クリアボタン -->
-        <button class="input-clear-btn" id="productClearBtn" onclick="clearProductInput()" title="クリア">✕</button>
-        <div class="suggest-dd" id="suggestDd" style="display:none"></div>
-      </div>
-      <div class="hist-label" id="histLabel" style="display:none">最近使用した製品名</div>
-      <div class="hist-chips" id="histChips" style="display:none"></div>
+      <button class="mfr-select-trigger" id="productSelectTrigger" onclick="openProductSearch()">
+        <span class="mfr-trigger-text" id="productTriggerText">製品名を選択</span>
+        <span class="mfr-trigger-chevron">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="14" height="14" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </span>
+      </button>
+      <!-- 互換のため非表示で保持（OCR等が参照） -->
+      <input type="text" id="productInput" style="display:none">
+      <button id="productClearBtn" style="display:none" onclick="clearProductInput()"></button>
+      <div id="suggestDd" style="display:none"></div>
+      <div id="histLabel" style="display:none"></div>
+      <div id="histChips" style="display:none"></div>
     </div>
 
     <!-- 不良内容 -->
@@ -1963,6 +1960,26 @@ a{color:inherit;text-decoration:none}
   <div class="mfr-result-list" id="mfrResultList"></div>
 </div>
 
+<!-- 製品名検索オーバーレイ -->
+<div class="mfr-overlay" id="productOverlay">
+  <div class="mfr-overlay-header">
+    <button class="mfr-overlay-back" onclick="closeProductSearch()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="var(--text-2)" stroke-width="2.5" width="20" height="20" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg>
+    </button>
+    <div class="mfr-overlay-search-wrap">
+      <span class="mfr-overlay-search-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      </span>
+      <input type="text" class="mfr-overlay-input" id="productOverlayInput"
+             placeholder="製品名を入力"
+             oninput="filterProductSearch(this.value)">
+      <button class="mfr-overlay-clear" id="productOverlayClear" onclick="clearProductSearch()">✕</button>
+    </div>
+    <button class="mfr-overlay-cancel" onclick="closeProductSearch()">キャンセル</button>
+  </div>
+  <div class="mfr-result-list" id="productResultList"></div>
+</div>
+
 <!-- PHOTO VIEWER -->
 <div class="photo-viewer-bg" id="photoViewerBg" onclick="if(event.target===this)closePhotoViewer()">
   <button class="photo-viewer-close" onclick="closePhotoViewer()">
@@ -2185,6 +2202,7 @@ const S = {
   showAllMfr: false,
   showAllDefects: false,
   showAllProducts: false,
+  showAllProductsOverlay: false,
   histFilter: 'all',
   histSearch: '',
 };
@@ -2611,6 +2629,123 @@ function hideAllMfr() {
   renderMfrResults(inp ? inp.value : '');
 }
 
+// ============================================================
+// 製品名検索オーバーレイ
+// ============================================================
+
+function renderProduct() {
+  const trigger     = document.getElementById('productSelectTrigger');
+  const triggerText = document.getElementById('productTriggerText');
+  if (!trigger || !triggerText) return;
+  if (S.productName) {
+    trigger.classList.add('has-value');
+    triggerText.classList.add('has-value');
+    triggerText.textContent = S.productName;
+  } else {
+    trigger.classList.remove('has-value');
+    triggerText.classList.remove('has-value');
+    triggerText.textContent = '製品名を選択';
+  }
+}
+
+function openProductSearch() {
+  S.showAllProductsOverlay = false;
+  const overlay = document.getElementById('productOverlay');
+  overlay.classList.add('open');
+  setTimeout(() => {
+    const inp = document.getElementById('productOverlayInput');
+    if (inp) { inp.value = ''; inp.focus(); }
+    const clr = document.getElementById('productOverlayClear');
+    if (clr) clr.style.display = 'none';
+  }, 50);
+  renderProductResults('');
+}
+
+function closeProductSearch() {
+  document.getElementById('productOverlay').classList.remove('open');
+}
+
+function clearProductSearch() {
+  const inp = document.getElementById('productOverlayInput');
+  if (inp) { inp.value = ''; inp.focus(); }
+  const clr = document.getElementById('productOverlayClear');
+  if (clr) clr.style.display = 'none';
+  renderProductResults('');
+}
+
+function filterProductSearch(q) {
+  const clr = document.getElementById('productOverlayClear');
+  if (clr) clr.style.display = q ? 'flex' : 'none';
+  renderProductResults(q);
+}
+
+function renderProductResults(q) {
+  const raw     = q.trim();
+  const lower   = raw.toLowerCase();
+  const container = document.getElementById('productResultList');
+  if (!container) return;
+
+  const clockIcon  = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>`;
+  const checkIcon  = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" width="16" height="16" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>`;
+  const chevRight  = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="14" height="14" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg>`;
+
+  const history = load('products', SAMPLE_PRODUCTS);
+  const filteredHist = raw
+    ? history.filter(p => p.toLowerCase().includes(lower))
+    : history;
+
+  let html = '';
+
+  // ① 履歴セクション
+  if (filteredHist.length > 0) {
+    html += `<div class="mfr-sec-hdr">履歴（最近の選択）</div>`;
+    html += filteredHist.map(p => {
+      const sel = S.productName === p;
+      const esc = p.replace(/'/g, "\\'");
+      const disp = raw
+        ? p.replace(new RegExp(`(${raw.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')})`, 'gi'),
+            m => `<span style="color:var(--primary);font-weight:700">${m}</span>`)
+        : p;
+      return `<div class="mfr-hist-row${sel ? ' selected-item' : ''}" onclick="pickProductFromSearch('${esc}')">
+        <span class="mfr-hist-icon">${clockIcon}</span>
+        <span class="mfr-hist-name" style="${sel ? 'color:var(--primary)' : ''}">${disp}</span>
+        ${sel ? `<span style="color:var(--primary);display:flex;align-items:center">${checkIcon}</span>` : ''}
+      </div>`;
+    }).join('');
+  }
+
+  if (raw) {
+    // ② 入力あり → 入力値をそのまま使う「選択」ボタン
+    const exactMatch = history.some(p => p.toLowerCase() === lower);
+    if (!exactMatch) {
+      const safeEsc = raw.replace(/'/g, "\\'");
+      const safeTxt = raw.replace(/</g,'&lt;').replace(/>/g,'&gt;');
+      html += `<div class="mfr-no-result-section">
+        <button class="mfr-register-btn" onclick="pickProductFromSearch('${safeEsc}')">
+          ＋「${safeTxt}」を使用
+        </button>
+      </div>`;
+    }
+    if (!filteredHist.length) {
+      html += `<div class="mfr-hint-row">履歴に該当なし — 上のボタンで直接使用できます</div>`;
+    }
+  } else if (!history.length) {
+    html += `<div class="mfr-hint-row">履歴はまだありません。製品名を入力してください</div>`;
+  } else {
+    html += `<div class="mfr-all-link" style="pointer-events:none;opacity:0;height:1px"></div>`;
+  }
+
+  container.innerHTML = html;
+}
+
+function pickProductFromSearch(name) {
+  S.productName = name;
+  const input = document.getElementById('productInput');
+  if (input) input.value = name;
+  closeProductSearch();
+  renderProduct();
+}
+
 /** 未登録メーカーを新規登録して即選択 */
 function registerCustomMfr(name) {
   const trimmed = name.trim();
@@ -2639,18 +2774,7 @@ function toggleAllMfr() { /* 旧関数 - 新デザインでは未使用 */ }
 // 製品名入力 / サジェスト
 // ============================================================
 
-function toggleAllProducts() {
-  S.showAllProducts = !S.showAllProducts;
-  const btn   = document.getElementById('productToggleBtn');
-  const label = document.getElementById('histLabel');
-  const chips = document.getElementById('histChips');
-  btn.innerHTML = S.showAllProducts
-    ? `閉じる <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="13" height="13" stroke-linecap="round"><polyline points="18 15 12 9 6 15"/></svg>`
-    : `履歴をすべて見る <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="13" height="13" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>`;
-  label.style.display = S.showAllProducts ? 'block' : 'none';
-  chips.style.display = S.showAllProducts ? 'block' : 'none';
-  renderHistChips();
-}
+function toggleAllProducts() { /* toggle removed - history shown via suggest dropdown on focus */ }
 
 function renderHistChips() {
   const history = load('products', SAMPLE_PRODUCTS);
@@ -2751,13 +2875,13 @@ function clearAllProducts() {
 
 function clearProductInput() {
   const input = document.getElementById('productInput');
-  input.value = '';
+  if (input) input.value = '';
   S.productName = '';
+  renderProduct();
   const cb = document.getElementById('productClearBtn');
   if (cb) cb.style.display = 'none';
   dismissOCR();
   hideSuggest();
-  input.focus();
 }
 
 // ============================================================
@@ -3610,6 +3734,7 @@ function showOCRResult(best, allLines) {
   const input = document.getElementById('productInput');
   input.value = best;
   S.productName = best;
+  renderProduct();
   const cb = document.getElementById('productClearBtn');
   if (cb) cb.style.display = 'flex';
 
@@ -3636,6 +3761,7 @@ function showOCRResult(best, allLines) {
 function selectOCRCandidate(name) {
   document.getElementById('productInput').value = name;
   S.productName = name;
+  renderProduct();
   const el = document.getElementById('ocrCandidateText');
   if (el) el.textContent = name;
 }
@@ -3645,6 +3771,7 @@ function confirmOCR() {
   const val = document.getElementById('productInput').value.trim();
   if (val) {
     S.productName = val;
+    renderProduct();
     dismissOCR();
     showToast('製品名を確定しました', 'success');
   }
@@ -3718,6 +3845,7 @@ function _initSwipeDelete() {
 function pickProduct(name) {
   document.getElementById('productInput').value = name;
   S.productName = name;
+  renderProduct();
   hideSuggest();
   dismissOCR();
   const cb = document.getElementById('productClearBtn');
@@ -3727,10 +3855,12 @@ function pickProduct(name) {
 // フォーカス時：何もしない（1文字入力後から候補を表示）
 function onProductFocus() {
   const val = document.getElementById('productInput').value;
+  const history = load('products', SAMPLE_PRODUCTS);
   if (val.trim()) {
-    const history = load('products', SAMPLE_PRODUCTS);
     const hits = history.filter(p => p.toLowerCase().includes(val.toLowerCase()));
     showSuggest(hits.length ? hits : history, val);
+  } else if (history.length) {
+    showSuggest(history, '');
   }
   // キーボードが開いたあと、入力欄＋候補リストが見えるようにスクロール
   _scrollInputIntoView();
@@ -4597,6 +4727,7 @@ function resetForm() {
   S.productName = '';
   document.getElementById('productInput').value = '';
   renderMfr();
+  renderProduct();
   renderInspectors();
   renderDefects();
   renderHistChips();
@@ -5189,6 +5320,7 @@ function toggleDark() {
 
 function renderApp() {
   renderMfr();
+  renderProduct();
   renderInspectors();
   renderDefects();
   renderHistChips();
