@@ -1095,47 +1095,80 @@ a{color:inherit;text-decoration:none}
   animation:fadeUp .2s ease;cursor:pointer;
   transition:transform .12s,box-shadow .12s;
   display:flex;align-items:stretch;overflow:hidden;
+  border-left:4px solid transparent;
 }
 .hist-card:active{transform:scale(.985);box-shadow:none}
-.h-icon{
-  width:44px;height:44px;border-radius:12px;
-  background:var(--primary-dim);flex-shrink:0;
+.hist-card.hc-pass  {border-left-color:#3b82f6}
+.hist-card.hc-fail  {border-left-color:var(--fail)}
+.hist-card.hc-review{border-left-color:var(--review)}
+/* 左アイコン */
+.hc-icon-wrap{
+  width:64px;flex-shrink:0;
   display:flex;align-items:center;justify-content:center;
 }
-.h-icon svg{stroke:var(--primary)}
-.h-main{min-width:0;flex:1;padding:13px 12px 13px 14px}
+.hc-icon{
+  width:44px;height:44px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  border:2px solid transparent;
+}
+.hc-icon.pass  {background:#eff6ff;border-color:#bfdbfe;color:#3b82f6}
+.hc-icon.fail  {background:var(--fail-dim);border-color:#fecaca;color:var(--fail)}
+.hc-icon.review{background:var(--review-dim);border-color:#fde68a;color:var(--review)}
+/* メイン */
+.h-main{min-width:0;flex:1;padding:13px 6px 13px 0}
 .h-info{min-width:0;flex:1}
-.h-top{
-  display:flex;align-items:flex-start;justify-content:space-between;gap:6px;margin-bottom:1px;
-}
 .h-product{
-  font-size:15px;font-weight:700;color:var(--text);
+  font-size:16px;font-weight:800;color:var(--text);
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  margin-bottom:3px;
 }
-.h-date-top{
-  display:flex;align-items:center;gap:3px;
-  font-size:11px;color:var(--text-3);flex-shrink:0;white-space:nowrap;
-}
-.h-meta{font-size:12px;color:var(--text-2);margin-bottom:6px;display:flex;align-items:center;gap:0}
+.h-meta{font-size:12px;color:var(--text-2);margin-bottom:7px;display:flex;align-items:center;gap:0}
 .h-sep{margin:0 5px;color:var(--border)}
-.h-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.h-row{display:flex;align-items:center;gap:5px;flex-wrap:wrap}
 .h-badge{
   display:inline-flex;align-items:center;
-  padding:4px 12px;border-radius:100px;font-size:12px;font-weight:600;
+  padding:3px 10px;border-radius:100px;font-size:11px;font-weight:700;
 }
-.h-badge.pass{background:var(--pass-dim);color:var(--pass)}
+.h-badge.pass{background:#eff6ff;color:#3b82f6}
 .h-badge.fail{background:var(--fail-dim);color:var(--fail)}
 .h-badge-sub{
   display:inline-flex;align-items:center;
-  padding:4px 12px;border-radius:100px;font-size:12px;font-weight:600;
+  padding:3px 10px;border-radius:100px;font-size:11px;font-weight:700;
 }
 .h-comment-pill{
   display:inline-flex;align-items:center;
-  padding:4px 12px;border-radius:100px;font-size:12px;font-weight:500;
+  padding:3px 10px;border-radius:100px;font-size:11px;font-weight:500;
   background:var(--surface-2);color:var(--text-2);
+  border:1px solid var(--border);
+}
+/* 右パネル */
+.hc-right{
+  flex-shrink:0;width:72px;
+  display:flex;flex-direction:column;align-items:flex-end;justify-content:center;
+  padding:12px 12px 12px 6px;gap:6px;
+  border-left:1px solid var(--border);
+}
+.hc-date-row{
+  display:flex;align-items:center;gap:3px;
+  font-size:11px;color:var(--text-3);white-space:nowrap;
+}
+.hc-date-row svg{flex-shrink:0}
+.hc-dots{
+  display:grid;grid-template-columns:repeat(4,4px);gap:2px;
+  opacity:.25;
+}
+.hc-dots span{
+  width:4px;height:4px;border-radius:50%;
+  background:var(--text-3);
+}
+/* 削除モード右パネル */
+.hc-del-panel{
+  flex-shrink:0;width:72px;
+  display:flex;align-items:center;justify-content:center;
+  border-left:1px solid var(--border);
 }
 .h-chevron{flex-shrink:0;color:var(--text-3);display:flex;align-items:center}
-/* デザインB：右側ステータスパネル */
+/* デザインB：右側ステータスパネル（後方互換） */
 .h-status{
   flex-shrink:0;width:56px;
   display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;
@@ -1306,10 +1339,12 @@ a{color:inherit;text-decoration:none}
 .settings-card{background:var(--surface);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow)}
 .s-item{
   display:flex;align-items:center;padding:14px 16px;
+  background:var(--surface);
   border-bottom:1px solid var(--border);cursor:pointer;transition:background .12s;
 }
 .s-item:last-child{border-bottom:none}
 .s-item:active{background:var(--surface-2)}
+.s-divider{height:1px;background:var(--border);margin:0}
 .s-icon{
   width:34px;height:34px;border-radius:9px;
   display:flex;align-items:center;justify-content:center;
@@ -1611,6 +1646,73 @@ a{color:inherit;text-decoration:none}
 
 /* 編集モーダル拡張 */
 .modal-label{font-size:12px;font-weight:700;color:var(--text-3);margin-bottom:5px;margin-top:2px}
+
+/* =====================================================
+   設定：マスターデータ管理ボタン
+   ===================================================== */
+.settings-action-btn{
+  flex-shrink:0;height:26px;padding:0 9px;
+  border-radius:7px;cursor:pointer;
+  font-size:11px;font-weight:700;font-family:inherit;
+  display:inline-flex;align-items:center;gap:3px;
+  transition:all .15s;white-space:nowrap;letter-spacing:.2px;
+}
+.settings-action-btn.hide-btn{
+  background:var(--surface-2);color:var(--text-2);
+  border:1px solid var(--border);
+}
+.settings-action-btn.hide-btn:active{background:var(--border)}
+.settings-action-btn.restore-btn{
+  background:#f0fdf4;color:#16a34a;
+  border:1px solid #bbf7d0;
+}
+.settings-action-btn.restore-btn:active{opacity:.75}
+.settings-action-btn.delete-btn{
+  background:var(--fail-dim);color:var(--fail);
+  border:1px solid #fecaca;
+}
+.settings-action-btn.delete-btn:active{opacity:.75}
+.row-del-trigger{
+  flex-shrink:0;height:26px;width:30px;border-radius:7px;
+  cursor:pointer;font-size:15px;font-weight:900;letter-spacing:2px;
+  color:var(--text-3);background:var(--surface-2);
+  border:1px solid var(--border);
+  display:inline-flex;align-items:center;justify-content:center;
+  transition:all .15s;
+}
+.row-del-trigger.open,
+.row-del-trigger:active{background:var(--fail-dim);color:var(--fail);border-color:#fecaca}
+.row-del-hidden{display:none!important}
+.row-del-hidden.show{display:inline-flex!important;animation:fadeUp .15s ease}
+/* iOSスタイル丸×削除ボタン */
+.md-del-circle{
+  flex-shrink:0;width:28px;height:28px;
+  background:var(--fail);border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  border:none;cursor:pointer;
+  transition:opacity .15s, transform .15s;
+  animation:mdDelPop .18s cubic-bezier(.34,1.56,.64,1);
+}
+.md-del-circle:active{opacity:.7;transform:scale(.9)}
+@keyframes mdDelPop{
+  from{opacity:0;transform:scale(.55)}
+  to  {opacity:1;transform:scale(1)}
+}
+/* マスターデータオーバーレイ 編集ボタン */
+.md-edit-btn{
+  min-width:36px;font-size:14px;font-weight:600;
+  color:var(--text-3);background:none;border:none;
+  cursor:pointer;padding:4px 2px;line-height:1;
+  transition:color .15s;white-space:nowrap;
+}
+.md-edit-btn.active{color:var(--primary)}
+.settings-section-expand{
+  padding:10px 16px;font-size:13px;font-weight:600;color:var(--text-2);
+  background:var(--surface-2);border-top:1px solid var(--border);
+  cursor:pointer;display:flex;align-items:center;justify-content:space-between;
+  transition:background .15s;gap:8px;
+}
+.settings-section-expand:active{background:var(--primary-dim);color:var(--primary)}
 </style>
 
 <!-- ★ Firebase SDK ★ -->
@@ -1854,13 +1956,54 @@ a{color:inherit;text-decoration:none}
     <!-- 確認者 -->
     <div class="settings-section">
       <div class="section-title">確認者</div>
-      <div class="settings-card" id="inspectorSettings"></div>
+      <div class="settings-card">
+        <div class="s-item" onclick="openInspOverlay()">
+          <div class="s-icon" style="background:#f0fdf4">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2" width="17" height="17" stroke-linecap="round">
+              <circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
+            </svg>
+          </div>
+          <div style="flex:1;min-width:0">
+            <div class="s-label">確認者を管理</div>
+            <div id="inspSettingsCount" style="font-size:12px;color:var(--text-3);margin-top:2px"></div>
+          </div>
+          <svg viewBox="0 0 24 24" fill="none" stroke="var(--text-3)" stroke-width="2.5" width="14" height="14" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+        </div>
+      </div>
     </div>
 
     <!-- マスターデータ -->
     <div class="settings-section">
       <div class="section-title">マスターデータ</div>
-      <div class="settings-card" id="masterDataSettings"></div>
+      <div class="settings-card">
+        <div class="s-item" onclick="openMasterData('mfr')">
+          <div class="s-icon" style="background:var(--primary-dim)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2" width="17" height="17" stroke-linecap="round">
+              <path d="M3 21h18"/><path d="M9 8h1"/><path d="M9 12h1"/><path d="M9 16h1"/>
+              <path d="M14 8h1"/><path d="M14 12h1"/><path d="M14 16h1"/>
+              <rect x="2" y="3" width="20" height="18" rx="1.5"/>
+            </svg>
+          </div>
+          <div style="flex:1;min-width:0">
+            <div class="s-label">メーカーを管理</div>
+            <div id="masterMfrCount" style="font-size:12px;color:var(--text-3);margin-top:2px"></div>
+          </div>
+          <svg viewBox="0 0 24 24" fill="none" stroke="var(--text-3)" stroke-width="2.5" width="14" height="14" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+        </div>
+        <div class="s-divider"></div>
+        <div class="s-item" onclick="openMasterData('product')">
+          <div class="s-icon" style="background:#f0fdf4">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2" width="17" height="17" stroke-linecap="round">
+              <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            </svg>
+          </div>
+          <div style="flex:1;min-width:0">
+            <div class="s-label">製品名を管理</div>
+            <div id="masterProductCount" style="font-size:12px;color:var(--text-3);margin-top:2px"></div>
+          </div>
+          <svg viewBox="0 0 24 24" fill="none" stroke="var(--text-3)" stroke-width="2.5" width="14" height="14" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+        </div>
+      </div>
     </div>
 
     <!-- データ -->
@@ -2233,6 +2376,7 @@ const DB = {
   inspectors:  [...DEFAULT_INSPECTORS],
   products:    [...SAMPLE_PRODUCTS],
   customMfrs:  [],
+  hiddenMfrs:  [],
 };
 
 // dark モードだけは localStorage に保存（UI設定）
@@ -2259,6 +2403,7 @@ async function loadFromFirestore() {
   DB.inspections = [];
   DB.inspectors  = [...DEFAULT_INSPECTORS];
   DB.products    = [...SAMPLE_PRODUCTS];
+  DB.hiddenMfrs  = [];
   try {
     const snap = await db.collection('users').doc(currentUser.uid)
       .collection('data').get();
@@ -2271,9 +2416,9 @@ async function loadFromFirestore() {
     if (!DB.inspections.length) {
       const now = new Date();
       const samples = [
-        { id:uid(), manufacturerId:'panasonic', manufacturerName:'パナソニック', productName:'EZ9L48',     inspectorId:'INS-001', inspectorName:'田中 太郎', result:'pass',   judgeType:'恒久判断', defects:[], comment:'外観良好', photos:[], createdAt: new Date(now - 864e5*0).toISOString() },
-        { id:uid(), manufacturerId:'noritz',    manufacturerName:'ノーリツ',    productName:'GT-C2052SAWX', inspectorId:'INS-002', inspectorName:'佐藤 花子', result:'fail',   judgeType:'暫定判断', defects:['打痕・キズ'], comment:'傷あり',   photos:[], createdAt: new Date(now - 864e5*1).toISOString() },
-        { id:uid(), manufacturerId:'rinnai',    manufacturerName:'リンナイ',    productName:'RUF-A2405SAW', inspectorId:'INS-001', inspectorName:'田中 太郎', result:'review', judgeType:'暫定判断', defects:[], comment:'要再確認', photos:[], createdAt: new Date(now - 864e5*2).toISOString() },
+        { id:uid(), manufacturerId:'panasonic', manufacturerName:'パナソニック', productName:'EZ9L48',     inspectorId:'INS-001', inspectorName:'田中 太郎', createdByName:'田中 太郎', result:'pass',   judgeType:'恒久判断', defects:[], comment:'外観良好', photos:[], createdAt: new Date(now - 864e5*0).toISOString() },
+        { id:uid(), manufacturerId:'noritz',    manufacturerName:'ノーリツ',    productName:'GT-C2052SAWX', inspectorId:'INS-002', inspectorName:'佐藤 花子', createdByName:'佐藤 花子', result:'fail',   judgeType:'暫定判断', defects:['打痕・キズ'], comment:'傷あり',   photos:[], createdAt: new Date(now - 864e5*1).toISOString() },
+        { id:uid(), manufacturerId:'rinnai',    manufacturerName:'リンナイ',    productName:'RUF-A2405SAW', inspectorId:'INS-001', inspectorName:'田中 太郎', createdByName:'田中 太郎', result:'review', judgeType:'暫定判断', defects:[], comment:'要再確認', photos:[], createdAt: new Date(now - 864e5*2).toISOString() },
       ];
       save('inspections', samples);
     }
@@ -2354,7 +2499,9 @@ function getRecentMfrs() {
   const inspections  = load('inspections', []);
   const customMfrs   = load('customMfrs', []);
   const allMfrs      = [...MANUFACTURERS, ...customMfrs];
-  const hiddenMfrs   = load('hiddenMfrHistory', []);
+  const hiddenHistory  = load('hiddenMfrHistory', []);
+  const hiddenBuiltIn  = load('hiddenMfrs', []);
+  const hiddenMfrs     = [...new Set([...hiddenHistory, ...hiddenBuiltIn])];
   const seen = [];
   const sorted = [...inspections].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
   for (const insp of sorted) {
@@ -2589,7 +2736,8 @@ function renderMfrResults(q) {
   if (norm) {
     // 入力あり → 検索候補のみ（履歴は非表示）
     const customMfrs = load('customMfrs', []);
-    const allSearchable = [...ALL_MANUFACTURERS, ...customMfrs];
+    const hiddenMfrsSet = new Set(load('hiddenMfrs', []));
+    const allSearchable = [...ALL_MANUFACTURERS, ...customMfrs].filter(m => !hiddenMfrsSet.has(m.id));
     const candidates = allSearchable.filter(m => {
       const st = MFR_SEARCH_TEXT[m.id] || '';
       return m.name.toLowerCase().includes(lower)         ||
@@ -4200,6 +4348,7 @@ function addInspector() {
   closeInspModal();
   renderInspectors();
   showToast('確認者を追加しました','success');
+  if (document.getElementById('inspOverlay')?.classList.contains('open')) renderInspOverlay();
 }
 
 // ============================================================
@@ -4796,6 +4945,7 @@ async function saveInspection() {
     productName,
     inspectorId:      S.selectedInsp,
     inspectorName:    insp ? insp.name : '不明',
+    createdByName:    currentUserProfile?.name || '不明',
     result:    overallResult || 'review',
     judgeType: overallJudgeType,
     defects:   [...S.defects],
@@ -4869,34 +5019,49 @@ function renderHist() {
   el.innerHTML = data.map(r => {
     const clickAttr = histEditMode ? '' : `onclick="openDetail('${r.id}')"`;
     const cardStyle = histEditMode ? 'cursor:default;' : '';
-    const statusResult = (r.result === 'pass' || r.result === 'fail') ? r.result : null;
+
+    // ステータスクラスとアイコン
+    const sc   = r.result === 'pass' ? 'pass' : r.result === 'fail' ? 'fail' : 'review';
+    const icon = r.result === 'pass'
+      ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" width="18" height="18" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>`
+      : r.result === 'fail'
+      ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" width="18" height="18" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`
+      : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" width="18" height="18" stroke-linecap="round"><line x1="12" y1="9" x2="12" y2="13"/><circle cx="12" cy="17" r="1" fill="currentColor" stroke="none"/></svg>`;
+
+    // 判断区分バッジ色
+    const jBadge = r.judgeType
+      ? `<span class="h-badge-sub" style="color:${r.judgeType==='恒久判断'?'#3b82f6':'var(--review)'};background:${r.judgeType==='恒久判断'?'#eff6ff':'var(--review-dim)'}">${r.judgeType}</span>`
+      : '';
+
+    // 右パネル
     const rightEl = histEditMode
-      ? `<div style="flex-shrink:0;width:56px;display:flex;align-items:center;justify-content:center;border-left:1px solid var(--border);">
+      ? `<div class="hc-del-panel">
            <button onclick="event.stopPropagation();deleteInspection('${r.id}')"
              style="width:32px;height:32px;display:flex;align-items:center;justify-content:center;
                     background:var(--fail-dim);border-radius:50%;border:none;cursor:pointer;color:var(--fail);">
              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="14" height="14" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
            </button>
          </div>`
-      : statusResult
-        ? `<div class="h-status ${statusResult}">
-             <div class="h-status-dot"></div>
-             <div class="h-status-txt">${lbls[statusResult]}</div>
-           </div>`
-        : `<div style="flex-shrink:0;width:56px;border-left:1px solid var(--border)"></div>`;
-    return `<div class="hist-card" style="${cardStyle}" ${clickAttr}>
+      : `<div class="hc-right">
+           <div class="hc-date-row">
+             <span>${fmtDate(r.createdAt)}</span>
+             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="11" height="11" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+           </div>
+         </div>`;
+
+    return `<div class="hist-card hc-${sc}" style="${cardStyle}" ${clickAttr}>
+      <div class="hc-icon-wrap">
+        <div class="hc-icon ${sc}">${icon}</div>
+      </div>
       <div class="h-main">
-        <div class="h-top">
-          <div class="h-product">${r.productName}</div>
-          <div class="h-date-top">${fmtDate(r.createdAt)}</div>
-        </div>
+        <div class="h-product">${r.productName}</div>
         <div class="h-meta">
           <span>${r.manufacturerName}</span>
           <span class="h-sep">|</span>
           <span>${r.inspectorName}</span>
         </div>
         <div class="h-row">
-          ${r.judgeType ? `<span class="h-badge-sub" style="color:${r.judgeType==='恒久判断'?'#3b82f6':'var(--review)'};background:${r.judgeType==='恒久判断'?'#eff6ff':'var(--review-dim)'}">${r.judgeType}</span>` : ''}
+          ${jBadge}
           ${r.comment ? `<span class="h-comment-pill">${r.comment}</span>` : ''}
         </div>
       </div>
@@ -5064,134 +5229,163 @@ function drawMonthBars(all) {
 // 設定：マスターデータ（メーカー・製品名）
 // ============================================================
 
+// 現在開いているセクション（'mfr' | 'product' | null）
+let _masterDataSection = null;
+// 編集モード状態
+let _masterEditMode = false;
+
+function toggleMasterEditMode() {
+  _masterEditMode = !_masterEditMode;
+  const btn = document.getElementById('masterEditToggleBtn');
+  if (btn) {
+    btn.textContent = _masterEditMode ? '完了' : '編集';
+    btn.classList.toggle('active', _masterEditMode);
+  }
+  renderSettingsMasterData();
+}
+
 function renderSettingsMasterData() {
-  const el = document.getElementById('masterDataSettings');
+  _rowDelEl = null;
+  const el = document.getElementById('masterDataList');
   if (!el) return;
 
-  const customMfrs = load('customMfrs', []);
-  const products   = load('products', []);
+  const section = _masterDataSection; // 現在のセクションのみ描画
+
+  const customMfrs  = load('customMfrs', []);
+  const products    = load('products', []);
+  const hiddenMfrs  = load('hiddenMfrs', []);
+  const inspections = load('inspections', []);
+
+  // 検品記録からメーカー使用回数を集計
+  const usageMap = {};
+  inspections.forEach(insp => {
+    if (insp.manufacturerId) {
+      usageMap[insp.manufacturerId] = (usageMap[insp.manufacturerId] || 0) + 1;
+    }
+  });
+
+  const builtInIds  = new Set(ALL_MANUFACTURERS.map(m => m.id));
+  const trueCustom  = customMfrs.filter(m => !builtInIds.has(m.id));
+  const activeBuiltIn = ALL_MANUFACTURERS.filter(m => !hiddenMfrs.includes(m.id));
+  const hiddenBuiltIn = ALL_MANUFACTURERS.filter(m =>  hiddenMfrs.includes(m.id));
+
+  // 使用回数降順・名前昇順でソート
+  const sortByUsage = arr => [...arr].sort((a, b) => {
+    const ua = usageMap[a.id] || 0, ub = usageMap[b.id] || 0;
+    if (ub !== ua) return ub - ua;
+    return (a.jaName || a.name).localeCompare(b.jaName || b.name, 'ja');
+  });
+
+  const totalVisible = trueCustom.length + activeBuiltIn.length;
+  const totalHidden  = hiddenBuiltIn.length;
+
+  // アイコン
+  const mfrSvg     = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="17" height="17" stroke-linecap="round"><path d="M3 21h18"/><rect x="2" y="3" width="20" height="18" rx="1.5"/></svg>`;
+  const trashSvg   = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="11" height="11" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>`;
+  const eyeOffSvg  = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="11" height="11" stroke-linecap="round"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>`;
+  const eyeSvg     = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="11" height="11" stroke-linecap="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`;
+  const chevDownSvg = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="14" height="14" stroke-linecap="round" id="hiddenMfrsChevron" style="transition:transform .22s"><polyline points="6 9 12 15 18 9"/></svg>`;
+
+  // メーカー1行分のHTMLを生成
+  const mfrRow = (m, isCustom, isHidden) => {
+    const safeId = (m.id || '').replace(/'/g, "\\'");
+    const usage  = usageMap[m.id] || 0;
+    const name   = m.jaName || m.name;
+    const sub    = m.jaName && m.jaName !== m.name ? m.name : '';
+    const iconColor = isCustom ? 'var(--primary)' : isHidden ? 'var(--text-3)' : 'var(--text-2)';
+    const iconBg    = isCustom ? 'var(--primary-dim)' : 'var(--surface-2)';
+    let actionBtn;
+    if (_masterEditMode) {
+      // 編集モード：丸×ボタン（非表示中は復元ボタンのまま）
+      if (isHidden) {
+        actionBtn = `<button onclick="restoreBuiltInMfr('${safeId}')" class="settings-action-btn restore-btn" title="復元">${eyeSvg}&nbsp;復元</button>`;
+      } else {
+        const delFn = isCustom ? `deleteCustomMfrFromSettings('${safeId}')` : `hideBuiltInMfr('${safeId}')`;
+        actionBtn = `<button class="md-del-circle" onclick="${delFn}" title="削除">
+          <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" width="12" height="12" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>`;
+      }
+    } else {
+      // 通常モード：非表示中のみ復元ボタン、それ以外はボタンなし
+      actionBtn = isHidden
+        ? `<button onclick="restoreBuiltInMfr('${safeId}')" class="settings-action-btn restore-btn" title="復元">${eyeSvg}&nbsp;復元</button>`
+        : '';
+    }
+    return `
+      <div class="s-item" style="padding:10px 16px;gap:10px;${isHidden ? 'opacity:.45;' : ''}">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:14px;font-weight:${isCustom ? '600' : '500'};color:${isHidden ? 'var(--text-2)' : 'var(--text)'};
+                      display:flex;align-items:center;gap:5px;flex-wrap:wrap">
+            <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:140px">${name}</span>
+            ${isHidden  ? `<span style="font-size:9px;font-weight:800;background:var(--surface-2);color:var(--text-3);border:1px solid var(--border);padding:1px 5px;border-radius:100px;flex-shrink:0;letter-spacing:.3px">非表示</span>` : ''}
+          </div>
+          ${sub   ? `<div style="font-size:11px;color:var(--text-3);margin-top:1px">${sub}</div>` : ''}
+          ${usage ? `<div style="font-size:11px;color:${isCustom ? 'var(--primary)' : 'var(--text-3)'};margin-top:2px;font-weight:500">${usage}件の検品記録</div>` : ''}
+        </div>
+        ${actionBtn}
+      </div>`;
+  };
 
   let html = '';
 
-  /* ── メーカーセクションヘッダー ── */
-  html += `
-    <div style="display:flex;align-items:center;justify-content:space-between;
-                padding:10px 16px 6px;
-                font-size:11px;font-weight:700;color:var(--text-3);
-                text-transform:uppercase;letter-spacing:.5px;
-                background:var(--surface-2);border-bottom:1px solid var(--border)">
-      <span style="display:flex;align-items:center;gap:6px">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13" stroke-linecap="round">
-          <path d="M3 21h18"/><path d="M9 8h1"/><path d="M9 12h1"/><path d="M9 16h1"/>
-          <path d="M14 8h1"/><path d="M14 12h1"/><path d="M14 16h1"/>
-          <rect x="2" y="3" width="20" height="18" rx="1.5"/>
-        </svg>
-        メーカー
-      </span>
-      <span style="font-weight:500;font-size:11px;background:var(--primary-dim);color:var(--primary);
-                   padding:2px 8px;border-radius:100px">${customMfrs.length}件</span>
-    </div>`;
-
-  if (customMfrs.length === 0) {
-    html += `<div style="padding:14px 16px;font-size:13px;color:var(--text-3);text-align:center;">
-               カスタムメーカーはありません
-             </div>`;
-  } else {
-    customMfrs.forEach(m => {
-      const safeId = (m.id || '').replace(/'/g, "\\'");
-      html += `
-        <div class="s-item" style="padding:11px 16px">
-          <div class="s-icon" style="background:var(--primary-dim)">
-            <svg viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2"
-                 width="17" height="17" stroke-linecap="round">
-              <path d="M3 21h18"/><rect x="2" y="3" width="20" height="18" rx="1.5"/>
-            </svg>
-          </div>
-          <div style="flex:1;min-width:0">
-            <div style="font-size:14px;font-weight:600;color:var(--text);
-                        overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${m.name}</div>
-            ${m.jaName && m.jaName !== m.name
-              ? `<div style="font-size:11px;color:var(--text-3);margin-top:1px">${m.jaName}</div>` : ''}
-          </div>
-          <button onclick="deleteCustomMfrFromSettings('${safeId}')"
-                  style="flex-shrink:0;width:30px;height:30px;border-radius:50%;
-                         background:var(--fail-dim);color:var(--fail);
-                         border:none;cursor:pointer;display:flex;align-items:center;
-                         justify-content:center;transition:opacity .15s;margin-left:8px"
-                  title="削除">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
-                 width="13" height="13" stroke-linecap="round">
-              <polyline points="3 6 5 6 21 6"/>
-              <path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/>
-              <path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
-            </svg>
-          </button>
-        </div>`;
+  /* ── メーカーセクション（section === 'mfr' または null のとき表示） ── */
+  if (!section || section === 'mfr') {
+    /* ─ 全メーカー（カスタム＋ビルトイン統合） ─ */
+    const allVisible = [
+      ...trueCustom.map(m => ({ m, isCustom: true })),
+      ...activeBuiltIn.map(m => ({ m, isCustom: false }))
+    ].sort((a, b) => {
+      const ua = usageMap[a.m.id] || 0, ub = usageMap[b.m.id] || 0;
+      if (ub !== ua) return ub - ua;
+      return (a.m.jaName || a.m.name).localeCompare(b.m.jaName || b.m.name, 'ja');
     });
+
+    if (allVisible.length === 0) {
+      html += `<div style="padding:14px 16px;font-size:13px;color:var(--text-3);text-align:center">
+                 すべてのメーカーが非表示になっています
+               </div>`;
+    } else {
+      allVisible.forEach(({ m, isCustom }) => { html += mfrRow(m, isCustom, false); });
+    }
+
+    /* ─ 非表示中のメーカー（アコーディオン） ─ */
+    if (totalHidden > 0) {
+      html += `
+        <div class="settings-section-expand" onclick="toggleHiddenMfrsSection()">
+          <span style="display:flex;align-items:center;gap:7px">
+          ${eyeOffSvg}削除済みのメーカー（${totalHidden}件）
+          </span>
+          ${chevDownSvg}
+        </div>
+        <div id="hiddenMfrsSection" style="display:none">`;
+      sortByUsage(hiddenBuiltIn).forEach(m => { html += mfrRow(m, false, true); });
+      html += `</div>`;
+    }
   }
 
-  /* ── 製品名セクションヘッダー ── */
-  html += `
-    <div style="display:flex;align-items:center;justify-content:space-between;
-                padding:10px 16px 6px;
-                font-size:11px;font-weight:700;color:var(--text-3);
-                text-transform:uppercase;letter-spacing:.5px;
-                background:var(--surface-2);
-                border-top:1px solid var(--border);border-bottom:1px solid var(--border)">
-      <span style="display:flex;align-items:center;gap:6px">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-             width="13" height="13" stroke-linecap="round">
-          <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-        </svg>
-        製品名
-      </span>
-      <div style="display:flex;align-items:center;gap:8px">
-        <span style="font-weight:500;font-size:11px;background:var(--primary-dim);color:var(--primary);
-                     padding:2px 8px;border-radius:100px">${products.length}件</span>
-        ${products.length > 0 ? `
-        <button onclick="confirmClearAllProducts()"
-                style="font-size:11px;font-weight:700;color:var(--fail);
-                       background:var(--fail-dim);border:none;cursor:pointer;
-                       padding:3px 8px;border-radius:6px;transition:opacity .15s">
-          すべて削除
-        </button>` : ''}
-      </div>
-    </div>`;
-
-  if (products.length === 0) {
-    html += `<div style="padding:14px 16px;font-size:13px;color:var(--text-3);text-align:center;">
-               製品名履歴はありません
-             </div>`;
-  } else {
-    products.forEach(p => {
-      const esc    = p.replace(/'/g, "\\'");
-      const escHtml = p.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-      html += `
-        <div class="s-item" style="padding:11px 16px">
-          <div class="s-icon" style="background:var(--surface-2)">
-            <svg viewBox="0 0 24 24" fill="none" stroke="var(--text-2)" stroke-width="2"
-                 width="17" height="17" stroke-linecap="round">
-              <circle cx="11" cy="11" r="8"/>
-              <line x1="21" y1="21" x2="16.65" y2="16.65"/>
-            </svg>
-          </div>
-          <span style="flex:1;font-size:14px;font-weight:500;color:var(--text);
-                       overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml}</span>
-          <button onclick="deleteProductFromSettings('${esc}')"
-                  style="flex-shrink:0;width:30px;height:30px;border-radius:50%;
-                         background:var(--fail-dim);color:var(--fail);
-                         border:none;cursor:pointer;display:flex;align-items:center;
-                         justify-content:center;transition:opacity .15s;margin-left:8px"
-                  title="削除">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
-                 width="13" height="13" stroke-linecap="round">
-              <polyline points="3 6 5 6 21 6"/>
-              <path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/>
-              <path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
-            </svg>
-          </button>
-        </div>`;
-    });
+  /* ── 製品名セクション（section === 'product' または null のとき表示） ── */
+  if (!section || section === 'product') {
+    if (products.length === 0) {
+      html += `<div style="padding:14px 16px;font-size:13px;color:var(--text-3);text-align:center">
+                 製品名履歴はありません
+               </div>`;
+    } else {
+      products.forEach(p => {
+        const esc     = p.replace(/'/g, "\\'");
+        const escHtml = p.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        const delBtn = _masterEditMode
+          ? `<button class="md-del-circle" onclick="deleteProductFromSettings('${esc}')" title="削除">
+               <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" width="12" height="12" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+             </button>`
+          : ``;
+        html += `
+          <div class="s-item" style="padding:11px 16px">
+            <span style="flex:1;font-size:14px;font-weight:500;color:var(--text);
+                         overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml}</span>
+            ${delBtn}
+          </div>`;
+      });
+    }
   }
 
   el.innerHTML = html;
@@ -5209,6 +5403,7 @@ function deleteCustomMfrFromSettings(id) {
     renderMfr();
   }
   renderSettingsMasterData();
+  updateMasterDataCount();
   showToast(mfr ? `「${mfr.name}」を削除しました` : 'メーカーを削除しました', 'default');
 }
 
@@ -5217,7 +5412,51 @@ function deleteProductFromSettings(name) {
   const ph = load('products', []);
   save('products', ph.filter(p => p !== name));
   renderSettingsMasterData();
+  updateMasterDataCount();
   showToast(`「${name}」を削除しました`, 'default');
+}
+
+/** ビルトインメーカーを非表示にする */
+function hideBuiltInMfr(id) {
+  const hidden = load('hiddenMfrs', []);
+  if (!hidden.includes(id)) {
+    hidden.push(id);
+    save('hiddenMfrs', hidden);
+  }
+  renderSettingsMasterData();
+  updateMasterDataCount();
+  const m = ALL_MANUFACTURERS.find(x => x.id === id);
+  showToast(m ? `「${m.jaName || m.name}」を削除しました` : 'メーカーを削除しました', 'default');
+}
+
+/** ビルトインメーカーを表示に戻す */
+function restoreBuiltInMfr(id) {
+  const hidden = load('hiddenMfrs', []);
+  save('hiddenMfrs', hidden.filter(h => h !== id));
+  renderSettingsMasterData();
+  updateMasterDataCount();
+  const m = ALL_MANUFACTURERS.find(x => x.id === id);
+  showToast(m ? `「${m.jaName || m.name}」を復元しました` : 'メーカーを復元しました', 'success');
+}
+
+/** セクションのアコーディオン開閉（メーカー・製品名共通） */
+function toggleMasterSection(sectionId, chevronId) {
+  const sec = document.getElementById(sectionId);
+  const chv = document.getElementById(chevronId);
+  if (!sec) return;
+  const isOpen = sec.style.display !== 'none';
+  sec.style.display = isOpen ? 'none' : 'block';
+  if (chv) chv.style.transform = isOpen ? 'rotate(-90deg)' : '';
+}
+
+/** 非表示メーカーセクションのアコーディオン開閉 */
+function toggleHiddenMfrsSection() {
+  const sec     = document.getElementById('hiddenMfrsSection');
+  const chevron = document.getElementById('hiddenMfrsChevron');
+  if (!sec) return;
+  const isOpen = sec.style.display !== 'none';
+  sec.style.display = isOpen ? 'none' : 'block';
+  if (chevron) chevron.style.transform = isOpen ? '' : 'rotate(180deg)';
 }
 
 /** 製品名をすべて削除（確認付き） */
@@ -5234,22 +5473,154 @@ function confirmClearAllProducts() {
   document.getElementById('confirmModal').classList.add('show');
 }
 
-function renderInspSettings() {
-  const list = getInspectors().filter(ins => !currentUser || ins.id !== currentUser.uid);
-  document.getElementById('inspectorSettings').innerHTML =
-    list.map((ins, i) => `
-      <div class="s-item">
-        <div style="width:34px;height:34px;border-radius:50%;background:${ins.color};display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:14px;margin-right:13px;flex-shrink:0">${ins.initials}</div>
-        <div style="flex:1">
-          <div style="font-size:15px;color:var(--text);font-weight:500">${ins.name}</div>
-        </div>
-        <button onclick="removeInspector('${ins.id}')" style="color:var(--fail);font-size:19px;padding:4px 8px;background:none;border:none;cursor:pointer;font-weight:700">×</button>
+// ============================================================
+// マスターデータ管理オーバーレイ
+// ============================================================
+
+// ── 削除2ステップ確認 ──
+let _rowDelEl = null;
+function toggleRowDel(triggerEl) {
+  const delBtn = triggerEl.nextElementSibling;
+  if (_rowDelEl === triggerEl) {
+    delBtn.classList.remove('show');
+    triggerEl.classList.remove('open');
+    _rowDelEl = null;
+    return;
+  }
+  if (_rowDelEl) {
+    _rowDelEl.nextElementSibling.classList.remove('show');
+    _rowDelEl.classList.remove('open');
+  }
+  _rowDelEl = triggerEl;
+  triggerEl.classList.add('open');
+  delBtn.classList.add('show');
+}
+document.addEventListener('click', function(e) {
+  if (!_rowDelEl) return;
+  const wrap = _rowDelEl.parentElement;
+  if (wrap && wrap.contains(e.target)) return;
+  try {
+    _rowDelEl.nextElementSibling.classList.remove('show');
+    _rowDelEl.classList.remove('open');
+  } catch(err){}
+  _rowDelEl = null;
+});
+
+function openMasterData(section) {
+  _lockScroll();
+  _masterDataSection = section || null;
+  _masterEditMode = false;
+  document.getElementById('masterDataOverlay').classList.add('open');
+  renderSettingsMasterData();
+  // 編集ボタンを初期状態に戻す
+  const btn = document.getElementById('masterEditToggleBtn');
+  if (btn) { btn.textContent = '編集'; btn.classList.remove('active'); }
+  // オーバーレイタイトルをセクションに合わせて変更
+  const titleEl = document.getElementById('masterDataOverlayTitle');
+  if (titleEl) {
+    titleEl.textContent = section === 'mfr' ? 'メーカー管理'
+                        : section === 'product' ? '製品名管理'
+                        : 'マスターデータ';
+  }
+}
+
+function closeMasterData() {
+  _unlockScroll();
+  _masterDataSection = null;
+  _masterEditMode = false;
+  document.getElementById('masterDataOverlay').classList.remove('open');
+  // 設定ページのカウントを更新
+  updateMasterDataCount();
+}
+
+/** 設定ページのマスターデータボタンに件数を表示 */
+function updateMasterDataCount() {
+  const customMfrs = load('customMfrs', []);
+  const hiddenMfrs = load('hiddenMfrs', []);
+  const products   = load('products', []);
+  const builtInIds = new Set(ALL_MANUFACTURERS.map(m => m.id));
+  const trueCustom = customMfrs.filter(m => !builtInIds.has(m.id));
+  const activeMfr  = ALL_MANUFACTURERS.filter(m => !hiddenMfrs.includes(m.id)).length + trueCustom.length;
+
+  const mfrEl     = document.getElementById('masterMfrCount');
+  const productEl = document.getElementById('masterProductCount');
+  // 旧要素（後方互換）
+  const legacyEl  = document.getElementById('masterDataCount');
+
+  if (mfrEl)     mfrEl.textContent     = `${activeMfr}件`;
+  if (productEl) productEl.textContent = `${products.length}件`;
+  if (legacyEl)  legacyEl.textContent  = `メーカー ${activeMfr}件　製品名 ${products.length}件`;
+}
+
+let _inspEditMode = false;
+
+function openInspOverlay() {
+  _lockScroll();
+  _inspEditMode = false;
+  document.getElementById('inspOverlay').classList.add('open');
+  const btn = document.getElementById('inspEditToggleBtn');
+  if (btn) { btn.textContent = '編集'; btn.classList.remove('active'); }
+  renderInspOverlay();
+}
+
+function closeInspOverlay() {
+  _unlockScroll();
+  _inspEditMode = false;
+  document.getElementById('inspOverlay').classList.remove('open');
+  updateInspSettingsCount();
+}
+
+function toggleInspEditMode() {
+  _inspEditMode = !_inspEditMode;
+  const btn = document.getElementById('inspEditToggleBtn');
+  if (btn) { btn.textContent = _inspEditMode ? '完了' : '編集'; btn.classList.toggle('active', _inspEditMode); }
+  renderInspOverlay();
+}
+
+function renderInspOverlay() {
+  const el = document.getElementById('inspOverlayList');
+  if (!el) return;
+  const list = getInspectors();
+  const trashSvg = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="11" height="11" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>`;
+
+  const rows = list.map(ins => {
+    const isMe = ins.id === currentUser?.uid;
+    const actionBtn = isMe ? '' :
+      _inspEditMode
+        ? `<button class="md-del-circle" onclick="removeInspector('${ins.id}')" title="削除">
+             <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" width="12" height="12" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+           </button>`
+        : '';
+    return `<div class="s-item" style="padding:11px 16px;gap:12px">
+      <div style="width:36px;height:36px;border-radius:50%;background:${ins.color};flex-shrink:0;
+                  display:flex;align-items:center;justify-content:center;
+                  color:#fff;font-weight:800;font-size:15px">${ins.initials}</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:15px;font-weight:500;color:var(--text)">${ins.name}</div>
+        ${isMe ? `<div style="font-size:11px;color:var(--primary);font-weight:600;margin-top:1px">自分</div>` : ''}
       </div>
-    `).join('') +
-    `<div class="s-item" onclick="openInspModal()">
-      <div style="width:34px;height:34px;border-radius:50%;border:1.5px dashed var(--border);display:flex;align-items:center;justify-content:center;margin-right:13px;flex-shrink:0;color:var(--primary);font-size:20px">+</div>
-      <span style="font-size:15px;color:var(--primary);font-weight:600">確認者を追加</span>
+      ${actionBtn}
     </div>`;
+  }).join('');
+
+  // 追加ボタン（編集モード以外で表示）
+  const addBtn = !_inspEditMode ? `
+    <div class="s-item" onclick="openInspModal()" style="padding:13px 16px;gap:12px">
+      <div style="width:36px;height:36px;border-radius:50%;border:1.5px dashed var(--border);flex-shrink:0;
+                  display:flex;align-items:center;justify-content:center;color:var(--primary);font-size:20px">+</div>
+      <span style="font-size:15px;color:var(--primary);font-weight:600">確認者を追加</span>
+    </div>` : '';
+
+  el.innerHTML = rows + addBtn;
+}
+
+function updateInspSettingsCount() {
+  const el = document.getElementById('inspSettingsCount');
+  if (el) el.textContent = `${getInspectors().length}件`;
+}
+
+function renderInspSettings() {
+  updateInspSettingsCount();
 
   // 管理者セクションの表示
   if (currentUserProfile?.isAdmin) {
@@ -5262,12 +5633,13 @@ function renderInspSettings() {
   // 設定ページのユーザー情報更新
   if (currentUserProfile) {
     document.getElementById('settingsUserName').textContent = currentUserProfile.name || currentUser?.email;
-    document.getElementById('settingsUserEmp').textContent = currentUserProfile.employeeId
+    const settingsEmpEl = document.getElementById('settingsUserEmp');
+    if (settingsEmpEl) settingsEmpEl.textContent = currentUserProfile.employeeId
       ? `社員ID: ${currentUserProfile.employeeId}` : currentUser?.email || '';
   }
 
-  // マスターデータセクション更新
-  renderSettingsMasterData();
+  // マスターデータボタンのカウント更新
+  updateMasterDataCount();
 }
 
 // ============================================================
@@ -5376,7 +5748,8 @@ async function saveUserEdit() {
       document.getElementById('userEmail').textContent = name;
       document.getElementById('userEmpId').textContent = empId || '';
       document.getElementById('settingsUserName').textContent = name;
-      document.getElementById('settingsUserEmp').textContent = empId ? `社員ID: ${empId}` : currentUser.email;
+      const settingsEmpEl2 = document.getElementById('settingsUserEmp');
+      if (settingsEmpEl2) settingsEmpEl2.textContent = empId ? `社員ID: ${empId}` : currentUser.email;
     }
 
     closeUserEditModal();
@@ -5440,6 +5813,7 @@ function removeInspector(id) {
     if (S.selectedInsp === id) S.selectedInsp = null;
     renderInspectors();
     renderInspSettings();
+    if (document.getElementById('inspOverlay')?.classList.contains('open')) renderInspOverlay();
     closeConfirm();
     showToast(`${name}を削除しました`, 'default');
   };
@@ -5519,6 +5893,10 @@ function openDetail(id) {
       <span class="detail-val">${r.inspectorName}</span>
     </div>
     <div class="detail-row">
+      <span class="detail-lbl">入力者</span>
+      <span class="detail-val">${r.createdByName || '—'}</span>
+    </div>
+    <div class="detail-row">
       <span class="detail-lbl">日時</span>
       <span class="detail-val">${dateStr}</span>
     </div>
@@ -5583,7 +5961,7 @@ function closePhotoViewer() {
 // ============================================================
 
 document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') { closeInspModal(); closeConfirm(); closeDetail(); closeAnnotator(); closeUserEditModal(); closePhotoViewer(); closePhotoJudge(); }
+  if (e.key === 'Escape') { closeInspModal(); closeConfirm(); closeDetail(); closeAnnotator(); closeUserEditModal(); closePhotoViewer(); closePhotoJudge(); closeMasterData(); closeInspOverlay(); }
 });
 
 // ============================================================
@@ -5839,6 +6217,29 @@ init();
       </button>
     </div>
   </div>
+</div>
+<!-- =================== 確認者管理オーバーレイ =================== -->
+<div class="mfr-overlay" id="inspOverlay">
+  <div class="mfr-overlay-header">
+    <button class="mfr-overlay-back" onclick="closeInspOverlay()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="var(--text-2)" stroke-width="2.5" width="20" height="20" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg>
+    </button>
+    <div style="flex:1;font-size:17px;font-weight:700;color:var(--text);text-align:center">確認者管理</div>
+    <button id="inspEditToggleBtn" class="md-edit-btn" onclick="toggleInspEditMode()">編集</button>
+  </div>
+  <div class="mfr-result-list" id="inspOverlayList"></div>
+</div>
+
+<!-- =================== マスターデータ管理オーバーレイ =================== -->
+<div class="mfr-overlay" id="masterDataOverlay">
+  <div class="mfr-overlay-header">
+    <button class="mfr-overlay-back" onclick="closeMasterData()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="var(--text-2)" stroke-width="2.5" width="20" height="20" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg>
+    </button>
+    <div style="flex:1;font-size:17px;font-weight:700;color:var(--text);text-align:center" id="masterDataOverlayTitle">マスターデータ</div>
+    <button id="masterEditToggleBtn" class="md-edit-btn" onclick="toggleMasterEditMode()">編集</button>
+  </div>
+  <div class="mfr-result-list" id="masterDataList"></div>
 </div>
 
 
