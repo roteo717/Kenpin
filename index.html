@@ -130,7 +130,7 @@ a{color:inherit;text-decoration:none}
 }
 .card-head.between{justify-content:space-between}
 .head-icon{
-  width:30px;height:30px;background:var(--primary-dim);
+  width:30px;height:30px;
   border-radius:9px;display:flex;align-items:center;justify-content:center;flex-shrink:0;
 }
 .head-icon svg{width:15px;height:15px;stroke:var(--primary)}
@@ -1341,6 +1341,16 @@ a{color:inherit;text-decoration:none}
 }
 .toggle.on::after{transform:translateX(19px)}
 
+/* ロット番号クイックボタン */
+.lot-quick-btn{
+  flex:1;padding:9px 0;border-radius:10px;
+  background:var(--surface-2);border:1.5px solid var(--border);
+  font-size:13px;font-weight:600;color:var(--text-2);
+  cursor:pointer;transition:all .15s;
+}
+.lot-quick-btn:active{background:var(--primary-dim);border-color:var(--primary);color:var(--primary)}
+.lot-quick-btn.active{background:var(--primary-dim);border-color:var(--primary);color:var(--primary)}
+
 /* =====================================================
    ボトムナビ
    ===================================================== */
@@ -1805,11 +1815,12 @@ a{color:inherit;text-decoration:none}
           ロット番号
         </div>
       </div>
-      <input type="text" id="lotInput"
+      <input type="text" id="lotInput" inputmode="numeric" placeholder="2026/06/05"
         maxlength="10"
-        style="width:100%;padding:12px 14px;background:var(--surface-2);border:1.5px solid var(--border);border-radius:12px;font-size:15px;color:var(--text);transition:border-color .15s;-webkit-appearance:none;appearance:none;letter-spacing:1px"
+        style="width:100%;padding:12px 14px;background:var(--surface-2);border:1.5px solid var(--border);border-radius:12px;font-size:15px;color:var(--text);transition:border-color .15s;letter-spacing:1px;"
         onfocus="this.style.borderColor='var(--primary)';this.style.background='var(--surface)'"
-        onblur="this.style.borderColor='var(--border)';this.style.background='var(--surface-2)'">
+        onblur="this.style.borderColor='var(--border)';this.style.background='var(--surface-2)';if(!this.value)this.value=_todaySlash();"
+        oninput="onLotInput(this)">
     </div>
 
     <!-- 不良内容 -->
@@ -1939,7 +1950,7 @@ a{color:inherit;text-decoration:none}
       <div class="section-title">マスターデータ</div>
       <div class="settings-card">
         <div class="s-item" onclick="openInspOverlay()">
-          <div class="s-icon" style="background:var(--surface-2)">
+          <div class="s-icon">
             <svg viewBox="0 0 24 24" fill="none" stroke="var(--text-2)" stroke-width="2" width="17" height="17" stroke-linecap="round">
               <circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
             </svg>
@@ -1950,7 +1961,7 @@ a{color:inherit;text-decoration:none}
           <svg viewBox="0 0 24 24" fill="none" stroke="var(--text-3)" stroke-width="2.5" width="14" height="14" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg>
         </div>
         <div class="s-item" onclick="openMasterData('mfr')">
-          <div class="s-icon" style="background:var(--surface-2)">
+          <div class="s-icon">
             <svg viewBox="0 0 24 24" fill="none" stroke="var(--text-2)" stroke-width="2" width="17" height="17" stroke-linecap="round">
               <path d="M3 21h18"/><path d="M9 8h1"/><path d="M9 12h1"/><path d="M9 16h1"/>
               <path d="M14 8h1"/><path d="M14 12h1"/><path d="M14 16h1"/>
@@ -1963,7 +1974,7 @@ a{color:inherit;text-decoration:none}
           <svg viewBox="0 0 24 24" fill="none" stroke="var(--text-3)" stroke-width="2.5" width="14" height="14" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg>
         </div>
         <div class="s-item" onclick="openMasterData('product')">
-          <div class="s-icon" style="background:var(--surface-2)">
+          <div class="s-icon">
             <svg viewBox="0 0 24 24" fill="none" stroke="var(--text-2)" stroke-width="2" width="17" height="17" stroke-linecap="round">
               <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
             </svg>
@@ -1974,7 +1985,7 @@ a{color:inherit;text-decoration:none}
           <svg viewBox="0 0 24 24" fill="none" stroke="var(--text-3)" stroke-width="2.5" width="14" height="14" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg>
         </div>
         <div class="s-item" id="adminMasterRow" style="display:none" onclick="openAdminOverlay()">
-          <div class="s-icon" style="background:var(--surface-2)">
+          <div class="s-icon">
             <svg viewBox="0 0 24 24" fill="none" stroke="var(--text-2)" stroke-width="2" width="17" height="17" stroke-linecap="round">
               <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
             </svg>
@@ -1994,7 +2005,7 @@ a{color:inherit;text-decoration:none}
       <div class="section-title">表示</div>
       <div class="settings-card">
         <div class="s-item" onclick="toggleDark()">
-          <div class="s-icon" style="background:var(--surface-2)">
+          <div class="s-icon">
             <svg viewBox="0 0 24 24" fill="none" stroke="var(--text-2)" stroke-width="2" width="17" height="17" stroke-linecap="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
           </div>
           <span class="s-label">ダークモード</span>
@@ -2008,7 +2019,7 @@ a{color:inherit;text-decoration:none}
       <div class="section-title">アカウント</div>
       <div class="settings-card">
         <div class="s-item">
-          <div class="s-icon" style="background:var(--surface-2)">
+          <div class="s-icon">
             <svg viewBox="0 0 24 24" fill="none" stroke="var(--text-2)" stroke-width="2" width="17" height="17" stroke-linecap="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
           </div>
           <div style="flex:1">
@@ -2016,7 +2027,7 @@ a{color:inherit;text-decoration:none}
           </div>
         </div>
         <div class="s-item" onclick="logoutUser()">
-          <div class="s-icon" style="background:var(--surface-2)">
+          <div class="s-icon">
             <svg viewBox="0 0 24 24" fill="none" stroke="var(--text-2)" stroke-width="2" width="17" height="17" stroke-linecap="round"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
           </div>
           <span class="s-label" style="color:var(--fail)">ログアウト</span>
@@ -2343,27 +2354,38 @@ const S = {
 // ============================================================
 
 const DB = {
-  inspections: [],
-  inspectors:  [...DEFAULT_INSPECTORS],
-  products:    [...SAMPLE_PRODUCTS],
-  customMfrs:  [],
-  hiddenMfrs:  [],
+  inspections:      [],
+  inspectors:       [...DEFAULT_INSPECTORS],
+  products:         [...SAMPLE_PRODUCTS],
+  customMfrs:       [],
+  hiddenMfrs:       [],
+  hiddenMfrHistory: [],   // ユーザーごとのメーカー履歴非表示リスト
 };
 
 // dark モードだけは localStorage に保存（UI設定）
 const DARK_KEY = 'kiken_dark_v1';
+
+// ============================================================
+// 共有キー vs ユーザー個別キーの定義
+//   SHARED_KEYS  → users間で共有（マスターデータ）
+//   それ以外     → ユーザーごと（履歴系）
+// ============================================================
+const SHARED_KEYS = new Set(['inspectors', 'customMfrs', 'hiddenMfrs']);
 
 function load(key, def) {
   return DB[key] !== undefined ? DB[key] : def;
 }
 
 // Firestore に保存（fire-and-forget）
+// 共有キー → shared/masterData/{key}
+// 個別キー → users/{uid}/data/{key}
 function save(key, val) {
   DB[key] = val;
   if (!currentUser) return;
-  db.collection('users').doc(currentUser.uid)
-    .collection('data').doc(key)
-    .set({ value: val })
+  const ref = SHARED_KEYS.has(key)
+    ? db.collection('shared').doc('masterData').collection('items').doc(key)
+    : db.collection('users').doc(currentUser.uid).collection('data').doc(key);
+  ref.set({ value: val })
     .catch(e => console.warn('Firestore save:', e));
 }
 
@@ -2371,18 +2393,31 @@ function save(key, val) {
 async function loadFromFirestore() {
   if (!currentUser) return;
   // ユーザー切り替え時にDBをリセット（前ユーザーのデータが残らないように）
-  DB.inspections = [];
-  DB.inspectors  = [...DEFAULT_INSPECTORS];
-  DB.products    = [...SAMPLE_PRODUCTS];
-  DB.hiddenMfrs  = [];
+  DB.inspections      = [];
+  DB.inspectors       = [...DEFAULT_INSPECTORS];
+  DB.products         = [...SAMPLE_PRODUCTS];
+  DB.customMfrs       = [];
+  DB.hiddenMfrs       = [];
+  DB.hiddenMfrHistory = [];
   try {
-    const snap = await db.collection('users').doc(currentUser.uid)
+    // ① ユーザー個別データ（履歴系）をロード
+    const userSnap = await db.collection('users').doc(currentUser.uid)
       .collection('data').get();
-    snap.forEach(doc => {
-      if (DB.hasOwnProperty(doc.id)) {
+    userSnap.forEach(doc => {
+      if (DB.hasOwnProperty(doc.id) && !SHARED_KEYS.has(doc.id)) {
         DB[doc.id] = doc.data().value;
       }
     });
+
+    // ② 共有データ（マスターデータ）をロード
+    const sharedSnap = await db.collection('shared').doc('masterData')
+      .collection('items').get();
+    sharedSnap.forEach(doc => {
+      if (DB.hasOwnProperty(doc.id) && SHARED_KEYS.has(doc.id)) {
+        DB[doc.id] = doc.data().value;
+      }
+    });
+
     // 初回（データなし）のみサンプルを投入
     if (!DB.inspections.length) {
       const now = new Date();
@@ -5937,133 +5972,46 @@ function toggleDark() {
 }
 
 // ============================================================
-// ロット番号マスク入力 (YYYY/MM/DD 固定フォーマット)
+// ロット番号 日付入力
 // ============================================================
-function initLotMask(el) {
-  el._maskInit = true;
-  const t = new Date();
-  const init = String(t.getFullYear())
-    + String(t.getMonth()+1).padStart(2,'0')
-    + String(t.getDate()).padStart(2,'0');
-  let dg = init.split('');
 
-  function fmt() {
-    return dg.slice(0,4).join('') + '/' + dg.slice(4,6).join('') + '/' + dg.slice(6,8).join('');
-  }
-  function toDisp(di) { return di < 4 ? di : di < 6 ? di+1 : di+2; }
-  function toDig(pos) { return pos < 4 ? pos : pos < 7 ? pos-1 : pos-2; }
-  function safePos(pos) { return (pos===4||pos===7) ? pos+1 : Math.min(pos,9); }
-  // 全角数字→半角変換
-  function toHalf(s) {
-    return String(s).replace(/[０-９]/g, function(c){ return String.fromCharCode(c.charCodeAt(0)-0xFEE0); });
-  }
+/** YYYY-MM-DD → YYYY/MM/DD */
+/** 今日の日付を YYYY/MM/DD 形式で返す */
+function _todaySlash(offsetDays) {
+  const d = new Date();
+  if (offsetDays) d.setDate(d.getDate() + offsetDays);
+  return d.getFullYear() + '/'
+    + String(d.getMonth()+1).padStart(2,'0') + '/'
+    + String(d.getDate()).padStart(2,'0');
+}
 
-  el.value = fmt();
-  S.lotNumber = el.value;
+function onLotInput(el) {
+  // 数字以外を除去してスラッシュを自動挿入
+  let nums = el.value.replace(/[^0-9]/g, '').slice(0, 8);
+  let fmt = nums;
+  if (nums.length > 4) fmt = nums.slice(0,4) + '/' + nums.slice(4);
+  if (nums.length > 6) fmt = nums.slice(0,4) + '/' + nums.slice(4,6) + '/' + nums.slice(6);
+  el.value = fmt;
+  S.lotNumber = fmt;
+}
 
-  let isComposing = false;
-  let compStart = 0;
-
-  // --- IME composition ---
-  el.addEventListener('compositionstart', function() {
-    isComposing = true;
-    compStart = el.selectionStart;
-    // IME入力中は一旦値を保持するため、compositionend後に上書き
-  });
-  el.addEventListener('compositionend', function(e) {
-    isComposing = false;
-    const nums = toHalf(e.data || '').replace(/[^\d]/g, '');
-    let di = toDig(safePos(compStart));
-    for (const ch of nums) {
-      if (di < 8) { dg[di] = ch; di++; }
-    }
-    el.value = fmt();
-    S.lotNumber = el.value;
-    el.setSelectionRange(di < 8 ? toDisp(di) : 10, di < 8 ? toDisp(di) : 10);
-  });
-
-  // --- キーボード（半角直接入力・PC） ---
-  el.addEventListener('keydown', function(e) {
-    // IME処理中はスキップ（compositionendに任せる）
-    if (isComposing || e.isComposing || e.keyCode === 229) return;
-    if (e.ctrlKey || e.metaKey) return;
-
-    const raw = el.selectionStart;
-    const pos = safePos(raw);
-    const di  = toDig(pos);
-
-    const halfKey = toHalf(e.key);
-    if (halfKey >= '0' && halfKey <= '9') {
-      e.preventDefault();
-      if (di < 8) {
-        dg[di] = halfKey;
-        el.value = fmt();
-        S.lotNumber = el.value;
-        const nextDi = di + 1;
-        el.setSelectionRange(nextDi < 8 ? toDisp(nextDi) : 10, nextDi < 8 ? toDisp(nextDi) : 10);
-      }
-    } else if (e.key === 'Backspace') {
-      e.preventDefault();
-      const pdi = Math.max(0, (raw===5||raw===8||raw===4||raw===7) ? toDig(raw-1) : di-1);
-      dg[pdi] = '_';
-      el.value = fmt();
-      S.lotNumber = el.value.replace(/_/g,'');
-      el.setSelectionRange(toDisp(pdi), toDisp(pdi));
-    } else if (e.key === 'Delete') {
-      e.preventDefault();
-      if (di < 8) { dg[di]='_'; el.value=fmt(); S.lotNumber=el.value.replace(/_/g,''); el.setSelectionRange(pos,pos); }
-    } else if (e.key === 'ArrowLeft') {
-      e.preventDefault();
-      const pdi = di - 1;
-      if (pdi >= 0) el.setSelectionRange(toDisp(pdi), toDisp(pdi));
-    } else if (e.key === 'ArrowRight') {
-      e.preventDefault();
-      const ndi = di + 1;
-      if (ndi < 8) el.setSelectionRange(toDisp(ndi), toDisp(ndi));
-    } else if (e.key !== 'Tab') {
-      e.preventDefault();
-    }
-  });
-
-  // --- モバイル仮想キーボード（inputイベントでフォールバック） ---
-  el.addEventListener('input', function(e) {
-    if (isComposing || e.isComposing) return; // compositionendに任せる
-    // keydownでpreventDefaultされた場合はここに来ない
-    // モバイルで直接inputが来た場合のみ処理
-    const nums = toHalf(el.value).replace(/[^\d]/g,'').slice(0,8);
-    for (let i=0;i<8;i++) dg[i] = nums[i] || '_';
-    const cursorDigit = Math.min(nums.length, 7);
-    el.value = fmt();
-    S.lotNumber = el.value;
-    const nextPos = cursorDigit < 8 ? toDisp(cursorDigit) : 10;
-    el.setSelectionRange(nextPos, nextPos);
-  });
-
-  el.addEventListener('click', function() {
-    const pos = safePos(el.selectionStart);
-    el.setSelectionRange(pos, pos);
-  });
-
-  el.addEventListener('paste', function(e) {
-    e.preventDefault();
-    const nums = toHalf((e.clipboardData||window.clipboardData).getData('text')).replace(/[^\d]/g,'').slice(0,8);
-    for (let i=0;i<8;i++) dg[i] = nums[i] || '_';
-    el.value = fmt();
-    S.lotNumber = el.value;
-  });
-
-  el._setValue = function(str) {
-    const nums = toHalf(String(str)).replace(/[^\d]/g,'').slice(0,8);
-    for (let i=0;i<8;i++) dg[i] = nums[i] || '_';
-    el.value = fmt();
+function initLotDateInput() {
+  const el = document.getElementById('lotInput');
+  if (!el || el._lotInit) return;
+  el._lotInit = true;
+  const today = _todaySlash();
+  el.value = today;
+  S.lotNumber = today;
+  el._setValue = function(slashStr) {
+    el.value = String(slashStr).slice(0, 10);
     S.lotNumber = el.value;
   };
 }
 
+
 function renderApp() {
-  // ロット番号マスク初期化
-  const lotEl = document.getElementById('lotInput');
-  if (lotEl && !lotEl._maskInit) initLotMask(lotEl);
+  // ロット番号日付入力初期化
+  initLotDateInput();
 
   renderMfr();
   renderProduct();
