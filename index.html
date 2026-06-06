@@ -293,8 +293,7 @@ a{color:inherit;text-decoration:none}
 .mfr-result-item:active,.mfr-result-item:hover{background:var(--surface-2)}
 .mfr-result-item.selected-item{background:var(--primary-dim)}
 .mfr-result-icon{
-  width:36px;height:36px;border-radius:50%;
-  background:var(--primary-dim);flex-shrink:0;
+  width:36px;height:36px;flex-shrink:0;
   display:flex;align-items:center;justify-content:center;
 }
 .mfr-result-icon svg{stroke:var(--primary);width:17px;height:17px}
@@ -347,8 +346,8 @@ a{color:inherit;text-decoration:none}
 }
 .mfr-hist-row:active,.mfr-hist-row:hover{background:var(--surface-2)}
 .mfr-hist-icon{
-  width:36px;height:36px;border-radius:50%;
-  background:var(--surface-2);flex-shrink:0;
+  width:36px;height:36px;
+  flex-shrink:0;
   display:flex;align-items:center;justify-content:center;
 }
 .mfr-hist-icon svg{stroke:var(--text-3);width:17px;height:17px}
@@ -1738,19 +1737,7 @@ a{color:inherit;text-decoration:none}
     <div class="header-logo">
       <span class="header-title">検品アプリ</span>
     </div>
-    <div style="position:relative">
-      <button onclick="toggleUserMenu()" style="display:flex;align-items:center;gap:6px;padding:6px 10px;border-radius:100px;background:var(--surface-2);border:1px solid var(--border);cursor:pointer;transition:background .15s">
-        <div id="userEmail" style="font-size:13px;font-weight:700;color:var(--text);max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></div>
-        <svg viewBox="0 0 24 24" fill="none" stroke="var(--text-3)" stroke-width="2.5" width="12" height="12" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
-      </button>
-      <div id="userMenu" style="display:none;position:absolute;right:0;top:calc(100% + 8px);background:var(--surface);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow-md);overflow:hidden;min-width:140px;z-index:200">
-        <div id="userEmpId" style="display:none;font-size:11px;color:var(--text-3);padding:10px 16px 6px;border-bottom:1px solid var(--border)"></div>
-        <button onclick="logoutUser()" style="width:100%;display:flex;align-items:center;gap:9px;padding:12px 16px;font-size:14px;font-weight:600;color:var(--fail);cursor:pointer;background:none;border:none;transition:background .15s" onmouseover="this.style.background='var(--fail-dim)'" onmouseout="this.style.background='none'">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15" stroke-linecap="round"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-          ログアウト
-        </button>
-      </div>
-    </div>
+
   </header>
 
   <!-- =================== HOME PAGE =================== -->
@@ -5706,8 +5693,6 @@ async function saveUserEdit() {
     // 自分自身のプロフィールを更新
     if (uid === currentUser?.uid) {
       currentUserProfile = { ...currentUserProfile, ...updates };
-      document.getElementById('userEmail').textContent = name;
-      document.getElementById('userEmpId').textContent = empId || '';
       document.getElementById('settingsUserName').textContent = name;
       const settingsEmpEl2 = document.getElementById('settingsUserEmp');
       if (settingsEmpEl2) settingsEmpEl2.textContent = empId ? `社員ID: ${empId}` : currentUser.email;
@@ -6043,17 +6028,8 @@ auth.onAuthStateChanged(async user => {
       return;
     }
 
-    const displayName  = currentUserProfile ? currentUserProfile.name : user.email;
-    document.getElementById('userEmail').textContent = displayName;
     if (currentUserProfile) {
-      const empId = currentUserProfile.employeeId || '';
-      const empEl = document.getElementById('userEmpId');
-      if (empId) {
-        empEl.textContent = empId;
-        empEl.style.display = 'block';
-      } else {
-        empEl.style.display = 'none';
-      }
+      // プロフィール取得済み
     }
     await loadFromFirestore();
     loadingEl.style.display = 'none';
@@ -6129,23 +6105,7 @@ async function doAuth() {
   }
 }
 
-function toggleUserMenu() {
-  const menu = document.getElementById('userMenu');
-  menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
-}
 
-document.addEventListener('click', e => {
-  const menu = document.getElementById('userMenu');
-  if (menu && !menu.closest && menu.style.display === 'block') {
-    menu.style.display = 'none';
-  }
-  if (menu && menu.style.display === 'block') {
-    const btn = menu.previousElementSibling;
-    if (!menu.contains(e.target) && !btn.contains(e.target)) {
-      menu.style.display = 'none';
-    }
-  }
-});
 
 function logoutUser() {
   auth.signOut();
