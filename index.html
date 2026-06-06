@@ -1262,6 +1262,18 @@ a{color:inherit;text-decoration:none}
 .detail-photo-item-label.lbl-ok{
   background:rgba(0,0,0,.42);color:#fff;
 }
+.detail-photo-item-label.lbl-pass{
+  background:var(--pass);color:#fff;
+}
+.detail-photo-item-label.lbl-perm{
+  background:rgba(59,130,246,.88);color:#fff;
+}
+.detail-photo-item-label.lbl-prov{
+  background:rgba(245,158,11,.88);color:#fff;
+}
+.detail-photo-item.ok-photo{
+  border-color:var(--pass);
+}
 
 /* =====================================================
    写真フルスクリーンビューアー
@@ -4973,9 +4985,13 @@ async function saveInspection() {
   const overallResult    = deriveOverallResult();
   const overallJudgeType = deriveOverallJudgeType();
 
-  // 写真を圧縮保存
+  // 写真を圧縮保存（usability / judgeType も保持）
   showToast('保存中...','default');
-  const uploadedPhotos = await Promise.all(S.photos.map(p => uploadPhoto(p.url)));
+  const uploadedPhotos = await Promise.all(S.photos.map(async p => ({
+    url:       await uploadPhoto(p.url),
+    usability: p.usability  || null,
+    judgeType: p.judgeType  || null,
+  })));
 
   const record = {
     id: uid(),
@@ -5863,15 +5879,34 @@ function openDetail(id) {
   let photosHtml = '';
   if (r.photos?.length) {
     const items = r.photos.map((p, i) => {
-      const isNG = r.result === 'fail' && i === 0;
-      const labelText = isNG
-        ? (r.defects?.length ? `NG：${r.defects[0]}` : 'NG')
-        : (i === 1 ? '全体像' : `写真 ${i + 1}`);
-      const labelCls  = isNG ? 'lbl-ng' : 'lbl-ok';
-      const itemCls   = isNG ? 'ng-photo' : '';
+      // 旧データ互換：文字列 or オブジェクト
+      const url       = typeof p === 'string' ? p : p.url;
+      const usability = typeof p === 'string' ? null : p.usability;
+      const judgeType = typeof p === 'string' ? null : p.judgeType;
+
+      // 枠色
+      let itemCls = usability === 'fail' ? 'ng-photo'
+                  : usability === 'pass' ? 'ok-photo' : '';
+
+      // 使用可否バッジ
+      let usabilityHtml = '';
+      if (usability === 'fail') {
+        const defectName = r.defects?.length ? r.defects[0] : '使用否';
+        usabilityHtml = `<span class="detail-photo-item-label lbl-ng">NG：${defectName}</span>`;
+      } else if (usability === 'pass') {
+        usabilityHtml = `<span class="detail-photo-item-label lbl-pass">使用可</span>`;
+      }
+
+      // 判断区分バッジ（使用可否の下）
+      const judgeOffset = usability ? 'top:34px' : 'top:8px';
+      const judgeHtml = judgeType
+        ? `<span class="detail-photo-item-label ${judgeType === '恒久判断' ? 'lbl-perm' : 'lbl-prov'}" style="${judgeOffset};left:8px">${judgeType}</span>`
+        : '';
+
       return `<div class="detail-photo-item ${itemCls}" onclick="openPhotoViewer(${i})">
-        <img src="${p}" class="detail-photo">
-        <span class="detail-photo-item-label ${labelCls}">${labelText}</span>
+        <img src="${url}" class="detail-photo">
+        ${usabilityHtml}
+        ${judgeHtml}
       </div>`;
     }).join('');
     photosHtml = `<div class="detail-photo-grid">${items}</div>`;
