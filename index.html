@@ -1596,33 +1596,41 @@ a{color:inherit;text-decoration:none}
 /* =====================================================
    ログイン画面
    ===================================================== */
+/* =====================================================
+   ログイン画面 — 常に1画面に収まるようdvhでスケール
+   ===================================================== */
 #loginScreen{
   position:fixed;inset:0;background:#eef1f7;z-index:1000;
-  display:flex;align-items:center;justify-content:center;padding:24px;
+  overflow:hidden;
+  display:flex;align-items:center;justify-content:center;
+  padding:max(env(safe-area-inset-top,0px),10px) 16px max(env(safe-area-inset-bottom,0px),10px);
 }
 .login-box{
-  width:100%;max-width:380px;background:#ffffff;
-  border-radius:20px;padding:36px 28px 32px;
+  width:100%;max-width:390px;background:#ffffff;
+  border-radius:20px;
+  padding:clamp(14px,3dvh,28px) clamp(16px,4vw,24px);
   box-shadow:0 4px 32px rgba(0,0,0,0.10);
 }
 .login-logo{
   display:flex;align-items:center;justify-content:center;
-  margin-bottom:36px;
+  margin-bottom:clamp(12px,2.5dvh,28px);
 }
 .login-logo img{
-  width:140px;height:auto;display:block;
+  width:clamp(68px,14dvh,120px);height:auto;display:block;
 }
 .login-label{
-  font-size:15px;font-weight:700;color:#1a1a2e;
-  margin-bottom:8px;display:block;
+  font-size:clamp(12px,1.8dvh,15px);font-weight:700;color:#1a1a2e;
+  margin-bottom:clamp(4px,0.6dvh,8px);display:block;
 }
 .login-input-wrap{
-  position:relative;margin-bottom:18px;
+  position:relative;margin-bottom:clamp(8px,1.6dvh,18px);
 }
 .login-input{
-  width:100%;padding:14px 16px;background:#ffffff;
+  width:100%;
+  padding:clamp(9px,1.5dvh,14px) 16px;
+  background:#ffffff;
   border:1.5px solid #d1d5db;border-radius:12px;
-  font-size:15px;color:#1a1a2e;
+  font-size:clamp(13px,1.8dvh,15px);color:#1a1a2e;
   transition:border-color .15s,box-shadow .15s;display:block;
 }
 .login-input:focus{
@@ -1641,22 +1649,23 @@ a{color:inherit;text-decoration:none}
 .login-eye-btn:hover{color:#6b7280}
 .login-keep-row{
   display:flex;align-items:center;gap:10px;
-  margin-bottom:22px;cursor:pointer;
+  margin-bottom:clamp(10px,1.8dvh,22px);cursor:pointer;
 }
 .login-keep-row input[type="checkbox"]{
-  width:20px;height:20px;border-radius:5px;
-  border:2px solid #d1d5db;
-  cursor:pointer;accent-color:#1d6ef5;
-  flex-shrink:0;
+  width:clamp(16px,2dvh,20px);height:clamp(16px,2dvh,20px);
+  border-radius:5px;border:2px solid #d1d5db;
+  cursor:pointer;accent-color:#1d6ef5;flex-shrink:0;
 }
 .login-keep-lbl{
-  font-size:14px;color:#374151;font-weight:500;
+  font-size:clamp(12px,1.7dvh,14px);color:#374151;font-weight:500;
   cursor:pointer;user-select:none;
 }
 .login-btn{
-  width:100%;padding:16px;
+  width:100%;
+  padding:clamp(11px,1.9dvh,16px);
   background:#1d6ef5;
-  border-radius:14px;color:#fff;font-size:16px;font-weight:800;
+  border-radius:14px;color:#fff;
+  font-size:clamp(14px,2dvh,16px);font-weight:800;
   box-shadow:0 4px 16px rgba(29,110,245,0.35);
   transition:transform .1s,box-shadow .15s,background .15s;
   letter-spacing:.3px;
@@ -1670,14 +1679,11 @@ a{color:inherit;text-decoration:none}
   opacity:0.65;cursor:not-allowed;transform:none;
 }
 .login-err{
-  color:var(--fail);font-size:13px;font-weight:600;
-  text-align:center;margin-top:12px;min-height:20px;
+  color:var(--fail);font-size:clamp(11px,1.5dvh,13px);font-weight:600;
+  text-align:center;margin-top:clamp(6px,1dvh,12px);min-height:1.4em;
 }
 /* 旧ログインタブ（互換） */
-.login-tabs{display:none}
-.login-tab{display:none}
-.login-title{display:none}
-.login-logo-icon{display:none}
+.login-tabs{display:none}.login-tab{display:none}.login-title{display:none}.login-logo-icon{display:none}
 #loadingScreen{
   position:fixed;inset:0;background:var(--bg);z-index:999;
   display:flex;align-items:center;justify-content:center;flex-direction:column;gap:14px;
