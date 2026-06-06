@@ -1601,15 +1601,16 @@ a{color:inherit;text-decoration:none}
    ===================================================== */
 #loginScreen{
   position:fixed;inset:0;background:#eef1f7;z-index:1000;
-  overflow:hidden;
-  display:flex;align-items:center;justify-content:center;
-  padding:max(env(safe-area-inset-top,0px),10px) 16px max(env(safe-area-inset-bottom,0px),10px);
+  overflow-y:auto;
+  display:flex;align-items:stretch;justify-content:center;
+  padding:max(env(safe-area-inset-top,0px),16px) 16px max(env(safe-area-inset-bottom,0px),16px);
 }
 .login-box{
   width:100%;max-width:390px;background:#ffffff;
   border-radius:20px;
-  padding:clamp(14px,3dvh,28px) clamp(16px,4vw,24px);
+  padding:clamp(20px,5dvh,40px) clamp(16px,4vw,24px);
   box-shadow:0 4px 32px rgba(0,0,0,0.10);
+  display:flex;flex-direction:column;justify-content:center;
 }
 .login-logo{
   display:flex;align-items:center;justify-content:center;
