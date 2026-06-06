@@ -3757,7 +3757,7 @@ async function _runClaudeVisionOCR(primaryBlob, secondaryBlob = null) {
   const vm1 = ['image/jpeg','image/png','image/gif','image/webp'].includes(m1) ? m1 : 'image/jpeg';
 
   // ── 選択中メーカーをコンテキストとして注入 ──
-  const mfrObj  = S.selectedMfr ? MANUFACTURERS.find(m => m.id === S.selectedMfr) : null;
+  const mfrObj  = S.selectedMfr ? [...MANUFACTURERS, ...load('customMfrs', [])].find(m => m.id === S.selectedMfr) : null;
   const mfrHint = mfrObj
     ? `\n【メーカー補足】選択中のメーカーは「${mfrObj.name}」です。このメーカーの製品ラベルである可能性が高いため、型番・品番の書式をそのメーカーの慣例に合わせて読み取ってください。`
     : '';
@@ -4902,7 +4902,8 @@ function showSaveConfirm() {
   if (!productName)     { showToast('製品名を入力してください','error');      return; }
   if (!S.selectedInsp) { showToast('確認者を選択してください','error');      return; }
 
-  const mfr  = MANUFACTURERS.find(m => m.id === S.selectedMfr);
+  const _allMfrs1 = [...MANUFACTURERS, ...load('customMfrs', [])];
+  const mfr  = _allMfrs1.find(m => m.id === S.selectedMfr);
   const insp = getInspectors().find(i => i.id === S.selectedInsp);
 
   const derived      = deriveOverallResult();
@@ -4979,7 +4980,8 @@ async function saveInspection() {
   if (!productName)      { showToast('製品名を入力してください','error'); return; }
   if (!S.selectedInsp)  { showToast('確認者を選択してください','error'); return; }
 
-  const mfr  = MANUFACTURERS.find(m => m.id === S.selectedMfr);
+  const _allMfrs2 = [...MANUFACTURERS, ...load('customMfrs', [])];
+  const mfr  = _allMfrs2.find(m => m.id === S.selectedMfr);
   const insp = getInspectors().find(i => i.id === S.selectedInsp);
 
   const overallResult    = deriveOverallResult();
