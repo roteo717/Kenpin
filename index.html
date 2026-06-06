@@ -853,6 +853,15 @@ a{color:inherit;text-decoration:none}
   transition:color .15s;
 }
 .defect-clear-btn:hover{color:var(--primary)}
+.defect-other-input{
+  width:100%;padding:11px 14px;
+  background:var(--surface-2);
+  border:1.5px solid var(--primary);
+  border-radius:12px;font-size:14px;color:var(--text);
+  transition:border-color .15s,background .15s;
+}
+.defect-other-input:focus{outline:none;background:var(--surface)}
+.defect-other-input::placeholder{color:var(--text-3)}
 
 /* =====================================================
    判定ボタン（2グループ）
@@ -1881,6 +1890,14 @@ a{color:inherit;text-decoration:none}
         </div>
       </div>
       <div class="defect-grid" id="defectGrid"></div>
+      <div id="defectOtherWrap" style="display:none;margin-top:9px">
+        <input type="text" id="defectOtherInput"
+               class="defect-other-input"
+               placeholder="その他の内容を入力..."
+               maxlength="40"
+               oninput="S.defectsOther=this.value"
+               onkeydown="if(event.key==='Enter')this.blur()">
+      </div>
     </div>
 
     <!-- 確認者選択 -->
@@ -2379,6 +2396,7 @@ const S = {
   usability: null,   // 'pass' | 'fail'
   judgeType: null,   // '恒久判断' | '暫定判断'
   defects: [],
+  defectsOther: '',
   photos: [],
   camStream: null,
   camFacing: 'environment',
@@ -4335,6 +4353,21 @@ function toggleAllDefects() {
 }
 
 function toggleDefect(item) {
+  if (item === 'その他') {
+    const wrap = document.getElementById('defectOtherWrap');
+    if (S.defects.includes('その他')) {
+      S.defects = S.defects.filter(d => d !== 'その他');
+      S.defectsOther = '';
+      document.getElementById('defectOtherInput').value = '';
+      wrap.style.display = 'none';
+    } else {
+      S.defects.push('その他');
+      wrap.style.display = 'block';
+      setTimeout(() => document.getElementById('defectOtherInput').focus(), 80);
+    }
+    renderDefects();
+    return;
+  }
   if (S.defects.includes(item)) {
     S.defects = S.defects.filter(d => d !== item);
   } else {
@@ -4345,6 +4378,11 @@ function toggleDefect(item) {
 
 function clearDefects() {
   S.defects = [];
+  S.defectsOther = '';
+  const inp = document.getElementById('defectOtherInput');
+  const wrap = document.getElementById('defectOtherWrap');
+  if (inp) inp.value = '';
+  if (wrap) wrap.style.display = 'none';
   renderDefects();
 }
 
@@ -5006,7 +5044,7 @@ async function saveInspection() {
     createdByName:    currentUserProfile?.name || '不明',
     result:    overallResult || 'review',
     judgeType: overallJudgeType,
-    defects:   [...S.defects],
+    defects:   S.defects.map(d => d === 'その他' && S.defectsOther.trim() ? `その他：${S.defectsOther.trim()}` : d),
     comment:   '',
     photos:    uploadedPhotos,
     createdAt: new Date().toISOString(),
@@ -5036,14 +5074,13 @@ function resetForm() {
   S.usability = null;
   S.judgeType = null;
   S.defects = [];
+  S.defectsOther = '';
   S.photos = [];
   S.productName = '';
   S.lotNumber = '';
-  const today = new Date();
-  const todayStr = `${today.getFullYear()}/${String(today.getMonth()+1).padStart(2,'0')}/${String(today.getDate()).padStart(2,'0')}`;
   document.getElementById('productInput').value = '';
   const lotEl2 = document.getElementById('lotInput');
-  if (lotEl2._setValue) lotEl2._setValue(todayStr); else lotEl2.value = todayStr;
+  lotEl2.value = '';
   renderMfr();
   renderProduct();
   renderInspectors();
