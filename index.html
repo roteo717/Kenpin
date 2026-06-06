@@ -1221,6 +1221,49 @@ a{color:inherit;text-decoration:none}
 .detail-photo:active{opacity:.8}
 
 /* =====================================================
+   詳細：写真グリッド（上部・新デザイン）
+   ===================================================== */
+.detail-photo-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+  margin-bottom:16px;
+}
+.detail-photo-item{
+  position:relative;
+  border-radius:12px;
+  overflow:hidden;
+  aspect-ratio:1;
+  border:2.5px solid transparent;
+  background:var(--surface-2);
+  transition:opacity .15s;
+  cursor:pointer;
+}
+.detail-photo-item:active{opacity:.8}
+.detail-photo-item.ng-photo{
+  border-color:var(--fail);
+}
+.detail-photo-item img.detail-photo{
+  width:100%;height:100%;
+  object-fit:cover;display:block;
+  border-radius:0;aspect-ratio:unset;
+}
+.detail-photo-item-label{
+  position:absolute;
+  top:8px;left:8px;
+  padding:3px 9px;
+  border-radius:6px;
+  font-size:11px;font-weight:700;line-height:1.4;
+  pointer-events:none;
+}
+.detail-photo-item-label.lbl-ng{
+  background:var(--fail);color:#fff;
+}
+.detail-photo-item-label.lbl-ok{
+  background:rgba(0,0,0,.42);color:#fff;
+}
+
+/* =====================================================
    写真フルスクリーンビューアー
    ===================================================== */
 .photo-viewer-bg{
@@ -5811,25 +5854,41 @@ function openDetail(id) {
   const r = all.find(x => x.id === id);
   if (!r) return;
 
-  const lbls = { pass:'使用可', fail:'使用否', review:'要確認' };
-  const icons = {
-    pass:'<polyline points="20 6 9 17 4 12" stroke-width="3"/>',
-    fail:'<line x1="18" y1="6" x2="6" y2="18" stroke-width="2.5"/><line x1="6" y1="6" x2="18" y2="18" stroke-width="2.5"/>',
-    review:'<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>',
-  };
-
   const d = new Date(r.createdAt);
   const dateStr = `${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
 
   document.getElementById('dTitle').textContent = r.productName;
+
+  // ── 写真グリッド（最上部）
+  let photosHtml = '';
+  if (r.photos?.length) {
+    const items = r.photos.map((p, i) => {
+      const isNG = r.result === 'fail' && i === 0;
+      const labelText = isNG
+        ? (r.defects?.length ? `NG：${r.defects[0]}` : 'NG')
+        : (i === 1 ? '全体像' : `写真 ${i + 1}`);
+      const labelCls  = isNG ? 'lbl-ng' : 'lbl-ok';
+      const itemCls   = isNG ? 'ng-photo' : '';
+      return `<div class="detail-photo-item ${itemCls}" onclick="openPhotoViewer(${i})">
+        <img src="${p}" class="detail-photo">
+        <span class="detail-photo-item-label ${labelCls}">${labelText}</span>
+      </div>`;
+    }).join('');
+    photosHtml = `<div class="detail-photo-grid">${items}</div>`;
+  }
+
+  // ── 判断区分バッジ（写真がない場合のみ表示）
+  const judgeTypeBadge = (!r.photos?.length && r.judgeType)
+    ? `<div class="detail-badge-row">
+        <span class="h-badge ${r.result}" style="font-size:12px;padding:5px 13px">
+          ${r.result === 'fail' ? '× 使用否' : r.result === 'pass' ? '✓ 使用可' : '要確認'}
+        </span>
+        <span style="font-size:12px;font-weight:700;color:${r.judgeType==='恒久判断'?'#3b82f6':'var(--review)'};background:${r.judgeType==='恒久判断'?'#eff6ff':'var(--review-dim)'};border-radius:100px;padding:5px 13px">${r.judgeType}</span>
+      </div>` : '';
+
   document.getElementById('dContent').innerHTML = `
-    <div class="detail-badge-row">
-      <span class="h-badge ${r.result}" style="font-size:12px;padding:5px 13px;gap:5px">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" width="12" height="12">${icons[r.result]}</svg>
-        ${lbls[r.result]}
-      </span>
-      ${r.judgeType ? `<span style="font-size:12px;font-weight:700;color:${r.judgeType==='恒久判断'?'#3b82f6':'var(--review)'};background:${r.judgeType==='恒久判断'?'#eff6ff':'var(--review-dim)'};border-radius:100px;padding:5px 13px">${r.judgeType}</span>` : ''}
-    </div>
+    ${photosHtml}
+    ${judgeTypeBadge}
     <div class="detail-row">
       <span class="detail-lbl">メーカー</span>
       <span class="detail-val">${r.manufacturerName}</span>
@@ -5839,13 +5898,14 @@ function openDetail(id) {
       <span class="detail-val">${r.inspectorName}</span>
     </div>
     <div class="detail-row">
-      <span class="detail-lbl">入力者</span>
-      <span class="detail-val">${r.createdByName || '—'}</span>
-    </div>
-    <div class="detail-row">
       <span class="detail-lbl">日時</span>
       <span class="detail-val">${dateStr}</span>
     </div>
+    ${r.createdByName ? `
+    <div class="detail-row">
+      <span class="detail-lbl">入力者</span>
+      <span class="detail-val">${r.createdByName}</span>
+    </div>` : ''}
     ${r.lotNumber ? `
     <div class="detail-row">
       <span class="detail-lbl">ロット番号</span>
@@ -5859,10 +5919,6 @@ function openDetail(id) {
           ${r.defects.map(d => `<span style="display:inline-block;padding:3px 10px;border-radius:100px;font-size:12px;font-weight:600;background:var(--fail-dim);color:var(--fail)">${d}</span>`).join('')}
         </div>
       </span>
-    </div>` : ''}
-    ${r.photos?.length ? `
-    <div class="detail-photos">
-      ${r.photos.map((p, i) => `<img src="${p}" class="detail-photo" onclick="openPhotoViewer(${i})" data-idx="${i}">`).join('')}
     </div>` : ''}
   `;
 
