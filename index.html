@@ -6293,6 +6293,7 @@ async function doAuth() {
   const raw    = document.getElementById('loginEmail').value.trim();
   const email  = raw.includes('@') ? raw : raw + '@kenpin.com';
   const pass   = document.getElementById('loginPass').value;
+  const keep   = document.getElementById('loginKeep')?.checked ?? false;
   const errEl  = document.getElementById('loginErr');
   const btn    = document.getElementById('loginBtn');
   errEl.textContent = '';
@@ -6303,6 +6304,9 @@ async function doAuth() {
   btn.textContent = '処理中...';
   btn.disabled    = true;
   try {
+    // 'local'  = ブラウザ再起動後もログイン維持
+    // 'session'= タブ/ブラウザを閉じると解除
+    await auth.setPersistence(keep ? 'local' : 'session');
     await auth.signInWithEmailAndPassword(email, pass);
   } catch(e) {
     errEl.textContent = authErrMsg(e.code);
