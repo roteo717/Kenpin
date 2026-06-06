@@ -1325,15 +1325,7 @@ a{color:inherit;text-decoration:none}
 .dpg-lbl-ok{background:rgba(0,0,0,.40);color:#fff}
 .dpg-lbl-perm{background:rgba(59,130,246,.88);color:#fff}
 .dpg-lbl-prov{background:rgba(245,158,11,.88);color:#fff}
-.dpg-dots{
-  display:flex;justify-content:center;gap:6px;
-  margin-bottom:14px;
-}
-.dpg-dot{
-  width:7px;height:7px;border-radius:50%;
-  background:var(--primary-b);transition:background .2s;
-}
-.dpg-dot.active{background:var(--primary)}
+
 
 /* =====================================================
    写真フルスクリーンビューアー
@@ -6050,10 +6042,6 @@ function openDetail(id) {
 <img src="${url}" class="dpg-img">${lblHtml}</div>`;
     }).join('');
 
-    const dots = total > 1
-      ? `<div class="dpg-dots">${r.photos.map((_,i)=>`<span class="dpg-dot${i===0?' active':''}" id="dpgDot_${i}"></span>`).join('')}</div>`
-      : '';
-
     photosHtml = `
       <div class="dpg-header">
         <span class="dpg-title">検品写真（${total}枚）</span>
@@ -6064,7 +6052,6 @@ function openDetail(id) {
           ${items}
         </div>
       </div>
-      ${dots}
     `;
   }
 
@@ -6127,19 +6114,15 @@ function closeDetail() {
 let _pvPhotos = [];
 let _pvIdx    = 0;
 
-// カルーセルスクロール追跡
+// カルーセルスクロール追跡（カウンターのみ更新）
 function dpgScroll(el, total) {
   if (total <= 1) return;
   const items = el.querySelectorAll('.dpg-item');
   if (!items.length) return;
-  const itemW = items[0].offsetWidth + 7; // 7px = gap
+  const itemW = items[0].offsetWidth + 7;
   const idx = Math.max(0, Math.min(total - 1, Math.round(el.scrollLeft / itemW)));
   const countEl = document.getElementById('dpgCount');
   if (countEl) countEl.textContent = `${idx + 1} / ${total}`;
-  for (let i = 0; i < total; i++) {
-    const dot = document.getElementById(`dpgDot_${i}`);
-    if (dot) dot.classList.toggle('active', i === idx);
-  }
 }
 
 function openPhotoViewer(idx) {
