@@ -6103,10 +6103,12 @@ function openDetail(id) {
     </div>` : ''}
   `;
 
+  _lockScroll();
   document.getElementById('detailBg').classList.add('show');
 }
 
 function closeDetail() {
+  _unlockScroll();
   document.getElementById('detailBg').classList.remove('show');
 }
 
