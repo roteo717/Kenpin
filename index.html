@@ -1854,6 +1854,7 @@ a{color:inherit;text-decoration:none}
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<!-- Google Identity Services は不要（GAS経由に変更） -->
 </head>
 <body>
 <!-- ======= ローディング画面 ======= -->
@@ -2401,6 +2402,13 @@ firebase.initializeApp(firebaseConfig);
 const auth    = firebase.auth();
 const db      = firebase.firestore();
 
+// ============================================================
+// ★★★ Google API 設定 ★★★
+// ============================================================
+// ★ GAS (Google Apps Script) ウェブアプリURL
+// 画像アップロード・スプレッドシート書き込みはすべて GAS に委譲する
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbxnMk1aQwFqQCYxLaE3xW6RY_EnhUzf5_2yDZjbJbi0-lX1LrmGs8gJ20eXFAg2-a4H/exec';
+
 // 現在のログインユーザー
 let currentUser = null;
 let currentUserProfile = null; // { name, employeeId, color }
@@ -2542,9 +2550,12 @@ function load(key, def) {
 // Firestore に保存（fire-and-forget）
 // 共有キー → shared/masterData/{key}
 // 個別キー → users/{uid}/data/{key}
+// ★ inspections は 1MB 制限を避けるため個別ドキュメント管理（後述の関数を使用）
 function save(key, val) {
   DB[key] = val;
   if (!currentUser) return;
+  // inspections は firestoreAddInspection / firestoreDeleteInspection で個別管理
+  if (key === 'inspections') return;
   const ref = SHARED_KEYS.has(key)
     ? db.collection('shared').doc('masterData').collection('items').doc(key)
     : db.collection('users').doc(currentUser.uid).collection('data').doc(key);
@@ -2563,11 +2574,11 @@ async function loadFromFirestore() {
   DB.hiddenMfrs       = [];
   DB.hiddenMfrHistory = [];
   try {
-    // ① ユーザー個別データ（履歴系）をロード
+    // ① ユーザー個別データ（履歴系・inspections除く）をロード
     const userSnap = await db.collection('users').doc(currentUser.uid)
       .collection('data').get();
     userSnap.forEach(doc => {
-      if (DB.hasOwnProperty(doc.id) && !SHARED_KEYS.has(doc.id)) {
+      if (DB.hasOwnProperty(doc.id) && !SHARED_KEYS.has(doc.id) && doc.id !== 'inspections') {
         DB[doc.id] = doc.data().value;
       }
     });
@@ -2581,6 +2592,55 @@ async function loadFromFirestore() {
       }
     });
 
+    // ③ 旧構造からの移行チェック（v55以前：data/inspections に配列保存）
+    try {
+      const oldRef = db.collection('users').doc(currentUser.uid).collection('data').doc('inspections');
+      const oldDoc = await oldRef.get();
+      if (oldDoc.exists) {
+        const oldList = oldDoc.data().value || [];
+        if (oldList.length > 0) {
+          console.log(`[Migration] 旧形式から ${oldList.length} 件を移行中...`);
+          const batch = db.batch();
+          for (const insp of oldList) {
+            if (!insp.id) continue;
+            const ref = db.collection('users').doc(currentUser.uid)
+              .collection('inspections').doc(insp.id);
+            batch.set(ref, insp);
+          }
+          batch.delete(oldRef);
+          await batch.commit();
+          console.log('[Migration] 移行完了');
+        } else {
+          // 空のドキュメントも削除
+          await oldRef.delete().catch(() => {});
+        }
+      }
+    } catch(migErr) {
+      console.warn('[Migration] 移行スキップ:', migErr);
+    }
+
+    // ④ 新構造から検品記録をロード（users/{uid}/inspections/{id}）
+    // ★ Firestore インデックス要件:
+    //   Collection: inspections, Field: createdAt Descending
+    //   初回アクセス時にコンソールログにインデックス作成URLが表示されます
+    let inspSnap;
+    try {
+      inspSnap = await db.collection('users').doc(currentUser.uid)
+        .collection('inspections')
+        .orderBy('createdAt', 'desc')
+        .get();
+    } catch(idxErr) {
+      // インデックス未作成時はorderByなしでフォールバック
+      console.warn('[Firestore] インデックス未作成。orderByなしで読み込みます:', idxErr.message);
+      inspSnap = await db.collection('users').doc(currentUser.uid)
+        .collection('inspections')
+        .get();
+    }
+    // クライアント側でも日付降順にソート（確実性のため）
+    DB.inspections = inspSnap.docs
+      .map(doc => doc.data())
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
     // 初回（データなし）のみサンプルを投入
     if (!DB.inspections.length) {
       const now = new Date();
@@ -2589,7 +2649,11 @@ async function loadFromFirestore() {
         { id:uid(), manufacturerId:'noritz',    manufacturerName:'ノーリツ',    productName:'GT-C2052SAWX', inspectorId:'INS-002', inspectorName:'佐藤 花子', createdByName:'佐藤 花子', result:'fail',   judgeType:'暫定判断', defects:['打痕・キズ'], comment:'傷あり',   photos:[], createdAt: new Date(now - 864e5*1).toISOString() },
         { id:uid(), manufacturerId:'rinnai',    manufacturerName:'リンナイ',    productName:'RUF-A2405SAW', inspectorId:'INS-001', inspectorName:'田中 太郎', createdByName:'田中 太郎', result:'review', judgeType:'暫定判断', defects:[], comment:'要再確認', photos:[], createdAt: new Date(now - 864e5*2).toISOString() },
       ];
-      save('inspections', samples);
+      DB.inspections = samples;
+      // サンプルデータも新構造で Firestore に保存
+      for (const s of samples) {
+        firestoreAddInspection(s).catch(e => console.warn('sample save:', e));
+      }
     }
     if (DB.inspectors.length === 0) {
       save('inspectors', [...DEFAULT_INSPECTORS]);
@@ -2599,15 +2663,146 @@ async function loadFromFirestore() {
   }
 }
 
-// 写真を圧縮してbase64のままFirestoreに保存（Storage不要・完全無料）
-async function uploadPhoto(base64DataUrl) {
-  if (!base64DataUrl.startsWith('data:')) return base64DataUrl;
+// ============================================================
+// Firestore 検品記録 個別ドキュメント管理
+// （1MB 制限回避のため、1検品 = 1ドキュメント構成）
+// コレクション: users/{uid}/inspections/{inspectionId}
+// ============================================================
+
+/**
+ * 1件の検品記録を Firestore の個別ドキュメントとして保存する。
+ * photos フィールドには Drive URL のみが含まれ、base64 は保存されない。
+ */
+async function firestoreAddInspection(record) {
+  if (!currentUser) return;
+  await db.collection('users').doc(currentUser.uid)
+    .collection('inspections').doc(record.id)
+    .set(record);
+}
+
+/**
+ * 1件の検品記録を Firestore から削除する。
+ */
+async function firestoreDeleteInspection(id) {
+  if (!currentUser) return;
   try {
-    // Firestoreの1MBドキュメント制限に収まるよう圧縮
-    return await compressImage(base64DataUrl, 700, 0.65);
+    await db.collection('users').doc(currentUser.uid)
+      .collection('inspections').doc(id)
+      .delete();
   } catch(e) {
-    return base64DataUrl;
+    console.warn('[Firestore] inspection delete error:', e);
   }
+}
+
+/**
+ * 全検品記録を Firestore から一括削除する（バッチ書き込み）。
+ */
+async function firestoreDeleteAllInspections() {
+  if (!currentUser) return;
+  try {
+    const snap = await db.collection('users').doc(currentUser.uid)
+      .collection('inspections').get();
+    if (snap.empty) return;
+    // Firestore バッチは最大500件。件数が多い場合は分割して実行。
+    const batchSize = 400;
+    const docs = snap.docs;
+    for (let i = 0; i < docs.length; i += batchSize) {
+      const batch = db.batch();
+      docs.slice(i, i + batchSize).forEach(d => batch.delete(d.ref));
+      await batch.commit();
+    }
+    console.log(`[Firestore] ${docs.length} 件の検品記録を削除しました`);
+  } catch(e) {
+    console.warn('[Firestore] deleteAll inspections error:', e);
+  }
+}
+
+// ============================================================
+// Google API 初期化
+// ============================================================
+
+/**
+ * Google Identity Services の TokenClient を初期化する。
+ * GIS スクリプトの async 読み込み完了を待つため、ポーリングで確認する。
+ */
+// ============================================================
+// GAS (Google Apps Script) 経由の写真アップロード
+// OAuth 不要・fetch のみで動作
+// ============================================================
+
+/**
+ * 写真を GAS ウェブアプリ経由で Google Drive にアップロードし、
+ * GAS から返ってきた画像 URL を返す。
+ *
+ * ＜GAS へ送るデータ＞
+ *   { image: "data:image/jpeg;base64,...",  // 圧縮済み base64 DataURL
+ *     maker: "パナソニック",                  // メーカー名
+ *     model: "EZ9L48" }                      // モデル名（製品名）
+ *
+ * ＜GAS からのレスポンス例＞
+ *   { status: "success", url: "https://drive.google.com/..." }
+ *   { status: "error",   error: "エラーメッセージ" }
+ *
+ * ※ GAS は "全員（匿名を含む）" でデプロイしてください。
+ */
+async function uploadPhotoViaGAS(base64DataUrl, makerName, modelName) {
+  // 既に URL の場合（Drive URL の再保存など）はそのまま返す
+  if (!base64DataUrl.startsWith('data:')) return base64DataUrl;
+
+  // ① Canvas で圧縮（最長辺 1024px、品質 0.78）
+  const compressed = await compressImage(base64DataUrl, 1024, 0.78);
+
+  // ② GAS ウェブアプリへ POST
+  // GAS は受け取った base64 画像を Drive に保存し、公開 URL を返す
+  let res;
+  try {
+    res = await fetch(GAS_URL, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        image: compressed,        // data:image/jpeg;base64,... 形式
+        maker: makerName  || '', // メーカー名
+        model: modelName  || '', // モデル名（製品名）
+      }),
+      // GAS は一度リダイレクトするため redirect:'follow'（デフォルト）のままでよい
+    });
+  } catch(networkErr) {
+    throw new Error(
+      'GASへの接続に失敗しました。\n' +
+      'ネットワーク接続とGASのデプロイ設定を確認してください。\n' +
+      `(${networkErr.message})`
+    );
+  }
+
+  if (!res.ok) {
+    const body = await res.text().catch(() => '');
+    throw new Error(`GAS アップロード失敗 (HTTP ${res.status}): ${body.slice(0, 200)}`);
+  }
+
+  let result;
+  try {
+    result = await res.json();
+  } catch(parseErr) {
+    throw new Error('GAS からのレスポンスが JSON ではありません。GASの実装を確認してください。');
+  }
+
+  // エラーレスポンス判定
+  if (result.status === 'error' || result.error) {
+    throw new Error(`GAS エラー: ${result.error || result.message || '不明なエラー'}`);
+  }
+
+  // URL を取得（GAS 実装によりキー名が異なる場合に対応）
+  const imageUrl = result.url || result.imageUrl || result.fileUrl || result.driveUrl;
+  if (!imageUrl) {
+    console.error('[GAS] レスポンス全体:', result);
+    throw new Error(
+      'GAS から画像URLが返されませんでした。\n' +
+      'GASの doPost 関数が { status:"success", url:"..." } を返しているか確認してください。'
+    );
+  }
+
+  console.log('[GAS] アップロード成功:', imageUrl);
+  return imageUrl;
 }
 
 // ============================================================
@@ -5132,16 +5327,23 @@ async function saveInspection() {
   const overallResult    = deriveOverallResult();
   const overallJudgeType = deriveOverallJudgeType();
 
-  // 写真を圧縮保存（usability / judgeType も保持）
-  showToast('保存中...','default');
+  // 写真がある場合は GAS 経由で Google Drive へアップロードする
+  const hasPhotos = S.photos.length > 0;
+  const mfrName   = mfr ? mfr.name : '';
+
+  showToast(hasPhotos ? 'Google Drive にアップロード中...' : '保存中...', 'default');
 
   try {
+    // ── 写真を GAS 経由で Google Drive にアップロードし、URL を取得 ────────
+    // 各写真を順番に GAS へ POST し、返ってきた Drive URL を収集する
     const uploadedPhotos = await Promise.all(S.photos.map(async p => ({
-      url:       await uploadPhoto(p.url),
-      usability: p.usability  || null,
-      judgeType: p.judgeType  || null,
+      url:       await uploadPhotoViaGAS(p.url, mfrName, productName),
+      usability: p.usability || null,
+      judgeType: p.judgeType || null,
     })));
 
+    // ── Firestore 保存レコードを構築 ────────────────────────────────────────
+    // photos フィールドには Drive URL のみを格納（base64 は含まない）
     const record = {
       id: uid(),
       manufacturerId:   S.selectedMfr,
@@ -5159,14 +5361,19 @@ async function saveInspection() {
       createdAt: new Date().toISOString(),
     };
 
+    // ── Firestore 保存（1検品 = 1ドキュメント、base64は含まない） ────────────
+    await firestoreAddInspection(record);
+
+    // ローカル DB を更新（UI即時反映用）
     const list = load('inspections', []);
     list.unshift(record);
-    save('inspections', list);
+    save('inspections', list); // inspections は Firestore への個別保存済み、DB更新のみ
 
     // 製品履歴更新
     const ph = load('products', SAMPLE_PRODUCTS);
     save('products', [productName, ...ph.filter(p => p !== productName)].slice(0, 30));
 
+    // ── 完了通知（Sheetsへの書き込みはGAS側で完結） ─────────────────────────────────────────────────────────────
     const lbls = { pass:'使用可', fail:'使用否', review:'未判定' };
     const judgeStr = overallJudgeType ? ` / ${overallJudgeType}` : '';
     showToast(`保存しました（${lbls[overallResult] || '未判定'}${judgeStr}）`, 'success');
@@ -5174,7 +5381,14 @@ async function saveInspection() {
 
   } catch(e) {
     console.error('saveInspection error:', e);
-    showToast('保存に失敗しました。もう一度お試しください。', 'error');
+    const msg = e.message || '';
+    if (msg.includes('GAS') || msg.includes('Drive') || msg.includes('接続')) {
+      showToast('GAS / Drive への送信に失敗しました。\nネットワーク接続とGASの設定を確認してください。', 'error');
+    } else if (msg.includes('Firestore') || msg.includes('permission')) {
+      showToast('Firestore への保存に失敗しました。ネットワークを確認してください。', 'error');
+    } else {
+      showToast(`保存に失敗しました。\n${msg}`, 'error');
+    }
   }
 }
 
@@ -5273,6 +5487,7 @@ function toggleHistEdit() {
 function deleteInspection(id) {
   const all = load('inspections', []);
   save('inspections', all.filter(r => r.id !== id));
+  firestoreDeleteInspection(id); // Firestore からも削除
   renderHist();
   showToast('削除しました', 'default');
 }
@@ -6003,6 +6218,7 @@ function confirmClear() {
   document.getElementById('confirmMsg').textContent   = 'すべての検品記録が削除されます。この操作は元に戻せません。';
   document.getElementById('confirmOk').textContent    = '削除する';
   document.getElementById('confirmOk').onclick = () => {
+    firestoreDeleteAllInspections(); // Firestore の全検品ドキュメントを削除
     save('inspections', []);
     save('products', SAMPLE_PRODUCTS);
     renderHist();
@@ -6165,6 +6381,10 @@ document.addEventListener('keydown', e => {
 // ============================================================
 
 function init() {
+  // ── GAS 接続確認 ──────────────────────────────────────────────────────────
+  // OAuth 不要: GAS_URL へのfetch のみで Drive/Sheets にアクセスする
+  console.log('[init] GAS URL:', GAS_URL.slice(0, 60) + '...');
+
   // ダークモード復元（localStorageのまま）
   try {
     if (localStorage.getItem(DARK_KEY) === 'true') {
