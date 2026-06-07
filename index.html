@@ -2407,7 +2407,7 @@ const db      = firebase.firestore();
 // ============================================================
 // ★ GAS (Google Apps Script) ウェブアプリURL
 // 画像アップロード・スプレッドシート書き込みはすべて GAS に委譲する
-const GAS_URL = 'https://script.google.com/macros/s/AKfycbxnMk1aQwFqQCYxLaE3xW6RY_EnhUzf5_2yDZjbJbi0-lX1LrmGs8gJ20eXFAg2-a4H/exec';
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbyW6kK-fDddGaRc6u01pZWwH3f713ruLnU9zO2LYzx9ACEQbHpVNM3NnocYICqhwZLX/exec';
 
 // 現在のログインユーザー
 let currentUser = null;
@@ -2753,63 +2753,37 @@ async function uploadPhotoViaGAS(base64DataUrl, makerName, modelName) {
   const compressed = await compressImage(base64DataUrl, 1024, 0.78);
 
   // ② GAS ウェブアプリへ POST
-  //
-  // ★ CORS 対策: Content-Type を 'text/plain' にする
-  //   'application/json' を使うと CORS プリフライト(OPTIONS) が発生し、
-  //   GAS がそれを処理できずブラウザがブロックする。
-  //   'text/plain' にすることでプリフライトなしのシンプルリクエストになり
-  //   CORS エラーを回避できる。
-  //   GAS 側では e.postData.contents を JSON.parse() すれば同じように読める。
-  //
-  // ★ タイムアウト対策: GAS のコールドスタートに備えて 60 秒に設定
-  const controller = new AbortController();
-  const timerId = setTimeout(() => controller.abort(), 60000);
-
+  // GAS は受け取った base64 画像を Drive に保存し、公開 URL を返す
   let res;
   try {
     res = await fetch(GAS_URL, {
-      method:   'POST',
-      headers:  { 'Content-Type': 'text/plain;charset=UTF-8' }, // ← ここが修正ポイント
-      body:     JSON.stringify({
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
         image: compressed,        // data:image/jpeg;base64,... 形式
         maker: makerName  || '', // メーカー名
         model: modelName  || '', // モデル名（製品名）
       }),
-      redirect: 'follow',        // GAS は 302 でリダイレクトするため必須
-      signal:   controller.signal,
+      // GAS は一度リダイレクトするため redirect:'follow'（デフォルト）のままでよい
     });
   } catch(networkErr) {
-    clearTimeout(timerId);
-    if (networkErr.name === 'AbortError') {
-      throw new Error(
-        'GASの応答がタイムアウトしました（60秒）。\n' +
-        'GASのデプロイ設定（実行者・アクセス権）を確認してください。'
-      );
-    }
     throw new Error(
-      'GASへの接続に失敗しました（CORS またはネットワークエラー）。\n' +
-      'GASを「全員（匿名を含む）」でデプロイしているか確認してください。\n' +
-      `詳細: ${networkErr.message}`
+      'GASへの接続に失敗しました。\n' +
+      'ネットワーク接続とGASのデプロイ設定を確認してください。\n' +
+      `(${networkErr.message})`
     );
   }
-  clearTimeout(timerId);
 
   if (!res.ok) {
     const body = await res.text().catch(() => '');
     throw new Error(`GAS アップロード失敗 (HTTP ${res.status}): ${body.slice(0, 200)}`);
   }
 
-  // レスポンスボディ取得（GAS が text/plain で返す場合も JSON としてパース）
-  const rawText = await res.text();
   let result;
   try {
-    result = JSON.parse(rawText);
+    result = await res.json();
   } catch(parseErr) {
-    console.error('[GAS] レスポンス生テキスト:', rawText.slice(0, 300));
-    throw new Error(
-      'GAS からのレスポンスが JSON ではありません。\n' +
-      'doPost が ContentService.MimeType.JSON で返しているか確認してください。'
-    );
+    throw new Error('GAS からのレスポンスが JSON ではありません。GASの実装を確認してください。');
   }
 
   // エラーレスポンス判定
@@ -2822,8 +2796,8 @@ async function uploadPhotoViaGAS(base64DataUrl, makerName, modelName) {
   if (!imageUrl) {
     console.error('[GAS] レスポンス全体:', result);
     throw new Error(
-      'GAS から画像 URL が返されませんでした。\n' +
-      'GASの doPost が { status:"success", url:"https://..." } を返しているか確認してください。'
+      'GAS から画像URLが返されませんでした。\n' +
+      'GASの doPost 関数が { status:"success", url:"..." } を返しているか確認してください。'
     );
   }
 
