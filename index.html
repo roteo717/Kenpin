@@ -2758,7 +2758,12 @@ async function uploadPhotoViaGAS(base64DataUrl, makerName, modelName) {
   try {
     res = await fetch(GAS_URL, {
       method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
+      // ★ 修正: 'application/json' → 'text/plain;charset=UTF-8'
+      // application/json はCORSプリフライト(OPTIONS)を発生させるため、
+      // GASがOPTIONSに未対応だとネットワークエラーになる。
+      // text/plain はシンプルリクエスト扱いでプリフライト不要。
+      // GAS側は e.postData.contents から JSON.parse() で引き続き読み取り可能。
+      headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
       body: JSON.stringify({
         image: compressed,        // data:image/jpeg;base64,... 形式
         maker: makerName  || '', // メーカー名
