@@ -2651,6 +2651,9 @@ function switchPage(page) {
   document.getElementById('page-' + page).classList.add('active');
   document.getElementById('nav-' + page).classList.add('active');
 
+  // ページ切り替え時にスクロール位置をトップへリセット
+  window.scrollTo(0, 0);
+
   // カメラ停止（ホーム以外）
   if (page !== 'home' && S.camStream) stopCamera();
 
@@ -6363,6 +6366,10 @@ async function doAuth() {
     // 'session'= タブ/ブラウザを閉じると解除
     await auth.setPersistence(keep ? 'local' : 'session');
     await auth.signInWithEmailAndPassword(email, pass);
+    // ログイン成功後はonAuthStateChangedがUI遷移を担うが、
+    // 念のためボタンをリセット（画面遷移に失敗した場合の保険）
+    btn.textContent = 'ログイン';
+    btn.disabled    = false;
   } catch(e) {
     errEl.textContent = authErrMsg(e.code);
     btn.textContent   = 'ログイン';
@@ -6372,8 +6379,12 @@ async function doAuth() {
 
 
 
-function logoutUser() {
-  auth.signOut();
+async function logoutUser() {
+  try {
+    await auth.signOut();
+  } catch(e) {
+    console.error('SignOut error:', e);
+  }
   showToast('ログアウトしました','default');
 }
 
