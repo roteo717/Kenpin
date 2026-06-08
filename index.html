@@ -5386,14 +5386,9 @@ async function saveInspection() {
 
   } catch(e) {
     console.error('saveInspection error:', e);
-    const msg = e.message || '';
-    if (msg.includes('GAS') || msg.includes('Drive') || msg.includes('接続')) {
-      showToast('GAS / Drive への送信に失敗しました。\nネットワーク接続とGASの設定を確認してください。', 'error');
-    } else if (msg.includes('Firestore') || msg.includes('permission')) {
-      showToast('Firestore への保存に失敗しました。ネットワークを確認してください。', 'error');
-    } else {
-      showToast(`保存に失敗しました。\n${msg}`, 'error');
-    }
+    const msg = e.message || '不明なエラー';
+    // 詳細エラーを常に表示（デバッグ用）
+    showToast(`エラー詳細:\n${msg.slice(0, 120)}`, 'error');
   }
 }
 
