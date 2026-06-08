@@ -902,6 +902,10 @@ a{color:inherit;text-decoration:none}
 .judge-toggle.provisional.active{
   background:var(--review-dim);border-color:var(--review);color:var(--review);
 }
+/* 要注意 */
+.judge-toggle.caution.active{
+  background:var(--review-dim);border-color:var(--review);color:var(--review);
+}
 .judge-dot{
   width:10px;height:10px;border-radius:50%;flex-shrink:0;
 }
@@ -983,6 +987,7 @@ a{color:inherit;text-decoration:none}
 .photo-judge-label:active{opacity:.7}
 .photo-judge-label.pass{background:var(--pass-dim);color:var(--pass);border:1.5px solid var(--pass)}
 .photo-judge-label.fail{background:var(--fail-dim);color:var(--fail);border:1.5px solid var(--fail)}
+.photo-judge-label.review{background:var(--review-dim);color:var(--review);border:1.5px solid var(--review)}
 .photo-judge-label.perm{background:#eff6ff;color:#3b82f6;border:1.5px solid #3b82f6}
 .photo-judge-label.prov{background:var(--review-dim);color:var(--review);border:1.5px solid var(--review)}
 
@@ -1457,57 +1462,120 @@ a{color:inherit;text-decoration:none}
 .lot-quick-btn.active{background:var(--primary-dim);border-color:var(--primary);color:var(--primary)}
 
 /* =====================================================
-   ロット番号ドラムピッカー
+   iOSホイール日付ピッカー
    ===================================================== */
-.lot-drum-picker{
-  position:relative;display:flex;align-items:stretch;
-  height:132px;border-radius:14px;overflow:hidden;
+.lot-display-btn{
+  width:100%;padding:12px 14px;
   background:var(--surface-2);border:1.5px solid var(--border);
+  border-radius:12px;font-size:15px;color:var(--text);
+  text-align:left;cursor:pointer;
+  transition:border-color .15s,background .15s;
+  letter-spacing:1px;
+  display:flex;align-items:center;justify-content:space-between;
+}
+.lot-display-btn:active{border-color:var(--primary);background:var(--surface)}
+.lot-display-placeholder{color:var(--text-3)}
+
+/* オーバーレイ */
+.lot-picker-bg{
+  position:fixed;inset:0;background:rgba(0,0,0,.45);
+  z-index:700;opacity:0;pointer-events:none;
+  transition:opacity .25s;
+  display:flex;align-items:flex-end;justify-content:center;
+  touch-action:none;
+}
+.lot-picker-bg.show{opacity:1;pointer-events:all}
+
+/* シート */
+.lot-picker-sheet{
+  background:var(--surface);
+  border-radius:24px 24px 0 0;
+  width:100%;max-width:430px;
+  transform:translateY(100%);
+  transition:transform .32s cubic-bezier(.34,1.15,.64,1);
+  padding-bottom:max(env(safe-area-inset-bottom),20px);
+  overflow:hidden;
+}
+.lot-picker-bg.show .lot-picker-sheet{transform:translateY(0)}
+
+/* ヘッダー */
+.lot-picker-header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:12px 20px;
+  border-bottom:1px solid var(--border);
+}
+.lot-picker-cancel{
+  font-size:16px;font-weight:500;color:var(--text-2);
+  background:none;border:none;cursor:pointer;padding:4px 0;
+}
+.lot-picker-title{
+  font-size:16px;font-weight:700;color:var(--text);
+}
+.lot-picker-done{
+  font-size:16px;font-weight:600;color:var(--primary);
+  background:none;border:none;cursor:pointer;padding:4px 0;
+}
+
+/* 3カラム共通 */
+.lot-picker-columns{
+  display:flex;align-items:center;justify-content:center;
+  position:relative;height:220px;
+  padding:0 16px;
   user-select:none;-webkit-user-select:none;
 }
-.lot-drum-col{
-  flex:1;overflow-y:scroll;
-  scroll-snap-type:y mandatory;
-  -webkit-overflow-scrolling:touch;
-  scrollbar-width:none;
-  position:relative;z-index:0;
+
+/* 選択ライン */
+.lot-picker-columns::before,
+.lot-picker-columns::after{
+  content:'';
+  position:absolute;left:16px;right:16px;
+  top:calc(50% - 22px);height:1px;
+  background:var(--border);
+  pointer-events:none;
+  z-index:2;
 }
-.lot-drum-col::-webkit-scrollbar{display:none}
-.lot-drum-pad{height:44px;flex-shrink:0;pointer-events:none}
-.lot-drum-item{
-  height:44px;display:flex;align-items:center;justify-content:center;
-  font-size:15px;font-weight:600;color:var(--text-3);
-  scroll-snap-align:center;flex-shrink:0;
-  letter-spacing:.5px;cursor:pointer;
-  transition:color .15s,font-size .15s,font-weight .15s;
+.lot-picker-columns::after{
+  top:calc(50% + 22px);
 }
-.lot-drum-item.dactive{
-  color:var(--primary);font-size:19px;font-weight:800;
+
+/* フェードグラデ */
+.lot-picker-fade{
+  position:absolute;inset:0;
+  background:linear-gradient(
+    to bottom,
+    var(--surface) 0%,
+    transparent 35%,
+    transparent 65%,
+    var(--surface) 100%
+  );
+  pointer-events:none;z-index:3;
 }
-.lot-drum-sep{
-  flex-shrink:0;width:18px;
-  display:flex;align-items:center;justify-content:center;
-  font-size:18px;font-weight:700;color:var(--text-3);
-  z-index:3;pointer-events:none;
+
+/* 各カラム */
+.lot-picker-col{
+  flex:1;height:100%;
+  position:relative;overflow:hidden;
+  cursor:grab;
 }
-.lot-drum-center{
+.lot-picker-col.dragging{cursor:grabbing}
+
+.lot-picker-col-inner{
   position:absolute;left:0;right:0;
-  top:50%;transform:translateY(-50%);height:44px;
-  border-top:1.5px solid var(--primary-b);
-  border-bottom:1.5px solid var(--primary-b);
-  background:var(--primary-dim);z-index:1;pointer-events:none;
+  display:flex;flex-direction:column;align-items:center;
+  transition:transform 0.15s cubic-bezier(.25,.46,.45,.94);
+  will-change:transform;
 }
-.lot-drum-fade{
-  position:absolute;left:0;right:0;height:46px;
-  pointer-events:none;z-index:2;
+.lot-picker-col-inner.no-transition{transition:none}
+
+.lot-picker-item{
+  height:44px;line-height:44px;
+  font-size:20px;font-weight:400;
+  color:var(--text-2);white-space:nowrap;
+  text-align:center;width:100%;
+  transition:font-size .1s, font-weight .1s, color .1s;
 }
-.lot-drum-fade-top{
-  top:0;
-  background:linear-gradient(to bottom,var(--surface-2) 25%,transparent 100%);
-}
-.lot-drum-fade-bot{
-  bottom:0;
-  background:linear-gradient(to top,var(--surface-2) 25%,transparent 100%);
+.lot-picker-item.selected{
+  font-size:22px;font-weight:700;color:var(--text);
 }
 
 /* =====================================================
@@ -1644,6 +1712,7 @@ a{color:inherit;text-decoration:none}
 }
 .sc-badge.pass{background:var(--pass-dim);color:var(--pass)}
 .sc-badge.fail{background:var(--fail-dim);color:var(--fail)}
+.sc-badge.review{background:var(--review-dim);color:var(--review)}
 .sc-badge.perm{background:#eff6ff;color:#3b82f6}
 .sc-badge.prov{background:var(--review-dim);color:var(--review)}
 .sc-actions{display:flex;gap:10px;margin-top:16px}
@@ -2024,19 +2093,14 @@ a{color:inherit;text-decoration:none}
           ロット番号
         </div>
       </div>
-      <!-- ドラムピッカー -->
-      <div class="lot-drum-picker" id="lotDrumPicker">
-        <div class="lot-drum-center"></div>
-        <div class="lot-drum-col" id="lotDrumYear"></div>
-        <div class="lot-drum-sep">-</div>
-        <div class="lot-drum-col" id="lotDrumMonth"></div>
-        <div class="lot-drum-sep">-</div>
-        <div class="lot-drum-col" id="lotDrumDay"></div>
-        <div class="lot-drum-fade lot-drum-fade-top"></div>
-        <div class="lot-drum-fade lot-drum-fade-bot"></div>
-      </div>
-      <!-- 互換用（OCR等が参照） -->
-      <input type="text" id="lotInput" style="display:none">
+      <input type="text" id="lotInput" inputmode="numeric" placeholder="2026-06-05"
+        maxlength="10"
+        style="display:none"
+        oninput="onLotInput(this)">
+      <button class="lot-display-btn" id="lotDisplayBtn" onclick="openLotPicker()">
+        <span id="lotDisplayText" class="lot-display-placeholder">タップして日付を選択</span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="var(--text-3)" stroke-width="2" stroke-linecap="round" width="18" height="18"><path d="M8 7V3m8 4V3M3 11h18M5 5h14a2 2 0 0 1 2 2v13a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z"/></svg>
+      </button>
     </div>
 
     <!-- 不良内容 -->
@@ -2063,6 +2127,26 @@ a{color:inherit;text-decoration:none}
                maxlength="40"
                oninput="S.defectsOther=this.value"
                onkeydown="if(event.key==='Enter')this.blur()">
+      </div>
+    </div>
+
+    <!-- 判断区分 -->
+    <div class="card" id="judge-type-card">
+      <div class="card-head">
+        <div class="head-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2" stroke-linecap="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+        </div>
+        判断区分
+      </div>
+      <div class="judge-toggle-row">
+        <button class="judge-toggle permanent" id="jtPermanent" onclick="setJudgeType('恒久判断')">
+          <span class="judge-dot blue"></span>
+          恒久判断
+        </button>
+        <button class="judge-toggle provisional" id="jtProvisional" onclick="setJudgeType('暫定判断')">
+          <span class="judge-dot yellow"></span>
+          暫定判断
+        </button>
       </div>
     </div>
 
@@ -4950,13 +5034,11 @@ function removePhoto(i) {
 
 function renderPhotoGrid() {
   document.getElementById('photoGrid').innerHTML = S.photos.map((photo, i) => {
-    const usabilityLabel = photo.usability === 'pass' ? { cls: 'pass', txt: '✓ 使用可' }
-                         : photo.usability === 'fail' ? { cls: 'fail', txt: '✕ 使用否' }
+    const usabilityLabel = photo.usability === 'pass'   ? { cls: 'pass', txt: '✓ 使用可' }
+                         : photo.usability === 'fail'   ? { cls: 'fail', txt: '✕ 使用否' }
+                         : photo.usability === 'review' ? { cls: 'review', txt: '⚠ 要注意' }
                          : null;
-    const judgeLabel = photo.judgeType === '恒久判断' ? { cls: 'perm', txt: '● 恒久' }
-                     : photo.judgeType === '暫定判断' ? { cls: 'prov', txt: '● 暫定' }
-                     : null;
-    const hasAnyLabel = usabilityLabel || judgeLabel;
+    const hasAnyLabel = usabilityLabel;
     return `
     <div class="photo-wrap">
       <img src="${photo.url}" class="photo-thumb" onclick="openAnnotator(${i})">
@@ -4965,7 +5047,6 @@ function renderPhotoGrid() {
         <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" width="11" height="11" stroke-linecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
       </div>
       ${usabilityLabel ? `<div class="photo-judge-label ${usabilityLabel.cls}" onclick="openPhotoJudge(${i})">${usabilityLabel.txt}</div>` : ''}
-      ${judgeLabel ? `<div class="photo-judge-label ${judgeLabel.cls}" onclick="openPhotoJudge(${i})">${judgeLabel.txt}</div>` : ''}
       ${!hasAnyLabel ? `<button class="photo-judge-set-btn" onclick="openPhotoJudge(${i})">＋判定設定</button>` : ''}
     </div>`;
   }).join('');
@@ -4982,8 +5063,7 @@ function openPhotoJudge(i) {
   const photo = S.photos[i];
   document.getElementById('pjsUsable').classList.toggle('active',    photo.usability === 'pass');
   document.getElementById('pjsUnusable').classList.toggle('active',  photo.usability === 'fail');
-  document.getElementById('pjsPermanent').classList.toggle('active', photo.judgeType === '恒久判断');
-  document.getElementById('pjsProvisional').classList.toggle('active', photo.judgeType === '暫定判断');
+  document.getElementById('pjsCaution').classList.toggle('active',   photo.usability === 'review');
   document.getElementById('photoJudgeSheetBg').classList.add('show');
 }
 
@@ -4999,12 +5079,15 @@ function setPhotoJudge(field, val) {
     photo.usability = photo.usability === val ? null : val;
     document.getElementById('pjsUsable').classList.toggle('active',   photo.usability === 'pass');
     document.getElementById('pjsUnusable').classList.toggle('active', photo.usability === 'fail');
-  } else {
-    photo.judgeType = photo.judgeType === val ? null : val;
-    document.getElementById('pjsPermanent').classList.toggle('active',   photo.judgeType === '恒久判断');
-    document.getElementById('pjsProvisional').classList.toggle('active', photo.judgeType === '暫定判断');
+    document.getElementById('pjsCaution').classList.toggle('active',  photo.usability === 'review');
   }
   renderPhotoGrid();
+}
+
+function setJudgeType(val) {
+  S.judgeType = S.judgeType === val ? null : val;
+  document.getElementById('jtPermanent').classList.toggle('active',   S.judgeType === '恒久判断');
+  document.getElementById('jtProvisional').classList.toggle('active', S.judgeType === '暫定判断');
 }
 
 // ============================================================
@@ -5299,15 +5382,13 @@ async function saveAnnotation() {
 function deriveOverallResult() {
   const vals = S.photos.map(p => p.usability).filter(Boolean);
   if (!vals.length) return null;
-  if (vals.includes('fail')) return 'fail';
+  if (vals.includes('fail'))   return 'fail';
+  if (vals.includes('review')) return 'review';
   return 'pass';
 }
 
 function deriveOverallJudgeType() {
-  const vals = S.photos.map(p => p.judgeType).filter(Boolean);
-  if (!vals.length) return null;
-  if (vals.includes('暫定判断')) return '暫定判断';
-  return '恒久判断';
+  return S.judgeType;
 }
 
 // ============================================================
@@ -5332,6 +5413,8 @@ function showSaveConfirm() {
     ? `<span class="sc-badge pass">✓ 使用可</span>`
     : derived === 'fail'
     ? `<span class="sc-badge fail">✕ 使用否</span>`
+    : derived === 'review'
+    ? `<span class="sc-badge review">⚠ 要注意</span>`
     : `<span class="sc-badge" style="background:var(--surface-2);color:var(--text-2)">未設定</span>`;
 
   const judgeBadge = derivedJudge === '恒久判断'
@@ -5341,13 +5424,15 @@ function showSaveConfirm() {
     : '';
 
   // 写真判定サマリー
-  const passCount = S.photos.filter(p => p.usability === 'pass').length;
-  const failCount = S.photos.filter(p => p.usability === 'fail').length;
-  const noneCount = S.photos.filter(p => !p.usability).length;
+  const passCount   = S.photos.filter(p => p.usability === 'pass').length;
+  const failCount   = S.photos.filter(p => p.usability === 'fail').length;
+  const reviewCount = S.photos.filter(p => p.usability === 'review').length;
+  const noneCount   = S.photos.filter(p => !p.usability).length;
   const photoSummaryParts = [];
-  if (passCount) photoSummaryParts.push(`使用可 ${passCount}枚`);
-  if (failCount) photoSummaryParts.push(`使用否 ${failCount}枚`);
-  if (noneCount) photoSummaryParts.push(`未設定 ${noneCount}枚`);
+  if (passCount)   photoSummaryParts.push(`使用可 ${passCount}枚`);
+  if (failCount)   photoSummaryParts.push(`使用否 ${failCount}枚`);
+  if (reviewCount) photoSummaryParts.push(`要注意 ${reviewCount}枚`);
+  if (noneCount)   photoSummaryParts.push(`未設定 ${noneCount}枚`);
 
   const rows = [
     { lbl: 'メーカー', val: mfr  ? mfr.name  : '—' },
@@ -5475,6 +5560,8 @@ function resetForm() {
   S.selectedInsp = null;
   S.usability = null;
   S.judgeType = null;
+  document.getElementById('jtPermanent').classList.remove('active');
+  document.getElementById('jtProvisional').classList.remove('active');
   S.defects = [];
   S.defectsOther = '';
   S.photos = [];
@@ -5483,7 +5570,8 @@ function resetForm() {
   document.getElementById('productInput').value = '';
   const lotEl2 = document.getElementById('lotInput');
   if (lotEl2) lotEl2.value = '';
-  lotDrumReset();
+  const lotDisp2 = document.getElementById('lotDisplayText');
+  if (lotDisp2) { lotDisp2.textContent = 'タップして日付を選択'; lotDisp2.classList.add('lot-display-placeholder'); }
   renderMfr();
   renderProduct();
   renderInspectors();
@@ -6496,170 +6584,17 @@ function toggleDark() {
 }
 
 // ============================================================
-// ロット番号ドラムピッカー
+// ロット番号 iOSホイール日付ピッカー
 // ============================================================
 
-const _LOT_COL = {
-  year:  { el:null, items:[], idx:0, timer:null },
-  month: { el:null, items:[], idx:0, timer:null },
-  day:   { el:null, items:[], idx:0, timer:null },
+const LOT_PICKER = {
+  selYear: null, selMonth: null, selDay: null,
+  yearList: [], monthList: [], dayList: [],
 };
-const _LOT_H = 44; // アイテムの高さ(px)
 
-function _lotItems(type, year, month) {
-  if (type === 'year')  return Array.from({length:12}, (_,i) => String(2019+i));
-  if (type === 'month') return Array.from({length:12}, (_,i) => String(i+1).padStart(2,'0'));
-  if (type === 'day') {
-    const days = new Date(year, month, 0).getDate();
-    return Array.from({length:days}, (_,i) => String(i+1).padStart(2,'0'));
-  }
-  return [];
+function _daysInMonth(y, m) {
+  return new Date(y, m, 0).getDate();
 }
-
-function _lotRender(type) {
-  const c = _LOT_COL[type];
-  if (!c.el) return;
-  c.el.innerHTML =
-    `<div class="lot-drum-pad"></div>` +
-    c.items.map((v,i) =>
-      `<div class="lot-drum-item${i===c.idx?' dactive':''}" data-i="${i}" onclick="lotDrumTap('${type}',${i})">${v}</div>`
-    ).join('') +
-    `<div class="lot-drum-pad"></div>`;
-}
-
-function _lotSnap(type, instant) {
-  const c = _LOT_COL[type];
-  if (!c.el) return;
-  c.idx = Math.max(0, Math.min(c.idx, c.items.length-1));
-  const top = c.idx * _LOT_H;
-  if (instant) { c.el.scrollTop = top; }
-  else { c.el.scrollTo({top, behavior:'smooth'}); }
-}
-
-function _lotActive(type) {
-  const c = _LOT_COL[type];
-  if (!c.el) return;
-  c.el.querySelectorAll('.lot-drum-item').forEach((el,i) => {
-    el.classList.toggle('dactive', i === c.idx);
-  });
-}
-
-function lotDrumTap(type, i) {
-  const c = _LOT_COL[type];
-  c.idx = i;
-  _lotSnap(type, false);
-  _lotActive(type);
-  if (type==='year' || type==='month') _lotRefreshDays();
-  _lotSync();
-}
-
-function _lotOnScroll(type) {
-  const c = _LOT_COL[type];
-  if (!c.el) return;
-  clearTimeout(c.timer);
-  c.timer = setTimeout(() => {
-    const i = Math.round(c.el.scrollTop / _LOT_H);
-    c.idx = Math.max(0, Math.min(i, c.items.length-1));
-    c.el.scrollTop = c.idx * _LOT_H;
-    _lotActive(type);
-    if (type==='year' || type==='month') _lotRefreshDays();
-    _lotSync();
-  }, 120);
-}
-
-function _lotRefreshDays() {
-  const y = parseInt(_LOT_COL.year.items[_LOT_COL.year.idx]) || 2026;
-  const m = parseInt(_LOT_COL.month.items[_LOT_COL.month.idx]) || 1;
-  const newItems = _lotItems('day', y, m);
-  if (newItems.length !== _LOT_COL.day.items.length) {
-    const prevIdx = _LOT_COL.day.idx;
-    _LOT_COL.day.items = newItems;
-    _LOT_COL.day.idx   = Math.min(prevIdx, newItems.length-1);
-    _lotRender('day');
-    _lotSnap('day', true);
-    _lotActive('day');
-  }
-}
-
-function _lotSync() {
-  const y = _LOT_COL.year.items[_LOT_COL.year.idx]  || '';
-  const m = _LOT_COL.month.items[_LOT_COL.month.idx] || '';
-  const d = _LOT_COL.day.items[_LOT_COL.day.idx]     || '';
-  S.lotNumber = (y && m && d) ? `${y}-${m}-${d}` : '';
-}
-
-function lotDrumReset() {
-  if (!_LOT_COL.year.el) return;
-  const t = new Date();
-  const ty = t.getFullYear(), tm = t.getMonth()+1, td = t.getDate();
-  const yi = _LOT_COL.year.items.indexOf(String(ty));
-  _LOT_COL.year.idx  = yi >= 0 ? yi : _LOT_COL.year.items.length-1;
-  _LOT_COL.month.idx = tm-1;
-  _LOT_COL.day.items = _lotItems('day', ty, tm);
-  _LOT_COL.day.idx   = td-1;
-  _lotRender('day');
-  ['year','month','day'].forEach(t => { _lotSnap(t,true); _lotActive(t); });
-  _lotSync();
-}
-
-function initLotDateInput() {
-  const yEl = document.getElementById('lotDrumYear');
-  const mEl = document.getElementById('lotDrumMonth');
-  const dEl = document.getElementById('lotDrumDay');
-  if (!yEl || yEl._lotInit) return;
-  yEl._lotInit = true;
-
-  _LOT_COL.year.el  = yEl;
-  _LOT_COL.month.el = mEl;
-  _LOT_COL.day.el   = dEl;
-
-  ['year','month','day'].forEach(type => {
-    _LOT_COL[type].el.addEventListener('scroll', () => _lotOnScroll(type), {passive:true});
-  });
-
-  const t = new Date();
-  const ty = t.getFullYear(), tm = t.getMonth()+1, td = t.getDate();
-
-  _LOT_COL.year.items  = _lotItems('year');
-  _LOT_COL.month.items = _lotItems('month');
-  _LOT_COL.day.items   = _lotItems('day', ty, tm);
-
-  const yi = _LOT_COL.year.items.indexOf(String(ty));
-  _LOT_COL.year.idx  = yi >= 0 ? yi : _LOT_COL.year.items.length-1;
-  _LOT_COL.month.idx = tm-1;
-  _LOT_COL.day.idx   = td-1;
-
-  ['year','month','day'].forEach(t => _lotRender(t));
-
-  // 2 フレーム待ってからスクロール位置を設定（レイアウト確定後）
-  requestAnimationFrame(() => requestAnimationFrame(() => {
-    ['year','month','day'].forEach(t => { _lotSnap(t,true); _lotActive(t); });
-    _lotSync();
-  }));
-
-  // OCR互換用 _setValue
-  const legacyEl = document.getElementById('lotInput');
-  if (legacyEl) {
-    legacyEl._setValue = function(slashStr) {
-      const parts = String(slashStr).split('-');
-      if (parts.length !== 3) return;
-      const [y, m, d] = parts;
-      const yi = _LOT_COL.year.items.indexOf(y);
-      const mi = _LOT_COL.month.items.indexOf(m);
-      if (yi >= 0) _LOT_COL.year.idx  = yi;
-      if (mi >= 0) _LOT_COL.month.idx = mi;
-      const fy = parseInt(_LOT_COL.year.items[_LOT_COL.year.idx]);
-      const fm = parseInt(_LOT_COL.month.items[_LOT_COL.month.idx]);
-      _LOT_COL.day.items = _lotItems('day', fy, fm);
-      const di = _LOT_COL.day.items.indexOf(d);
-      _LOT_COL.day.idx = di >= 0 ? di : 0;
-      ['year','month','day'].forEach(t => { _lotRender(t); _lotSnap(t,false); _lotActive(t); });
-      _lotSync();
-    };
-  }
-}
-
-function onLotInput(el) { /* ドラムピッカーに移行 */ }
 
 /** 今日の日付を YYYY-MM-DD 形式で返す */
 function _todaySlash(offsetDays) {
@@ -6669,6 +6604,231 @@ function _todaySlash(offsetDays) {
     + String(d.getMonth()+1).padStart(2,'0') + '-'
     + String(d.getDate()).padStart(2,'0');
 }
+
+function onLotInput(el) {
+  let nums = el.value.replace(/[^0-9]/g, '').slice(0, 8);
+  let fmt = nums;
+  if (nums.length > 4) fmt = nums.slice(0,4) + '-' + nums.slice(4);
+  if (nums.length > 6) fmt = nums.slice(0,4) + '-' + nums.slice(4,6) + '-' + nums.slice(6);
+  el.value = fmt;
+  S.lotNumber = fmt;
+}
+
+function openLotPicker() {
+  const bg = document.getElementById('lotPickerBg');
+  if (!bg) return;
+
+  // 現在の選択値 or 今日
+  let cur = S.lotNumber || _todaySlash(0);
+  const parts = cur.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  const today = new Date();
+  let initY = parts ? parseInt(parts[1]) : today.getFullYear();
+  let initM = parts ? parseInt(parts[2]) : today.getMonth()+1;
+  let initD = parts ? parseInt(parts[3]) : today.getDate();
+
+  // 年リスト: ±10年
+  const cy = today.getFullYear();
+  LOT_PICKER.yearList = [];
+  for (let y = cy - 10; y <= cy + 10; y++) LOT_PICKER.yearList.push(y);
+
+  LOT_PICKER.monthList = [1,2,3,4,5,6,7,8,9,10,11,12];
+
+  const days = _daysInMonth(initY, initM);
+  LOT_PICKER.dayList = [];
+  for (let d = 1; d <= days; d++) LOT_PICKER.dayList.push(d);
+
+  LOT_PICKER.selYear  = LOT_PICKER.yearList.indexOf(initY);
+  LOT_PICKER.selMonth = initM - 1;
+  LOT_PICKER.selDay   = Math.min(initD - 1, LOT_PICKER.dayList.length - 1);
+
+  _buildWheelCol('lotColYear',  LOT_PICKER.yearList,  LOT_PICKER.selYear,  'year',  v => v+'年');
+  _buildWheelCol('lotColMonth', LOT_PICKER.monthList, LOT_PICKER.selMonth, 'month', v => v+'月');
+  _buildWheelCol('lotColDay',   LOT_PICKER.dayList,   LOT_PICKER.selDay,   'day',   v => v+'日');
+
+  bg.classList.add('show');
+  // 背景スクロールをロック
+  document.body.style.overflow = 'hidden';
+  document.body.style.touchAction = 'none';
+  const app = document.getElementById('app');
+  if (app) { app.style.overflow = 'hidden'; app.style.touchAction = 'none'; }
+}
+
+function closeLotPicker() {
+  const bg = document.getElementById('lotPickerBg');
+  if (bg) bg.classList.remove('show');
+  // 背景スクロールを解除
+  document.body.style.overflow = '';
+  document.body.style.touchAction = '';
+  const app = document.getElementById('app');
+  if (app) { app.style.overflow = ''; app.style.touchAction = ''; }
+}
+
+function confirmLotPicker() {
+  const y = LOT_PICKER.yearList[LOT_PICKER.selYear];
+  const m = LOT_PICKER.monthList[LOT_PICKER.selMonth];
+  const d = LOT_PICKER.dayList[LOT_PICKER.selDay];
+  if (y == null || m == null || d == null) { closeLotPicker(); return; }
+
+  const fmt = y + '-' + String(m).padStart(2,'0') + '-' + String(d).padStart(2,'0');
+  S.lotNumber = fmt;
+
+  const hidInp = document.getElementById('lotInput');
+  if (hidInp) hidInp.value = fmt;
+
+  const disp = document.getElementById('lotDisplayText');
+  if (disp) {
+    disp.textContent = fmt;
+    disp.classList.remove('lot-display-placeholder');
+  }
+  closeLotPicker();
+}
+
+/** ホイールカラム構築 + タッチ/マウスドラッグ */
+function _buildWheelCol(colId, list, initIdx, key, labelFn) {
+  const ITEM_H = 44;
+  const VISIBLE = 5; // 表示アイテム数
+  const CENTER = Math.floor(VISIBLE / 2); // 2
+
+  const col = document.getElementById(colId);
+  if (!col) return;
+  col.innerHTML = '';
+
+  const inner = document.createElement('div');
+  inner.className = 'lot-picker-col-inner';
+  col.appendChild(inner);
+
+  // パディング（上下に空白アイテム）
+  for (let i = 0; i < CENTER; i++) {
+    const pad = document.createElement('div');
+    pad.className = 'lot-picker-item';
+    inner.appendChild(pad);
+  }
+  list.forEach((v, i) => {
+    const item = document.createElement('div');
+    item.className = 'lot-picker-item' + (i === initIdx ? ' selected' : '');
+    item.textContent = labelFn(v);
+    inner.appendChild(item);
+  });
+  for (let i = 0; i < CENTER; i++) {
+    const pad = document.createElement('div');
+    pad.className = 'lot-picker-item';
+    inner.appendChild(pad);
+  }
+
+  let curIdx = initIdx;
+
+  function setIndex(idx, animate) {
+    idx = Math.max(0, Math.min(list.length - 1, idx));
+    curIdx = idx;
+    if (key === 'year')  LOT_PICKER.selYear  = idx;
+    if (key === 'month') { LOT_PICKER.selMonth = idx; _rebuildDays(); }
+    if (key === 'day')   LOT_PICKER.selDay   = idx;
+
+    const offset = -idx * ITEM_H;
+    if (!animate) inner.classList.add('no-transition');
+    inner.style.transform = 'translateY(' + offset + 'px)';
+    if (!animate) { inner.offsetHeight; inner.classList.remove('no-transition'); }
+
+    // selected クラス更新
+    inner.querySelectorAll('.lot-picker-item').forEach((el, i) => {
+      const dataIdx = i - CENTER;
+      el.classList.toggle('selected', dataIdx === idx);
+    });
+  }
+
+  // 初期位置（アニメなし）
+  setIndex(initIdx, false);
+
+  // ---- タッチ / マウス ----
+  let startY = 0, startIdx = 0, isDragging = false, lastY = 0, velY = 0, prevY = 0, prevT = 0;
+
+  function onStart(y) {
+    isDragging = true;
+    startY = y; lastY = y; prevY = y; prevT = Date.now();
+    startIdx = curIdx;
+    col.classList.add('dragging');
+    inner.classList.add('no-transition');
+  }
+  function onMove(y) {
+    if (!isDragging) return;
+    const dy = y - startY;
+    const deltaIdx = Math.round(-dy / ITEM_H);
+    const now = Date.now();
+    velY = (y - prevY) / Math.max(1, now - prevT);
+    prevY = y; prevT = now;
+    const raw = startIdx + deltaIdx;
+    const clamped = Math.max(0, Math.min(list.length - 1, raw));
+    const offset = -clamped * ITEM_H + (-dy - (-deltaIdx * ITEM_H));
+    inner.style.transform = 'translateY(' + offset + 'px)';
+    // リアルタイムselected
+    inner.querySelectorAll('.lot-picker-item').forEach((el, i) => {
+      el.classList.toggle('selected', (i - CENTER) === clamped);
+    });
+  }
+  function onEnd() {
+    if (!isDragging) return;
+    isDragging = false;
+    col.classList.remove('dragging');
+    inner.classList.remove('no-transition');
+
+    // 速度から慣性
+    const inertia = velY * 80;
+    const rawFinal = startIdx + Math.round(-(lastY - startY + inertia) / ITEM_H);
+    setIndex(rawFinal, true);
+  }
+
+  col.addEventListener('touchstart', e => {
+    onStart(e.touches[0].clientY);
+  }, { passive: true });
+  col.addEventListener('touchmove', e => {
+    e.preventDefault();
+    lastY = e.touches[0].clientY;
+    onMove(e.touches[0].clientY);
+  }, { passive: false });
+  col.addEventListener('touchend', onEnd);
+
+  col.addEventListener('mousedown', e => { onStart(e.clientY); e.preventDefault(); });
+  window.addEventListener('mousemove', e => { if (isDragging) { lastY = e.clientY; onMove(e.clientY); } });
+  window.addEventListener('mouseup', () => { if (isDragging) onEnd(); });
+
+  // マウスホイール
+  col.addEventListener('wheel', e => {
+    e.preventDefault();
+    const delta = e.deltaY > 0 ? 1 : -1;
+    setIndex(curIdx + delta, true);
+  }, { passive: false });
+}
+
+/** 年/月変更時に日リストを再構築 */
+function _rebuildDays() {
+  const y = LOT_PICKER.yearList[LOT_PICKER.selYear] || new Date().getFullYear();
+  const m = LOT_PICKER.monthList[LOT_PICKER.selMonth] || 1;
+  const days = _daysInMonth(y, m);
+  const prevDay = LOT_PICKER.selDay;
+  LOT_PICKER.dayList = [];
+  for (let d = 1; d <= days; d++) LOT_PICKER.dayList.push(d);
+  const newDayIdx = Math.min(prevDay, days - 1);
+  LOT_PICKER.selDay = newDayIdx;
+  _buildWheelCol('lotColDay', LOT_PICKER.dayList, newDayIdx, 'day', v => v+'日');
+}
+
+function initLotDateInput() {
+  const el = document.getElementById('lotInput');
+  if (!el || el._lotInit) return;
+  el._lotInit = true;
+  el.value = '';
+  S.lotNumber = '';
+  el._setValue = function(slashStr) {
+    el.value = String(slashStr).slice(0, 10);
+    S.lotNumber = el.value;
+    const disp = document.getElementById('lotDisplayText');
+    if (disp) {
+      disp.textContent = el.value;
+      disp.classList.remove('lot-display-placeholder');
+    }
+  };
+}
+
 
 
 function renderApp() {
@@ -6834,7 +6994,27 @@ function authErrMsg(code) {
 
 init();
 </script>
-<!-- =================== 写真個別判定ボトムシート =================== -->
+<!-- =================== ロット番号ホイールピッカー =================== -->
+<div class="lot-picker-bg" id="lotPickerBg"
+  onclick="if(event.target===this)closeLotPicker()"
+  ontouchmove="event.preventDefault()"
+  ontouchstart="event.stopPropagation()">
+  <div class="lot-picker-sheet" ontouchmove="event.stopPropagation()">
+    <div class="lot-picker-header">
+      <button class="lot-picker-cancel" onclick="closeLotPicker()">キャンセル</button>
+      <div class="lot-picker-title">日付を選択</div>
+      <button class="lot-picker-done" onclick="confirmLotPicker()">完了</button>
+    </div>
+    <div class="lot-picker-columns">
+      <div class="lot-picker-col" id="lotColYear"></div>
+      <div class="lot-picker-col" id="lotColMonth"></div>
+      <div class="lot-picker-col" id="lotColDay"></div>
+      <div class="lot-picker-fade"></div>
+    </div>
+  </div>
+</div>
+
+
 <div class="photo-judge-sheet-bg" id="photoJudgeSheetBg" onclick="if(event.target===this)closePhotoJudge()">
   <div class="photo-judge-sheet">
     <div class="pjs-handle"></div>
@@ -6852,17 +7032,9 @@ init();
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" width="15" height="15" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
         使用否
       </button>
-    </div>
-    <!-- 判断区分 -->
-    <div class="judge-group-label" style="margin-top:14px">判断区分</div>
-    <div class="judge-toggle-row">
-      <button class="judge-toggle permanent" id="pjsPermanent" onclick="setPhotoJudge('judgeType','恒久判断')">
-        <span class="judge-dot blue"></span>
-        恒久判断
-      </button>
-      <button class="judge-toggle provisional" id="pjsProvisional" onclick="setPhotoJudge('judgeType','暫定判断')">
-        <span class="judge-dot yellow"></span>
-        暫定判断
+      <button class="judge-toggle caution" id="pjsCaution" onclick="setPhotoJudge('usability','review')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="15" height="15" stroke-linecap="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        要注意
       </button>
     </div>
     <div style="display:flex;gap:9px;margin-top:18px">
