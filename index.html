@@ -2817,6 +2817,19 @@ async function uploadPhotoViaGAS(base64DataUrl, makerName, modelName) {
 /** ユニークID生成 */
 function uid() { return 'i_' + Date.now() + '_' + Math.random().toString(36).slice(2,7); }
 
+/**
+ * Google Drive の共有URLを <img src> で表示できる形式に変換する。
+ * drive.google.com/file/d/FILE_ID/view → thumbnail?id=FILE_ID&sz=w1200
+ */
+function toDriveImgUrl(url) {
+  if (!url || typeof url !== 'string') return url;
+  if (url.startsWith('data:')) return url;
+  if (!url.includes('drive.google.com')) return url;
+  const m = url.match(/\/d\/([\w-]+)/) || url.match(/[?&]id=([\w-]+)/);
+  if (m) return `https://drive.google.com/thumbnail?id=${m[1]}&sz=w1200`;
+  return url;
+}
+
 /** 日時フォーマット */
 function fmtDate(iso) {
   const d = new Date(iso);
@@ -6265,7 +6278,7 @@ function openDetail(id) {
       }
 
       return `<div class="dpg-item" onclick="openPhotoViewer(${i})">\
-<img src="${url}" class="dpg-img">${lblHtml}</div>`;
+<img src="${toDriveImgUrl(url)}" class="dpg-img">${lblHtml}</div>`;
     }).join('');
 
     photosHtml = `
