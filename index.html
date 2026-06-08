@@ -1457,6 +1457,60 @@ a{color:inherit;text-decoration:none}
 .lot-quick-btn.active{background:var(--primary-dim);border-color:var(--primary);color:var(--primary)}
 
 /* =====================================================
+   ロット番号ドラムピッカー
+   ===================================================== */
+.lot-drum-picker{
+  position:relative;display:flex;align-items:stretch;
+  height:132px;border-radius:14px;overflow:hidden;
+  background:var(--surface-2);border:1.5px solid var(--border);
+  user-select:none;-webkit-user-select:none;
+}
+.lot-drum-col{
+  flex:1;overflow-y:scroll;
+  scroll-snap-type:y mandatory;
+  -webkit-overflow-scrolling:touch;
+  scrollbar-width:none;
+  position:relative;z-index:0;
+}
+.lot-drum-col::-webkit-scrollbar{display:none}
+.lot-drum-pad{height:44px;flex-shrink:0;pointer-events:none}
+.lot-drum-item{
+  height:44px;display:flex;align-items:center;justify-content:center;
+  font-size:15px;font-weight:600;color:var(--text-3);
+  scroll-snap-align:center;flex-shrink:0;
+  letter-spacing:.5px;cursor:pointer;
+  transition:color .15s,font-size .15s,font-weight .15s;
+}
+.lot-drum-item.dactive{
+  color:var(--primary);font-size:19px;font-weight:800;
+}
+.lot-drum-sep{
+  flex-shrink:0;width:18px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:18px;font-weight:700;color:var(--text-3);
+  z-index:3;pointer-events:none;
+}
+.lot-drum-center{
+  position:absolute;left:0;right:0;
+  top:50%;transform:translateY(-50%);height:44px;
+  border-top:1.5px solid var(--primary-b);
+  border-bottom:1.5px solid var(--primary-b);
+  background:var(--primary-dim);z-index:1;pointer-events:none;
+}
+.lot-drum-fade{
+  position:absolute;left:0;right:0;height:46px;
+  pointer-events:none;z-index:2;
+}
+.lot-drum-fade-top{
+  top:0;
+  background:linear-gradient(to bottom,var(--surface-2) 25%,transparent 100%);
+}
+.lot-drum-fade-bot{
+  bottom:0;
+  background:linear-gradient(to top,var(--surface-2) 25%,transparent 100%);
+}
+
+/* =====================================================
    ボトムナビ
    ===================================================== */
 .bottom-nav{
@@ -1970,12 +2024,19 @@ a{color:inherit;text-decoration:none}
           ロット番号
         </div>
       </div>
-      <input type="text" id="lotInput" inputmode="numeric" placeholder="2026-06-05"
-        maxlength="10"
-        style="width:100%;padding:12px 14px;background:var(--surface-2);border:1.5px solid var(--border);border-radius:12px;font-size:15px;color:var(--text);transition:border-color .15s;letter-spacing:1px;"
-        onfocus="this.style.borderColor='var(--primary)';this.style.background='var(--surface)';this.select()"
-        onblur="this.style.borderColor='var(--border)';this.style.background='var(--surface-2)'"
-        oninput="onLotInput(this)">
+      <!-- ドラムピッカー -->
+      <div class="lot-drum-picker" id="lotDrumPicker">
+        <div class="lot-drum-center"></div>
+        <div class="lot-drum-col" id="lotDrumYear"></div>
+        <div class="lot-drum-sep">-</div>
+        <div class="lot-drum-col" id="lotDrumMonth"></div>
+        <div class="lot-drum-sep">-</div>
+        <div class="lot-drum-col" id="lotDrumDay"></div>
+        <div class="lot-drum-fade lot-drum-fade-top"></div>
+        <div class="lot-drum-fade lot-drum-fade-bot"></div>
+      </div>
+      <!-- 互換用（OCR等が参照） -->
+      <input type="text" id="lotInput" style="display:none">
     </div>
 
     <!-- 不良内容 -->
@@ -5421,7 +5482,8 @@ function resetForm() {
   S.lotNumber = '';
   document.getElementById('productInput').value = '';
   const lotEl2 = document.getElementById('lotInput');
-  lotEl2.value = '';
+  if (lotEl2) lotEl2.value = '';
+  lotDrumReset();
   renderMfr();
   renderProduct();
   renderInspectors();
@@ -6434,8 +6496,170 @@ function toggleDark() {
 }
 
 // ============================================================
-// ロット番号 日付入力
+// ロット番号ドラムピッカー
 // ============================================================
+
+const _LOT_COL = {
+  year:  { el:null, items:[], idx:0, timer:null },
+  month: { el:null, items:[], idx:0, timer:null },
+  day:   { el:null, items:[], idx:0, timer:null },
+};
+const _LOT_H = 44; // アイテムの高さ(px)
+
+function _lotItems(type, year, month) {
+  if (type === 'year')  return Array.from({length:12}, (_,i) => String(2019+i));
+  if (type === 'month') return Array.from({length:12}, (_,i) => String(i+1).padStart(2,'0'));
+  if (type === 'day') {
+    const days = new Date(year, month, 0).getDate();
+    return Array.from({length:days}, (_,i) => String(i+1).padStart(2,'0'));
+  }
+  return [];
+}
+
+function _lotRender(type) {
+  const c = _LOT_COL[type];
+  if (!c.el) return;
+  c.el.innerHTML =
+    `<div class="lot-drum-pad"></div>` +
+    c.items.map((v,i) =>
+      `<div class="lot-drum-item${i===c.idx?' dactive':''}" data-i="${i}" onclick="lotDrumTap('${type}',${i})">${v}</div>`
+    ).join('') +
+    `<div class="lot-drum-pad"></div>`;
+}
+
+function _lotSnap(type, instant) {
+  const c = _LOT_COL[type];
+  if (!c.el) return;
+  c.idx = Math.max(0, Math.min(c.idx, c.items.length-1));
+  const top = c.idx * _LOT_H;
+  if (instant) { c.el.scrollTop = top; }
+  else { c.el.scrollTo({top, behavior:'smooth'}); }
+}
+
+function _lotActive(type) {
+  const c = _LOT_COL[type];
+  if (!c.el) return;
+  c.el.querySelectorAll('.lot-drum-item').forEach((el,i) => {
+    el.classList.toggle('dactive', i === c.idx);
+  });
+}
+
+function lotDrumTap(type, i) {
+  const c = _LOT_COL[type];
+  c.idx = i;
+  _lotSnap(type, false);
+  _lotActive(type);
+  if (type==='year' || type==='month') _lotRefreshDays();
+  _lotSync();
+}
+
+function _lotOnScroll(type) {
+  const c = _LOT_COL[type];
+  if (!c.el) return;
+  clearTimeout(c.timer);
+  c.timer = setTimeout(() => {
+    const i = Math.round(c.el.scrollTop / _LOT_H);
+    c.idx = Math.max(0, Math.min(i, c.items.length-1));
+    c.el.scrollTop = c.idx * _LOT_H;
+    _lotActive(type);
+    if (type==='year' || type==='month') _lotRefreshDays();
+    _lotSync();
+  }, 120);
+}
+
+function _lotRefreshDays() {
+  const y = parseInt(_LOT_COL.year.items[_LOT_COL.year.idx]) || 2026;
+  const m = parseInt(_LOT_COL.month.items[_LOT_COL.month.idx]) || 1;
+  const newItems = _lotItems('day', y, m);
+  if (newItems.length !== _LOT_COL.day.items.length) {
+    const prevIdx = _LOT_COL.day.idx;
+    _LOT_COL.day.items = newItems;
+    _LOT_COL.day.idx   = Math.min(prevIdx, newItems.length-1);
+    _lotRender('day');
+    _lotSnap('day', true);
+    _lotActive('day');
+  }
+}
+
+function _lotSync() {
+  const y = _LOT_COL.year.items[_LOT_COL.year.idx]  || '';
+  const m = _LOT_COL.month.items[_LOT_COL.month.idx] || '';
+  const d = _LOT_COL.day.items[_LOT_COL.day.idx]     || '';
+  S.lotNumber = (y && m && d) ? `${y}-${m}-${d}` : '';
+}
+
+function lotDrumReset() {
+  if (!_LOT_COL.year.el) return;
+  const t = new Date();
+  const ty = t.getFullYear(), tm = t.getMonth()+1, td = t.getDate();
+  const yi = _LOT_COL.year.items.indexOf(String(ty));
+  _LOT_COL.year.idx  = yi >= 0 ? yi : _LOT_COL.year.items.length-1;
+  _LOT_COL.month.idx = tm-1;
+  _LOT_COL.day.items = _lotItems('day', ty, tm);
+  _LOT_COL.day.idx   = td-1;
+  _lotRender('day');
+  ['year','month','day'].forEach(t => { _lotSnap(t,true); _lotActive(t); });
+  _lotSync();
+}
+
+function initLotDateInput() {
+  const yEl = document.getElementById('lotDrumYear');
+  const mEl = document.getElementById('lotDrumMonth');
+  const dEl = document.getElementById('lotDrumDay');
+  if (!yEl || yEl._lotInit) return;
+  yEl._lotInit = true;
+
+  _LOT_COL.year.el  = yEl;
+  _LOT_COL.month.el = mEl;
+  _LOT_COL.day.el   = dEl;
+
+  ['year','month','day'].forEach(type => {
+    _LOT_COL[type].el.addEventListener('scroll', () => _lotOnScroll(type), {passive:true});
+  });
+
+  const t = new Date();
+  const ty = t.getFullYear(), tm = t.getMonth()+1, td = t.getDate();
+
+  _LOT_COL.year.items  = _lotItems('year');
+  _LOT_COL.month.items = _lotItems('month');
+  _LOT_COL.day.items   = _lotItems('day', ty, tm);
+
+  const yi = _LOT_COL.year.items.indexOf(String(ty));
+  _LOT_COL.year.idx  = yi >= 0 ? yi : _LOT_COL.year.items.length-1;
+  _LOT_COL.month.idx = tm-1;
+  _LOT_COL.day.idx   = td-1;
+
+  ['year','month','day'].forEach(t => _lotRender(t));
+
+  // 2 フレーム待ってからスクロール位置を設定（レイアウト確定後）
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    ['year','month','day'].forEach(t => { _lotSnap(t,true); _lotActive(t); });
+    _lotSync();
+  }));
+
+  // OCR互換用 _setValue
+  const legacyEl = document.getElementById('lotInput');
+  if (legacyEl) {
+    legacyEl._setValue = function(slashStr) {
+      const parts = String(slashStr).split('-');
+      if (parts.length !== 3) return;
+      const [y, m, d] = parts;
+      const yi = _LOT_COL.year.items.indexOf(y);
+      const mi = _LOT_COL.month.items.indexOf(m);
+      if (yi >= 0) _LOT_COL.year.idx  = yi;
+      if (mi >= 0) _LOT_COL.month.idx = mi;
+      const fy = parseInt(_LOT_COL.year.items[_LOT_COL.year.idx]);
+      const fm = parseInt(_LOT_COL.month.items[_LOT_COL.month.idx]);
+      _LOT_COL.day.items = _lotItems('day', fy, fm);
+      const di = _LOT_COL.day.items.indexOf(d);
+      _LOT_COL.day.idx = di >= 0 ? di : 0;
+      ['year','month','day'].forEach(t => { _lotRender(t); _lotSnap(t,false); _lotActive(t); });
+      _lotSync();
+    };
+  }
+}
+
+function onLotInput(el) { /* ドラムピッカーに移行 */ }
 
 /** 今日の日付を YYYY-MM-DD 形式で返す */
 function _todaySlash(offsetDays) {
@@ -6444,28 +6668,6 @@ function _todaySlash(offsetDays) {
   return d.getFullYear() + '-'
     + String(d.getMonth()+1).padStart(2,'0') + '-'
     + String(d.getDate()).padStart(2,'0');
-}
-
-function onLotInput(el) {
-  // 数字以外を除去してハイフンを自動挿入
-  let nums = el.value.replace(/[^0-9]/g, '').slice(0, 8);
-  let fmt = nums;
-  if (nums.length > 4) fmt = nums.slice(0,4) + '-' + nums.slice(4);
-  if (nums.length > 6) fmt = nums.slice(0,4) + '-' + nums.slice(4,6) + '-' + nums.slice(6);
-  el.value = fmt;
-  S.lotNumber = fmt;
-}
-
-function initLotDateInput() {
-  const el = document.getElementById('lotInput');
-  if (!el || el._lotInit) return;
-  el._lotInit = true;
-  el.value = '';
-  S.lotNumber = '';
-  el._setValue = function(slashStr) {
-    el.value = String(slashStr).slice(0, 10);
-    S.lotNumber = el.value;
-  };
 }
 
 
