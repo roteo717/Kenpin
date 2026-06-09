@@ -1518,7 +1518,7 @@ a{color:inherit;text-decoration:none}
 
 /* 3カラム共通 */
 .lot-picker-columns{
-  display:flex;align-items:stretch;justify-content:center;
+  display:flex;align-items:center;justify-content:center;
   position:relative;height:220px;
   padding:0 16px;
   user-select:none;-webkit-user-select:none;
@@ -1560,8 +1560,8 @@ a{color:inherit;text-decoration:none}
 .lot-picker-col.dragging{cursor:grabbing}
 
 .lot-picker-col-inner{
-  position:absolute;top:0;left:0;right:0;
-  display:flex;flex-direction:column;align-items:center;
+  position:absolute;left:0;right:0;
+  display:flex;flex-direction:column;align-items:stretch;
   transition:transform 0.15s cubic-bezier(.25,.46,.45,.94);
   will-change:transform;
 }
@@ -6590,7 +6590,6 @@ function toggleDark() {
 const LOT_PICKER = {
   selYear: null, selMonth: null, selDay: null,
   yearList: [], monthList: [], dayList: [],
-  colControllers: {},
 };
 
 function _daysInMonth(y, m) {
@@ -6692,15 +6691,6 @@ function _buildWheelCol(colId, list, initIdx, key, labelFn) {
 
   const col = document.getElementById(colId);
   if (!col) return;
-
-  // 既存リスナーをすべて解除（月変更時の重複防止）
-  if (LOT_PICKER.colControllers[colId]) {
-    LOT_PICKER.colControllers[colId].abort();
-  }
-  const controller = new AbortController();
-  LOT_PICKER.colControllers[colId] = controller;
-  const signal = controller.signal;
-
   col.innerHTML = '';
 
   const inner = document.createElement('div');
@@ -6789,24 +6779,24 @@ function _buildWheelCol(colId, list, initIdx, key, labelFn) {
 
   col.addEventListener('touchstart', e => {
     onStart(e.touches[0].clientY);
-  }, { passive: true, signal });
+  }, { passive: true });
   col.addEventListener('touchmove', e => {
     e.preventDefault();
     lastY = e.touches[0].clientY;
     onMove(e.touches[0].clientY);
-  }, { passive: false, signal });
-  col.addEventListener('touchend', onEnd, { signal });
+  }, { passive: false });
+  col.addEventListener('touchend', onEnd);
 
-  col.addEventListener('mousedown', e => { onStart(e.clientY); e.preventDefault(); }, { signal });
-  window.addEventListener('mousemove', e => { if (isDragging) { lastY = e.clientY; onMove(e.clientY); } }, { signal });
-  window.addEventListener('mouseup', () => { if (isDragging) onEnd(); }, { signal });
+  col.addEventListener('mousedown', e => { onStart(e.clientY); e.preventDefault(); });
+  window.addEventListener('mousemove', e => { if (isDragging) { lastY = e.clientY; onMove(e.clientY); } });
+  window.addEventListener('mouseup', () => { if (isDragging) onEnd(); });
 
   // マウスホイール
   col.addEventListener('wheel', e => {
     e.preventDefault();
     const delta = e.deltaY > 0 ? 1 : -1;
     setIndex(curIdx + delta, true);
-  }, { passive: false, signal });
+  }, { passive: false });
 }
 
 /** 年/月変更時に日リストを再構築 */
