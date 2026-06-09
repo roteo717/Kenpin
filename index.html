@@ -1327,24 +1327,9 @@ a{color:inherit;text-decoration:none}
 }
 .dpg-lbl-ng{background:rgba(239,68,68,.88);color:#fff}
 .dpg-lbl-pass{background:rgba(34,197,94,.85);color:#fff}
-.dpg-lbl-review{background:rgba(245,158,11,.88);color:#fff}
 .dpg-lbl-ok{background:rgba(0,0,0,.40);color:#fff}
 .dpg-lbl-perm{background:rgba(59,130,246,.88);color:#fff}
 .dpg-lbl-prov{background:rgba(245,158,11,.88);color:#fff}
-/* 写真セクション：判定サマリー行 */
-.dpg-meta-row{
-  display:flex;align-items:center;gap:6px;flex-wrap:wrap;
-  margin:0 0 10px;
-}
-.dpg-meta-badge{
-  font-size:11px;font-weight:700;padding:4px 11px;border-radius:100px;
-  display:inline-flex;align-items:center;gap:3px;letter-spacing:.2px;
-}
-.dpg-meta-pass{background:var(--pass-dim);color:var(--pass)}
-.dpg-meta-fail{background:var(--fail-dim);color:var(--fail)}
-.dpg-meta-review{background:var(--review-dim);color:var(--review)}
-.dpg-meta-perm{background:#eff6ff;color:#3b82f6}
-.dpg-meta-prov{background:var(--review-dim);color:var(--review)}
 
 
 /* =====================================================
@@ -1533,7 +1518,7 @@ a{color:inherit;text-decoration:none}
 
 /* 3カラム共通 */
 .lot-picker-columns{
-  display:flex;align-items:center;justify-content:center;
+  display:flex;align-items:stretch;justify-content:center;
   position:relative;height:220px;
   padding:0 16px;
   user-select:none;-webkit-user-select:none;
@@ -1559,8 +1544,8 @@ a{color:inherit;text-decoration:none}
   background:linear-gradient(
     to bottom,
     var(--surface) 0%,
-    transparent 35%,
-    transparent 65%,
+    transparent 22%,
+    transparent 78%,
     var(--surface) 100%
   );
   pointer-events:none;z-index:3;
@@ -1568,16 +1553,16 @@ a{color:inherit;text-decoration:none}
 
 /* 各カラム */
 .lot-picker-col{
-  flex:1;height:100%;
+  flex:1;height:100%;min-width:0;
   position:relative;overflow:hidden;
   cursor:grab;
 }
 .lot-picker-col.dragging{cursor:grabbing}
 
 .lot-picker-col-inner{
-  position:absolute;left:0;right:0;
+  position:absolute;top:0;left:0;right:0;
   display:flex;flex-direction:column;align-items:center;
-  transition:transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+  transition:transform 0.15s cubic-bezier(.25,.46,.45,.94);
   will-change:transform;
 }
 .lot-picker-col-inner.no-transition{transition:none}
@@ -1731,22 +1716,6 @@ a{color:inherit;text-decoration:none}
 .sc-badge.perm{background:#eff6ff;color:#3b82f6}
 .sc-badge.prov{background:var(--review-dim);color:var(--review)}
 .sc-actions{display:flex;gap:10px;margin-top:16px}
-
-/* =====================================================
-   Drive 画像エラー表示
-   ===================================================== */
-.drive-err{
-  display:flex;flex-direction:column;align-items:center;justify-content:center;
-  gap:8px;padding:20px 12px;background:var(--surface-2);border-radius:10px;
-  color:var(--text-3);font-size:12px;font-weight:500;
-  min-height:120px;width:100%;text-align:center;
-}
-.drive-err svg{color:var(--text-3);opacity:.6}
-.drive-err-link{
-  display:inline-block;font-size:12px;font-weight:700;color:var(--primary);
-  background:var(--primary-dim);padding:6px 16px;border-radius:100px;margin-top:4px;
-  text-decoration:none;
-}
 
 /* =====================================================
    アニメーション
@@ -2130,6 +2099,7 @@ a{color:inherit;text-decoration:none}
         oninput="onLotInput(this)">
       <button class="lot-display-btn" id="lotDisplayBtn" onclick="openLotPicker()">
         <span id="lotDisplayText" class="lot-display-placeholder">タップして日付を選択</span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="var(--text-3)" stroke-width="2" stroke-linecap="round" width="18" height="18"><path d="M8 7V3m8 4V3M3 11h18M5 5h14a2 2 0 0 1 2 2v13a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z"/></svg>
       </button>
     </div>
 
@@ -3003,60 +2973,6 @@ function toDriveImgUrl(url) {
   const m = url.match(/\/d\/([\w-]+)/) || url.match(/[?&]id=([\w-]+)/);
   if (m) return `https://drive.google.com/thumbnail?id=${m[1]}&sz=w1200`;
   return url;
-}
-
-/**
- * Google Drive 画像の読み込みエラー時フォールバック
- * thumbnail → lh3.googleusercontent → uc?export=view の順に試し、
- * すべて失敗したらプレースホルダー＋Driveリンクを表示する
- */
-function _onDriveImgError(imgEl) {
-  const originalUrl = imgEl.dataset.driveUrl || imgEl.getAttribute('data-drive-url') || '';
-  if (!originalUrl || originalUrl.startsWith('data:')) return;
-
-  // ファイルIDを抽出
-  const m = originalUrl.match(/\/d\/([\w-]+)/) || originalUrl.match(/[?&]id=([\w-]+)/);
-  const fid = m ? m[1] : null;
-  if (!fid) { _showDriveError(imgEl, null); return; }
-
-  const attempt = parseInt(imgEl.dataset.driveAttempt || '0');
-  // 試行するURL一覧（0番目は既に試みた thumbnail）
-  const urls = [
-    `https://drive.google.com/thumbnail?id=${fid}&sz=w1200`,   // attempt 0 (初期)
-    `https://lh3.googleusercontent.com/d/${fid}=w1200`,        // attempt 1
-    `https://drive.google.com/uc?export=view&id=${fid}`,       // attempt 2
-  ];
-
-  const next = attempt + 1;
-  if (next < urls.length) {
-    imgEl.dataset.driveAttempt = next;
-    imgEl.onerror = () => _onDriveImgError(imgEl);
-    imgEl.src = urls[next];
-  } else {
-    _showDriveError(imgEl, fid);
-  }
-}
-
-function _showDriveError(imgEl, fid) {
-  imgEl.style.display = 'none';
-  const container = imgEl.closest('.dpg-item') || imgEl.closest('.photo-viewer-inner') || imgEl.parentElement;
-  if (!container || container.querySelector('.drive-err')) return;
-  const div = document.createElement('div');
-  div.className = 'drive-err';
-  div.innerHTML = fid
-    ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="32" height="32" stroke-linecap="round">
-         <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
-         <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
-       </svg>
-       <span>画像を表示できません</span>
-       <span style="font-size:11px;color:var(--text-3)">Driveの共有設定を確認してください</span>
-       <a class="drive-err-link" href="https://drive.google.com/file/d/${fid}/view" target="_blank" onclick="event.stopPropagation()">Driveで開く →</a>`
-    : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="28" height="28" stroke-linecap="round">
-         <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
-         <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
-       </svg>
-       <span>画像を表示できません</span>`;
-  container.appendChild(div);
 }
 
 /** 日時フォーマット */
@@ -6503,38 +6419,22 @@ function openDetail(id) {
       let lblHtml = '';
       if (usability === 'fail') {
         const defectName = r.defects?.length ? r.defects[0] : '使用否';
-        lblHtml = `<span class="dpg-lbl dpg-lbl-ng">✕ ${defectName}</span>`;
+        lblHtml = `<span class="dpg-lbl dpg-lbl-ng">NG：${defectName}</span>`;
       } else if (usability === 'pass') {
-        lblHtml = `<span class="dpg-lbl dpg-lbl-pass">✓ 使用可</span>`;
-      } else if (usability === 'review') {
-        lblHtml = `<span class="dpg-lbl dpg-lbl-review">⚠ 要注意</span>`;
+        lblHtml = `<span class="dpg-lbl dpg-lbl-pass">使用可</span>`;
       }
       if (judgeType) {
         lblHtml += `<span class="dpg-lbl ${judgeType==='恒久判断'?'dpg-lbl-perm':'dpg-lbl-prov'}" style="bottom:auto;top:0">${judgeType}</span>`;
       }
 
       return `<div class="dpg-item" onclick="openPhotoViewer(${i})">\
-<img src="${toDriveImgUrl(url)}" class="dpg-img" data-drive-url="${url.replace(/"/g,'&quot;')}" onerror="_onDriveImgError(this)">${lblHtml}</div>`;
+<img src="${toDriveImgUrl(url)}" class="dpg-img">${lblHtml}</div>`;
     }).join('');
-
-    // ── 判定サマリーバッジ（結果 + 判断区分）
-    const rBadge = r.result === 'pass'
-      ? `<span class="dpg-meta-badge dpg-meta-pass">✓ 使用可</span>`
-      : r.result === 'fail'
-      ? `<span class="dpg-meta-badge dpg-meta-fail">✕ 使用否</span>`
-      : r.result === 'review'
-      ? `<span class="dpg-meta-badge dpg-meta-review">⚠ 要確認</span>`
-      : '';
-    const jBadge = r.judgeType
-      ? `<span class="dpg-meta-badge ${r.judgeType==='恒久判断'?'dpg-meta-perm':'dpg-meta-prov'}">● ${r.judgeType}</span>`
-      : '';
-    const metaRow = (rBadge || jBadge) ? `<div class="dpg-meta-row">${rBadge}${jBadge}</div>` : '';
 
     photosHtml = `
       <div class="dpg-header">
         <span class="dpg-title">検品写真（${total}枚）</span>
       </div>
-      ${metaRow}
       <div class="dpg-carousel-outer">
         <div class="dpg-carousel" id="dpgCarousel" onscroll="dpgScroll(this,${total})">
           ${items}
@@ -6544,12 +6444,12 @@ function openDetail(id) {
   }
 
   // ── 判断区分バッジ（写真がない場合のみ表示）
-  const judgeTypeBadge = (!r.photos?.length && r.result)
+  const judgeTypeBadge = (!r.photos?.length && r.judgeType)
     ? `<div class="detail-badge-row">
         <span class="h-badge ${r.result}" style="font-size:12px;padding:5px 13px">
-          ${r.result === 'fail' ? '✕ 使用否' : r.result === 'pass' ? '✓ 使用可' : '⚠ 要確認'}
+          ${r.result === 'fail' ? '× 使用否' : r.result === 'pass' ? '✓ 使用可' : '要確認'}
         </span>
-        ${r.judgeType ? `<span style="font-size:12px;font-weight:700;color:${r.judgeType==='恒久判断'?'#3b82f6':'var(--review)'};background:${r.judgeType==='恒久判断'?'#eff6ff':'var(--review-dim)'};border-radius:100px;padding:5px 13px">● ${r.judgeType}</span>` : ''}
+        <span style="font-size:12px;font-weight:700;color:${r.judgeType==='恒久判断'?'#3b82f6':'var(--review)'};background:${r.judgeType==='恒久判断'?'#eff6ff':'var(--review-dim)'};border-radius:100px;padding:5px 13px">${r.judgeType}</span>
       </div>` : '';
 
   document.getElementById('dContent').innerHTML = `
@@ -6607,8 +6507,7 @@ function dpgScroll(el, total) {
 function openPhotoViewer(idx) {
   // カルーセル(.dpg-img) または旧グリッド(.detail-photo) どちらにも対応
   const imgs = document.querySelectorAll('#dContent .dpg-img, #dContent .detail-photo');
-  // data-drive-url がある場合はオリジナルURLを優先して使用（フォールバック試行済みsrcより確実）
-  _pvPhotos = Array.from(imgs).map(img => img.dataset.driveUrl || img.getAttribute('data-drive-url') || img.src);
+  _pvPhotos = Array.from(imgs).map(img => img.src);
   if (!_pvPhotos.length) return;
   _pvIdx = idx;
   _renderPhotoViewer();
@@ -6616,13 +6515,7 @@ function openPhotoViewer(idx) {
 }
 
 function _renderPhotoViewer() {
-  const pvImg = document.getElementById('photoViewerImg');
-  const url = _pvPhotos[_pvIdx];
-  // data-drive-url をセットしてフォールバックが働くようにする
-  pvImg.dataset.driveUrl = url;
-  delete pvImg.dataset.driveAttempt;
-  pvImg.onerror = function() { _onDriveImgError(this); };
-  pvImg.src = toDriveImgUrl(url);
+  document.getElementById('photoViewerImg').src = _pvPhotos[_pvIdx];
   const total = _pvPhotos.length;
   document.getElementById('pvCount').textContent = total > 1 ? `${_pvIdx + 1} / ${total}` : '';
   document.getElementById('pvPrev').style.display = (total > 1 && _pvIdx > 0)           ? 'flex' : 'none';
@@ -6793,7 +6686,7 @@ function confirmLotPicker() {
 /** ホイールカラム構築 + タッチ/マウスドラッグ */
 function _buildWheelCol(colId, list, initIdx, key, labelFn) {
   const ITEM_H = 44;
-  const VISIBLE = 5;
+  const VISIBLE = 5; // 表示アイテム数
   const CENTER = Math.floor(VISIBLE / 2); // 2
 
   const col = document.getElementById(colId);
@@ -6822,15 +6715,7 @@ function _buildWheelCol(colId, list, initIdx, key, labelFn) {
     inner.appendChild(pad);
   }
 
-  // DOM参照をキャッシュしてonMoveのクエリを廃止
-  const allItems = Array.from(inner.querySelectorAll('.lot-picker-item'));
   let curIdx = initIdx;
-
-  function updateSelected(idx) {
-    allItems.forEach((el, i) => {
-      el.classList.toggle('selected', (i - CENTER) === idx);
-    });
-  }
 
   function setIndex(idx, animate) {
     idx = Math.max(0, Math.min(list.length - 1, idx));
@@ -6839,91 +6724,72 @@ function _buildWheelCol(colId, list, initIdx, key, labelFn) {
     if (key === 'month') { LOT_PICKER.selMonth = idx; _rebuildDays(); }
     if (key === 'day')   LOT_PICKER.selDay   = idx;
 
+    const offset = -idx * ITEM_H;
     if (!animate) inner.classList.add('no-transition');
-    inner.style.transform = 'translateY(' + (-idx * ITEM_H) + 'px)';
+    inner.style.transform = 'translateY(' + offset + 'px)';
     if (!animate) { inner.offsetHeight; inner.classList.remove('no-transition'); }
-    updateSelected(idx);
+
+    // selected クラス更新
+    inner.querySelectorAll('.lot-picker-item').forEach((el, i) => {
+      const dataIdx = i - CENTER;
+      el.classList.toggle('selected', dataIdx === idx);
+    });
   }
 
   // 初期位置（アニメなし）
   setIndex(initIdx, false);
 
   // ---- タッチ / マウス ----
-  let startY = 0, startIdx = 0, isDragging = false;
-  let lastY = 0, velY = 0, prevY = 0, prevT = 0;
-  let rafId = null;
+  let startY = 0, startIdx = 0, isDragging = false, lastY = 0, velY = 0, prevY = 0, prevT = 0;
 
   function onStart(y) {
     isDragging = true;
     startY = y; lastY = y; prevY = y; prevT = Date.now();
     startIdx = curIdx;
-    velY = 0;
     col.classList.add('dragging');
     inner.classList.add('no-transition');
-    if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
   }
-
-  function _applyDrag(y) {
-    // dy > 0 = 指が下へ移動 = 前の項目（インデックス減少）を表示
-    const dy = y - startY;
-    let dragF = startIdx - dy / ITEM_H;
-
-    // ラバーバンド効果（端で抵抗感）
-    if (dragF < 0)             dragF = dragF * 0.2;
-    if (dragF > list.length-1) dragF = list.length-1 + (dragF - (list.length-1)) * 0.2;
-
-    inner.style.transform = 'translateY(' + (-dragF * ITEM_H) + 'px)';
-    const snapIdx = Math.max(0, Math.min(list.length-1, Math.round(dragF)));
-    updateSelected(snapIdx);
-  }
-
   function onMove(y) {
     if (!isDragging) return;
+    const dy = y - startY;
+    const deltaIdx = Math.round(-dy / ITEM_H);
     const now = Date.now();
-    // 速度を算出（正 = 指が下方向）
     velY = (y - prevY) / Math.max(1, now - prevT);
     prevY = y; prevT = now;
-    lastY = y;
-    // RAFでスロットル → 不要な描画をスキップして滑らか化
-    if (rafId) return;
-    rafId = requestAnimationFrame(() => {
-      rafId = null;
-      if (isDragging) _applyDrag(lastY);
+    const raw = startIdx + deltaIdx;
+    const clamped = Math.max(0, Math.min(list.length - 1, raw));
+    const offset = -clamped * ITEM_H + (-dy - (-deltaIdx * ITEM_H));
+    inner.style.transform = 'translateY(' + offset + 'px)';
+    // リアルタイムselected
+    inner.querySelectorAll('.lot-picker-item').forEach((el, i) => {
+      el.classList.toggle('selected', (i - CENTER) === clamped);
     });
   }
-
   function onEnd() {
     if (!isDragging) return;
     isDragging = false;
-    if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
     col.classList.remove('dragging');
     inner.classList.remove('no-transition');
 
-    // 100ms以上静止してから離した場合は慣性なし
-    if (Date.now() - prevT > 100) velY = 0;
-
-    // 慣性スナップ: velY > 0（下方向） → インデックス減少
-    const dy = lastY - startY;
-    const inertia = velY * 120; // px
-    const rawFinal = startIdx - (dy + inertia) / ITEM_H;
-    setIndex(Math.round(rawFinal), true);
+    // 速度から慣性
+    const inertia = velY * 80;
+    const rawFinal = startIdx + Math.round(-(lastY - startY + inertia) / ITEM_H);
+    setIndex(rawFinal, true);
   }
 
   col.addEventListener('touchstart', e => {
     onStart(e.touches[0].clientY);
   }, { passive: true });
-
   col.addEventListener('touchmove', e => {
     e.preventDefault();
+    lastY = e.touches[0].clientY;
     onMove(e.touches[0].clientY);
   }, { passive: false });
-
-  col.addEventListener('touchend',   () => onEnd());
-  col.addEventListener('touchcancel', () => onEnd());
+  col.addEventListener('touchend', onEnd);
 
   col.addEventListener('mousedown', e => { onStart(e.clientY); e.preventDefault(); });
-  window.addEventListener('mousemove', e => { if (isDragging) onMove(e.clientY); });
-  window.addEventListener('mouseup',   () => { if (isDragging) onEnd(); });
+  window.addEventListener('mousemove', e => { if (isDragging) { lastY = e.clientY; onMove(e.clientY); } });
+  window.addEventListener('mouseup', () => { if (isDragging) onEnd(); });
 
   // マウスホイール
   col.addEventListener('wheel', e => {
