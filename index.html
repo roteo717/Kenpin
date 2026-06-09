@@ -1544,8 +1544,8 @@ a{color:inherit;text-decoration:none}
   background:linear-gradient(
     to bottom,
     var(--surface) 0%,
-    transparent 22%,
-    transparent 78%,
+    transparent 35%,
+    transparent 65%,
     var(--surface) 100%
   );
   pointer-events:none;z-index:3;
@@ -1553,7 +1553,7 @@ a{color:inherit;text-decoration:none}
 
 /* 各カラム */
 .lot-picker-col{
-  flex:1;height:100%;min-width:0;
+  flex:1;height:100%;
   position:relative;overflow:hidden;
   cursor:grab;
 }
@@ -6590,6 +6590,7 @@ function toggleDark() {
 const LOT_PICKER = {
   selYear: null, selMonth: null, selDay: null,
   yearList: [], monthList: [], dayList: [],
+  colControllers: {},
 };
 
 function _daysInMonth(y, m) {
@@ -6691,6 +6692,15 @@ function _buildWheelCol(colId, list, initIdx, key, labelFn) {
 
   const col = document.getElementById(colId);
   if (!col) return;
+
+  // 既存リスナーをすべて解除（月変更時の重複防止）
+  if (LOT_PICKER.colControllers[colId]) {
+    LOT_PICKER.colControllers[colId].abort();
+  }
+  const controller = new AbortController();
+  LOT_PICKER.colControllers[colId] = controller;
+  const signal = controller.signal;
+
   col.innerHTML = '';
 
   const inner = document.createElement('div');
@@ -6779,24 +6789,24 @@ function _buildWheelCol(colId, list, initIdx, key, labelFn) {
 
   col.addEventListener('touchstart', e => {
     onStart(e.touches[0].clientY);
-  }, { passive: true });
+  }, { passive: true, signal });
   col.addEventListener('touchmove', e => {
     e.preventDefault();
     lastY = e.touches[0].clientY;
     onMove(e.touches[0].clientY);
-  }, { passive: false });
-  col.addEventListener('touchend', onEnd);
+  }, { passive: false, signal });
+  col.addEventListener('touchend', onEnd, { signal });
 
-  col.addEventListener('mousedown', e => { onStart(e.clientY); e.preventDefault(); });
-  window.addEventListener('mousemove', e => { if (isDragging) { lastY = e.clientY; onMove(e.clientY); } });
-  window.addEventListener('mouseup', () => { if (isDragging) onEnd(); });
+  col.addEventListener('mousedown', e => { onStart(e.clientY); e.preventDefault(); }, { signal });
+  window.addEventListener('mousemove', e => { if (isDragging) { lastY = e.clientY; onMove(e.clientY); } }, { signal });
+  window.addEventListener('mouseup', () => { if (isDragging) onEnd(); }, { signal });
 
   // マウスホイール
   col.addEventListener('wheel', e => {
     e.preventDefault();
     const delta = e.deltaY > 0 ? 1 : -1;
     setIndex(curIdx + delta, true);
-  }, { passive: false });
+  }, { passive: false, signal });
 }
 
 /** 年/月変更時に日リストを再構築 */
