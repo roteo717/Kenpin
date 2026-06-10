@@ -1101,6 +1101,7 @@ a{color:inherit;text-decoration:none}
 .f-chip.on-pass{border-color:var(--pass);background:var(--pass-dim);color:var(--pass)}
 .f-chip.on-fail{border-color:var(--fail);background:var(--fail-dim);color:var(--fail)}
 .f-chip.on-review{border-color:var(--review);background:var(--review-dim);color:var(--review)}
+.f-chip.on-caution{border-color:var(--review);background:var(--review-dim);color:var(--review)}
 
 /* =====================================================
    履歴カード - リスト形式デザイン
@@ -2212,6 +2213,9 @@ a{color:inherit;text-decoration:none}
       </button>
       <button class="f-chip" id="fFail" onclick="setFilter('fail')">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="11" height="11" stroke-linecap="round" style="display:inline;vertical-align:middle;margin-right:3px"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>使用否
+      </button>
+      <button class="f-chip" id="fCaution" onclick="setFilter('caution')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="11" height="11" stroke-linecap="round" style="display:inline;vertical-align:middle;margin-right:3px"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>要注意
       </button>
       <button id="histEditBtn" onclick="toggleHistEdit()" style="margin-left:auto;flex-shrink:0;font-size:12px;font-weight:600;color:var(--text-3);background:none;border:none;cursor:pointer;padding:4px 2px;line-height:1;">編集</button>
     </div>
@@ -5588,7 +5592,14 @@ function renderHist() {
 
   const data = all.filter(r => {
     const mq = !q || r.productName.toLowerCase().includes(q) || r.manufacturerName.toLowerCase().includes(q);
-    const mf = f === 'all' || r.result === f;
+    let mf;
+    if (f === 'all') {
+      mf = true;
+    } else if (f === 'caution') {
+      mf = r.photos?.some(p => typeof p !== 'string' && p.usability === 'caution');
+    } else {
+      mf = r.result === f;
+    }
     return mq && mf;
   });
 
@@ -5653,11 +5664,11 @@ function deleteInspection(id) {
 
 function setFilter(f) {
   S.histFilter = f;
-  ['All','Pass','Fail'].forEach(n => {
+  ['All','Pass','Fail','Caution'].forEach(n => {
     const el = document.getElementById('f' + n);
     if (el) el.className = 'f-chip';
   });
-  const map = { all:'All', pass:'Pass', fail:'Fail' };
+  const map = { all:'All', pass:'Pass', fail:'Fail', caution:'Caution' };
   if (map[f]) document.getElementById('f' + map[f]).className = `f-chip on-${f}`;
   renderHist();
 }
@@ -6554,7 +6565,6 @@ function init() {
   if (window.visualViewport) {
     window.visualViewport.addEventListener('resize', () => {
       if (document.activeElement && document.activeElement.id === 'productInput') {
-        // リサイズイベントは連続発火するので debounce は不要（最後の値で判定）
         const vvh  = window.visualViewport.height;
         const rect = document.activeElement.getBoundingClientRect();
         const SUGGEST_ESTIMATE = 230;
@@ -6565,6 +6575,17 @@ function init() {
         }
       }
     });
+  }
+
+  // ── ロットピッカー：背面スクロール防止（iOS Safari 対策）──────────
+  // lot-picker-bg 上の touchmove はデフォルト動作を止める。
+  // ただしピッカー列（.lot-picker-col-inner）内は慣性スクロールが必要なので通過させる。
+  const lotBg = document.getElementById('lotPickerBg');
+  if (lotBg) {
+    lotBg.addEventListener('touchmove', function(e) {
+      const col = e.target.closest('.lot-picker-col-inner');
+      if (!col) e.preventDefault();
+    }, { passive: false });
   }
 }
 
@@ -6662,6 +6683,7 @@ function openLotPicker() {
   });
 
   document.getElementById('lotPickerBg').classList.add('show');
+  _lockScroll();
 }
 
 function closeLotPicker(confirm) {
@@ -6679,6 +6701,7 @@ function closeLotPicker(confirm) {
     if (trig) { trig.textContent = fmt; trig.style.color = 'var(--text)'; }
   }
   document.getElementById('lotPickerBg').classList.remove('show');
+  _unlockScroll();
 }
 
 function initLotDateInput() {
