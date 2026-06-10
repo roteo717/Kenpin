@@ -3058,20 +3058,16 @@ let _overlayCount   = 0;
 function _lockScroll() {
   if (++_overlayCount > 1) return;
   _overlayScrollY = window.scrollY;
+  // position:fixed を使うと bottom-nav など fixed 子要素の基準がずれるため
+  // overflow:hidden のみでスクロールを止める（iOS Safari 対応）
+  document.documentElement.style.overflow = 'hidden';
   document.body.style.overflow = 'hidden';
-  document.body.style.position = 'fixed';
-  document.body.style.top      = `-${_overlayScrollY}px`;
-  document.body.style.left     = '0';
-  document.body.style.right    = '0';
 }
 
 function _unlockScroll() {
   if (--_overlayCount > 0) return;
+  document.documentElement.style.overflow = '';
   document.body.style.overflow = '';
-  document.body.style.position = '';
-  document.body.style.top      = '';
-  document.body.style.left     = '';
-  document.body.style.right    = '';
   window.scrollTo(0, _overlayScrollY);
 }
 
