@@ -1104,6 +1104,93 @@ a{color:inherit;text-decoration:none}
 .f-chip.on-caution{border-color:var(--review);background:var(--review-dim);color:var(--review)}
 
 /* =====================================================
+   検品履歴 – 検索UI（候補ドロップダウン付き）
+   ===================================================== */
+.hist-search-wrap{
+  position:relative;
+  display:flex;align-items:center;gap:8px;
+  margin-bottom:11px;
+}
+.hist-search-field{
+  position:relative;flex:1;
+}
+.hist-search-field input{
+  width:100%;padding:12px 38px 12px 40px;
+  background:var(--surface);border:1.5px solid var(--border);
+  border-radius:13px;font-size:15px;color:var(--text);
+  transition:border-color .15s;box-sizing:border-box;
+}
+.hist-search-field input:focus{border-color:var(--primary);outline:none}
+.hist-search-field input::placeholder{color:var(--text-3)}
+.hist-search-icon{
+  position:absolute;left:13px;top:50%;transform:translateY(-50%);
+  color:var(--text-3);pointer-events:none;display:flex;
+}
+.hist-search-clear{
+  position:absolute;right:11px;top:50%;transform:translateY(-50%);
+  width:19px;height:19px;border-radius:50%;
+  background:var(--text-3);border:none;cursor:pointer;
+  color:#fff;font-size:10px;font-weight:700;
+  display:none;align-items:center;justify-content:center;
+  line-height:1;padding:0;
+}
+.hist-cancel-btn{
+  flex-shrink:0;font-size:14px;font-weight:600;color:var(--primary);
+  background:none;border:none;cursor:pointer;padding:4px 2px;
+  display:none;white-space:nowrap;
+}
+/* 候補ドロップダウン */
+.hist-suggest-dd{
+  position:absolute;top:calc(100% + 4px);left:0;right:0;
+  background:var(--surface);
+  border:1px solid var(--border);border-radius:16px;
+  box-shadow:0 8px 28px rgba(0,0,0,.12);
+  z-index:200;overflow:hidden;display:none;
+}
+.hist-suggest-dd.open{display:block}
+.hist-sug-item{
+  display:flex;align-items:center;gap:12px;
+  padding:12px 16px;cursor:pointer;
+  border-bottom:1px solid var(--border);
+  transition:background .1s;
+  -webkit-tap-highlight-color:transparent;
+}
+.hist-sug-item:last-child{border-bottom:none}
+.hist-sug-item:active{background:var(--surface-2)}
+.hist-sug-icon{
+  width:34px;height:34px;border-radius:9px;
+  display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;
+}
+.hist-sug-icon.mfr{background:#eff6ff}
+.hist-sug-icon.mfr svg{stroke:#3b82f6}
+.hist-sug-icon.prd{background:var(--surface-2)}
+.hist-sug-icon.prd svg{stroke:var(--text-2)}
+.hist-sug-info{flex:1;min-width:0}
+.hist-sug-name{
+  font-size:15px;font-weight:500;color:var(--text);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.hist-sug-sub{font-size:12px;color:var(--text-2);margin-top:1px}
+.hist-sug-hl{color:var(--primary);font-weight:700}
+/* アクティブフィルタ表示バー */
+.hist-active-bar{
+  display:flex;align-items:center;gap:8px;
+  margin-bottom:9px;padding:8px 14px;
+  background:var(--primary-dim);border-radius:11px;
+  border:1.5px solid var(--primary-b);
+  font-size:13px;font-weight:600;color:var(--primary);
+}
+.hist-active-bar-label{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hist-active-bar-clear{
+  flex-shrink:0;width:19px;height:19px;border-radius:50%;
+  background:var(--primary);border:none;cursor:pointer;
+  color:#fff;font-size:10px;font-weight:700;
+  display:flex;align-items:center;justify-content:center;
+  line-height:1;padding:0;
+}
+
+/* =====================================================
    履歴カード - リスト形式デザイン
    ===================================================== */
 .hist-card{
@@ -2207,14 +2294,31 @@ a{color:inherit;text-decoration:none}
 
   <!-- =================== HISTORY PAGE =================== -->
   <div id="page-history" class="page">
-    <div class="search-bar">
-      <input type="text" placeholder="製品名・メーカーで検索" id="histSearch" oninput="filterHist(this.value)"
-        onfocus="document.querySelector('.bottom-nav').classList.add('search-mode')"
-        onblur="document.querySelector('.bottom-nav').classList.remove('search-mode')">
-      <span style="position:absolute;right:14px;top:50%;transform:translateY(-50%);color:var(--text-3)">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-      </span>
+
+    <!-- 検索バー + 候補ドロップダウン -->
+    <div class="hist-search-wrap" id="histSearchWrap">
+      <div class="hist-search-field">
+        <span class="hist-search-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        </span>
+        <input type="text" id="histSearchInput" placeholder="製品名・メーカーで検索"
+          oninput="onHistInput(this.value)"
+          onfocus="onHistFocus()"
+          autocomplete="off">
+        <button class="hist-search-clear" id="histSearchClear"
+          onmousedown="event.preventDefault()" onclick="clearHistSearchInput()">✕</button>
+      </div>
+      <button class="hist-cancel-btn" id="histCancelBtn"
+        onmousedown="event.preventDefault()" onclick="cancelHistSearch()">キャンセル</button>
+
+      <!-- 候補ドロップダウン -->
+      <div class="hist-suggest-dd" id="histSuggestDd"></div>
     </div>
+
+    <!-- アクティブフィルタ表示（メーカー／製品絞り込み中） -->
+    <div id="histActiveBar" style="display:none"></div>
+
+    <!-- ステータスフィルタ -->
     <div class="filter-row">
       <button class="f-chip on-all" id="fAll" onclick="setFilter('all')">すべて</button>
       <button class="f-chip" id="fPass" onclick="setFilter('pass')">
@@ -2654,6 +2758,8 @@ const S = {
   showAllProductsOverlay: false,
   histFilter: 'all',
   histSearch: '',
+  histMfrFilter: null,    // 選択中メーカーID
+  histProductFilter: null, // 選択中製品名
 };
 
 // ============================================================
@@ -3007,7 +3113,13 @@ function switchPage(page) {
   if (page !== 'home' && S.camStream) stopCamera();
 
   if (page === 'stats')    renderStats();
-  if (page === 'history')  renderHist();
+  if (page === 'history')  {
+    // 入力欄を同期（前回の値が残っていれば反映）
+    const inp = document.getElementById('histSearchInput');
+    if (inp) inp.value = S.histSearch || '';
+    updateHistActiveBar();
+    renderHist();
+  }
   if (page === 'settings') { renderInspSettings(); updateSettingsCount(); }
 }
 
@@ -5596,7 +5708,27 @@ function renderHist() {
   const f = S.histFilter;
 
   const data = all.filter(r => {
-    const mq = !q || r.productName.toLowerCase().includes(q) || r.manufacturerName.toLowerCase().includes(q);
+    let mq;
+    if (S.histMfrFilter) {
+      // メーカーID で絞り込み
+      mq = r.manufacturerId === S.histMfrFilter;
+      // ID がない旧データはメーカー名で fallback
+      if (!mq && r.manufacturerName) {
+        const mfrObj = [...ALL_MANUFACTURERS, ...load('customMfrs',[])].find(m => m.id === S.histMfrFilter);
+        if (mfrObj) {
+          const names = [mfrObj.name, mfrObj.jaName].filter(Boolean).map(n=>n.toLowerCase());
+          mq = names.includes(r.manufacturerName.toLowerCase());
+        }
+      }
+    } else if (S.histProductFilter) {
+      // 製品名で絞り込み
+      mq = r.productName === S.histProductFilter;
+    } else {
+      // テキスト検索
+      mq = !q || r.productName.toLowerCase().includes(q)
+              || (r.manufacturerName||'').toLowerCase().includes(q)
+              || (r.manufacturerId||'').toLowerCase().includes(q);
+    }
     let mf;
     if (f === 'all') {
       mf = true;
@@ -5645,6 +5777,181 @@ function renderHist() {
       ${histEditMode ? delBtn : `<span class="hc-date">${fmtDate(r.createdAt)}</span>`}
     </div>`;
   }).join('');
+}
+
+// ============================================================
+// 検品履歴ページ – 検索UI（候補ドロップダウン）
+// ============================================================
+
+/** 検索入力イベント */
+function onHistInput(val) {
+  S.histSearch     = val;
+  S.histMfrFilter  = null;
+  S.histProductFilter = null;
+  const clrBtn = document.getElementById('histSearchClear');
+  if (clrBtn) clrBtn.style.display = val ? 'flex' : 'none';
+  updateHistActiveBar();
+  renderHistSuggestions(val);
+  renderHist();
+}
+
+/** フォーカス時 */
+function onHistFocus() {
+  document.querySelector('.bottom-nav').classList.add('search-mode');
+  const cancelBtn = document.getElementById('histCancelBtn');
+  if (cancelBtn) cancelBtn.style.display = 'block';
+  renderHistSuggestions(S.histSearch);
+}
+
+/** キャンセルボタン */
+function cancelHistSearch() {
+  S.histSearch = '';
+  S.histMfrFilter = null;
+  S.histProductFilter = null;
+  const inp = document.getElementById('histSearchInput');
+  if (inp) { inp.value = ''; inp.blur(); }
+  const clrBtn = document.getElementById('histSearchClear');
+  if (clrBtn) clrBtn.style.display = 'none';
+  const cancelBtn = document.getElementById('histCancelBtn');
+  if (cancelBtn) cancelBtn.style.display = 'none';
+  closeHistSuggest();
+  document.querySelector('.bottom-nav').classList.remove('search-mode');
+  updateHistActiveBar();
+  renderHist();
+}
+
+/** ✕ クリアボタン */
+function clearHistSearchInput() {
+  S.histSearch = '';
+  S.histMfrFilter = null;
+  S.histProductFilter = null;
+  const inp = document.getElementById('histSearchInput');
+  if (inp) { inp.value = ''; inp.focus(); }
+  const clrBtn = document.getElementById('histSearchClear');
+  if (clrBtn) clrBtn.style.display = 'none';
+  closeHistSuggest();
+  updateHistActiveBar();
+  renderHist();
+}
+
+/** 候補ドロップダウンを閉じる */
+function closeHistSuggest() {
+  const dd = document.getElementById('histSuggestDd');
+  if (dd) dd.classList.remove('open');
+}
+
+/** メーカー候補を選択 */
+function selectHistMfr(mfrId, jaName) {
+  S.histMfrFilter = mfrId;
+  S.histProductFilter = null;
+  S.histSearch = jaName;
+  const inp = document.getElementById('histSearchInput');
+  if (inp) inp.value = jaName;
+  const clrBtn = document.getElementById('histSearchClear');
+  if (clrBtn) clrBtn.style.display = 'flex';
+  closeHistSuggest();
+  document.querySelector('.bottom-nav').classList.remove('search-mode');
+  const cancelBtn = document.getElementById('histCancelBtn');
+  if (cancelBtn) cancelBtn.style.display = 'none';
+  updateHistActiveBar();
+  renderHist();
+}
+
+/** 製品候補を選択 */
+function selectHistProduct(productName) {
+  S.histProductFilter = productName;
+  S.histMfrFilter = null;
+  S.histSearch = productName;
+  const inp = document.getElementById('histSearchInput');
+  if (inp) inp.value = productName;
+  const clrBtn = document.getElementById('histSearchClear');
+  if (clrBtn) clrBtn.style.display = 'flex';
+  closeHistSuggest();
+  document.querySelector('.bottom-nav').classList.remove('search-mode');
+  const cancelBtn = document.getElementById('histCancelBtn');
+  if (cancelBtn) cancelBtn.style.display = 'none';
+  updateHistActiveBar();
+  renderHist();
+}
+
+/** アクティブフィルタバー更新 */
+function updateHistActiveBar() {
+  const bar = document.getElementById('histActiveBar');
+  if (!bar) return;
+  if (S.histMfrFilter || S.histProductFilter) {
+    const label = S.histMfrFilter
+      ? (([...ALL_MANUFACTURERS,...load('customMfrs',[])].find(m=>m.id===S.histMfrFilter)||{}).jaName || S.histSearch) + ' の検品履歴'
+      : S.histProductFilter + ' の検品履歴';
+    bar.innerHTML = `<div class="hist-active-bar">
+      <span class="hist-active-bar-label">${label}</span>
+      <button class="hist-active-bar-clear" onclick="cancelHistSearch()">✕</button>
+    </div>`;
+    bar.style.display = 'block';
+  } else {
+    bar.style.display = 'none';
+  }
+}
+
+/** 検索テキストのハイライト */
+function hlText(text, q) {
+  if (!q || !text) return text || '';
+  const idx = text.toLowerCase().indexOf(q.toLowerCase());
+  if (idx === -1) return text;
+  return text.slice(0,idx)
+    + `<span class="hist-sug-hl">${text.slice(idx, idx+q.length)}</span>`
+    + text.slice(idx + q.length);
+}
+
+/** 候補ドロップダウン描画 */
+function renderHistSuggestions(rawQ) {
+  const dd = document.getElementById('histSuggestDd');
+  if (!dd) return;
+  const q = rawQ ? rawQ.trim() : '';
+  if (!q) { dd.classList.remove('open'); return; }
+  const ql = q.toLowerCase();
+
+  const allMfrs = [...ALL_MANUFACTURERS, ...load('customMfrs', [])];
+  // メーカー（最大3件）: jaName / name / id で一致
+  const matchMfrs = allMfrs.filter(m => {
+    const n  = (m.name   ||'').toLowerCase();
+    const jn = (m.jaName ||'').toLowerCase();
+    const id = (m.id     ||'').toLowerCase();
+    return jn.includes(ql) || n.includes(ql) || id.includes(ql);
+  }).slice(0, 3);
+
+  // 製品（最大7件）: products リストと過去履歴の productName
+  const baseProds = new Set([...load('products', SAMPLE_PRODUCTS)]);
+  load('inspections',[]).forEach(r => { if(r.productName) baseProds.add(r.productName); });
+  const matchProds = [...baseProds].filter(p => p.toLowerCase().includes(ql)).slice(0, 7);
+
+  if (!matchMfrs.length && !matchProds.length) {
+    dd.classList.remove('open'); return;
+  }
+
+  const mfrIcon = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" width="17" height="17"><rect x="3" y="9" width="18" height="12" rx="1.5"/><path d="M3 9l9-6 9 6"/></svg>`;
+  const prdIcon = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" width="17" height="17"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>`;
+
+  let html = '';
+  matchMfrs.forEach(m => {
+    const jaName = m.jaName || m.name;
+    html += `<div class="hist-sug-item" onmousedown="event.preventDefault();selectHistMfr('${m.id}','${jaName.replace(/'/g,'&#39;')}')">
+      <div class="hist-sug-icon mfr">${mfrIcon}</div>
+      <div class="hist-sug-info">
+        <div class="hist-sug-name">${hlText(jaName, q)}</div>
+        <div class="hist-sug-sub">メーカー</div>
+      </div>
+    </div>`;
+  });
+  matchProds.forEach(p => {
+    html += `<div class="hist-sug-item" onmousedown="event.preventDefault();selectHistProduct('${p.replace(/'/g,'&#39;')}')">
+      <div class="hist-sug-icon prd">${prdIcon}</div>
+      <div class="hist-sug-info">
+        <div class="hist-sug-name">${hlText(p, q)}</div>
+      </div>
+    </div>`;
+  });
+  dd.innerHTML = html;
+  dd.classList.add('open');
 }
 
 function filterHist(val) { S.histSearch = val; renderHist(); }
