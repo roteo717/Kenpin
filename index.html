@@ -902,6 +902,10 @@ a{color:inherit;text-decoration:none}
 .judge-toggle.provisional.active{
   background:var(--review-dim);border-color:var(--review);color:var(--review);
 }
+/* 要注意 */
+.judge-toggle.caution.active{
+  background:var(--review-dim);border-color:var(--review);color:var(--review);
+}
 .judge-dot{
   width:10px;height:10px;border-radius:50%;flex-shrink:0;
 }
@@ -2099,8 +2103,43 @@ a{color:inherit;text-decoration:none}
       </div>
     </div>
 
-    <!-- 確認者選択 -->
-    <div class="card">
+    <!-- 判定 -->
+    <div class="card" id="judge-card">
+      <div class="card-head">
+        <div style="display:flex;align-items:center;gap:9px">
+          <div class="head-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2" stroke-linecap="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+          </div>
+          判定
+        </div>
+      </div>
+      <!-- 使用可否 -->
+      <div class="judge-group-label">使用可否</div>
+      <div class="judge-toggle-row">
+        <button class="judge-toggle usable" id="mainUsable" onclick="setMainJudge('usability','pass')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" width="16" height="16" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+          使用可
+        </button>
+        <button class="judge-toggle unusable" id="mainUnusable" onclick="setMainJudge('usability','fail')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" width="15" height="15" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          使用否
+        </button>
+      </div>
+      <!-- 判断区分 -->
+      <div class="judge-group-label" style="margin-top:14px">判断区分</div>
+      <div class="judge-toggle-row">
+        <button class="judge-toggle permanent" id="mainPermanent" onclick="setMainJudge('judgeType','恒久判断')">
+          <span class="judge-dot blue"></span>
+          恒久判断
+        </button>
+        <button class="judge-toggle provisional" id="mainProvisional" onclick="setMainJudge('judgeType','暫定判断')">
+          <span class="judge-dot yellow"></span>
+          暫定判断
+        </button>
+      </div>
+    </div>
+
+    <!-- 確認者選択 -->    <div class="card">
       <div class="card-head">
         <div class="head-icon">
           <svg viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2" stroke-linecap="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
@@ -5005,6 +5044,30 @@ function renderPhotoGrid() {
 }
 
 // ============================================================
+// メインフォーム 判定カード
+// ============================================================
+
+function setMainJudge(field, val) {
+  if (field === 'usability') {
+    S.usability = S.usability === val ? null : val;
+  } else {
+    S.judgeType = S.judgeType === val ? null : val;
+  }
+  renderMainJudge();
+}
+
+function renderMainJudge() {
+  const mu  = document.getElementById('mainUsable');
+  const mun = document.getElementById('mainUnusable');
+  const mp  = document.getElementById('mainPermanent');
+  const mpr = document.getElementById('mainProvisional');
+  if (mu)  mu.classList.toggle('active',  S.usability === 'pass');
+  if (mun) mun.classList.toggle('active', S.usability === 'fail');
+  if (mp)  mp.classList.toggle('active',  S.judgeType === '恒久判断');
+  if (mpr) mpr.classList.toggle('active', S.judgeType === '暫定判断');
+}
+
+// ============================================================
 // 写真個別判定エディター
 // ============================================================
 
@@ -5013,9 +5076,9 @@ let _editingPhotoIdx = -1;
 function openPhotoJudge(i) {
   _editingPhotoIdx = i;
   const photo = S.photos[i];
-  document.getElementById('pjsUsable').classList.toggle('active',    photo.usability === 'pass');
-  document.getElementById('pjsUnusable').classList.toggle('active',  photo.usability === 'fail');
-  document.getElementById('pjsPermanent').classList.toggle('active', photo.judgeType === '恒久判断');
+  document.getElementById('pjsUsable').classList.toggle('active',      photo.usability === 'pass');
+  document.getElementById('pjsUnusable').classList.toggle('active',    photo.usability === 'fail');
+  document.getElementById('pjsPermanent').classList.toggle('active',   photo.judgeType === '恒久判断');
   document.getElementById('pjsProvisional').classList.toggle('active', photo.judgeType === '暫定判断');
   document.getElementById('photoJudgeSheetBg').classList.add('show');
 }
@@ -5331,12 +5394,15 @@ async function saveAnnotation() {
 
 function deriveOverallResult() {
   const vals = S.photos.map(p => p.usability).filter(Boolean);
-  if (!vals.length) return null;
+  if (!vals.length) return S.usability;
   if (vals.includes('fail')) return 'fail';
+  if (vals.includes('review')) return 'review';
   return 'pass';
 }
 
 function deriveOverallJudgeType() {
+  if (S.judgeType) return S.judgeType;
+  // 後方互換：写真の判断区分から集計
   const vals = S.photos.map(p => p.judgeType).filter(Boolean);
   if (!vals.length) return null;
   if (vals.includes('暫定判断')) return '暫定判断';
@@ -5524,6 +5590,7 @@ function resetForm() {
   renderDefects();
   renderHistChips();
   renderPhotoGrid();
+  renderMainJudge();
   window.scrollTo({top:0, behavior:'smooth'});
 }
 
