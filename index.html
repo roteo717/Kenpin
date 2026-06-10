@@ -989,6 +989,7 @@ a{color:inherit;text-decoration:none}
 .photo-judge-label.fail{background:var(--fail-dim);color:var(--fail);border:1.5px solid var(--fail)}
 .photo-judge-label.perm{background:#eff6ff;color:#3b82f6;border:1.5px solid #3b82f6}
 .photo-judge-label.prov{background:var(--review-dim);color:var(--review);border:1.5px solid var(--review)}
+.photo-judge-label.caution{background:var(--review-dim);color:var(--review);border:1.5px solid var(--review)}
 
 /* 写真個別判定設定ボタン（ラベル未設定時） */
 .photo-judge-set-btn{
@@ -5010,13 +5011,11 @@ function removePhoto(i) {
 
 function renderPhotoGrid() {
   document.getElementById('photoGrid').innerHTML = S.photos.map((photo, i) => {
-    const usabilityLabel = photo.usability === 'pass' ? { cls: 'pass', txt: '✓ 使用可' }
-                         : photo.usability === 'fail' ? { cls: 'fail', txt: '✕ 使用否' }
+    const usabilityLabel = photo.usability === 'pass'    ? { cls: 'pass',    txt: '✓ 使用可' }
+                         : photo.usability === 'fail'    ? { cls: 'fail',    txt: '✕ 使用否' }
+                         : photo.usability === 'caution' ? { cls: 'caution', txt: '⚠ 要注意' }
                          : null;
-    const judgeLabel = photo.judgeType === '恒久判断' ? { cls: 'perm', txt: '● 恒久' }
-                     : photo.judgeType === '暫定判断' ? { cls: 'prov', txt: '● 暫定' }
-                     : null;
-    const hasAnyLabel = usabilityLabel || judgeLabel;
+    const hasAnyLabel = usabilityLabel;
     return `
     <div class="photo-wrap">
       <img src="${photo.url}" class="photo-thumb" onclick="openAnnotator(${i})">
@@ -5025,7 +5024,6 @@ function renderPhotoGrid() {
         <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" width="11" height="11" stroke-linecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
       </div>
       ${usabilityLabel ? `<div class="photo-judge-label ${usabilityLabel.cls}" onclick="openPhotoJudge(${i})">${usabilityLabel.txt}</div>` : ''}
-      ${judgeLabel ? `<div class="photo-judge-label ${judgeLabel.cls}" onclick="openPhotoJudge(${i})">${judgeLabel.txt}</div>` : ''}
       ${!hasAnyLabel ? `<button class="photo-judge-set-btn" onclick="openPhotoJudge(${i})">＋判定設定</button>` : ''}
     </div>`;
   }).join('');
@@ -5064,8 +5062,9 @@ let _editingPhotoIdx = -1;
 function openPhotoJudge(i) {
   _editingPhotoIdx = i;
   const photo = S.photos[i];
-  document.getElementById('pjsPermanent').classList.toggle('active',   photo.judgeType === '恒久判断');
-  document.getElementById('pjsProvisional').classList.toggle('active', photo.judgeType === '暫定判断');
+  document.getElementById('pjsUsable').classList.toggle('active',   photo.usability === 'pass');
+  document.getElementById('pjsUnusable').classList.toggle('active', photo.usability === 'fail');
+  document.getElementById('pjsCaution').classList.toggle('active',  photo.usability === 'caution');
   document.getElementById('photoJudgeSheetBg').classList.add('show');
 }
 
@@ -5077,10 +5076,11 @@ function closePhotoJudge() {
 function setPhotoJudge(field, val) {
   if (_editingPhotoIdx < 0 || !S.photos[_editingPhotoIdx]) return;
   const photo = S.photos[_editingPhotoIdx];
-  if (field === 'judgeType') {
-    photo.judgeType = photo.judgeType === val ? null : val;
-    document.getElementById('pjsPermanent').classList.toggle('active',   photo.judgeType === '恒久判断');
-    document.getElementById('pjsProvisional').classList.toggle('active', photo.judgeType === '暫定判断');
+  if (field === 'usability') {
+    photo.usability = photo.usability === val ? null : val;
+    document.getElementById('pjsUsable').classList.toggle('active',   photo.usability === 'pass');
+    document.getElementById('pjsUnusable').classList.toggle('active', photo.usability === 'fail');
+    document.getElementById('pjsCaution').classList.toggle('active',  photo.usability === 'caution');
   }
   renderPhotoGrid();
 }
@@ -6875,16 +6875,19 @@ init();
     <div class="pjs-title">写真の判定を設定</div>
     <div class="pjs-subtitle">この写真に個別の判定ラベルを設定できます</div>
 
-    <!-- 判断区分 -->
-    <div class="judge-group-label">判断区分</div>
+    <!-- 使用可否 -->
     <div class="judge-toggle-row">
-      <button class="judge-toggle permanent" id="pjsPermanent" onclick="setPhotoJudge('judgeType','恒久判断')">
-        <span class="judge-dot blue"></span>
-        恒久判断
+      <button class="judge-toggle usable" id="pjsUsable" onclick="setPhotoJudge('usability','pass')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" width="16" height="16" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+        使用可
       </button>
-      <button class="judge-toggle provisional" id="pjsProvisional" onclick="setPhotoJudge('judgeType','暫定判断')">
-        <span class="judge-dot yellow"></span>
-        暫定判断
+      <button class="judge-toggle unusable" id="pjsUnusable" onclick="setPhotoJudge('usability','fail')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" width="15" height="15" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        使用否
+      </button>
+      <button class="judge-toggle caution" id="pjsCaution" onclick="setPhotoJudge('usability','caution')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="16" height="16" stroke-linecap="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        要注意
       </button>
     </div>
     <div style="display:flex;gap:9px;margin-top:18px">
