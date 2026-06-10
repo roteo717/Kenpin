@@ -6440,18 +6440,8 @@ function openDetail(id) {
     `;
   }
 
-  // ── 判断区分バッジ（写真がない場合のみ表示）
-  const judgeTypeBadge = (!r.photos?.length && r.judgeType)
-    ? `<div class="detail-badge-row">
-        <span class="h-badge ${r.result}" style="font-size:12px;padding:5px 13px">
-          ${r.result === 'fail' ? '× 使用否' : r.result === 'pass' ? '✓ 使用可' : '要確認'}
-        </span>
-        <span style="font-size:12px;font-weight:700;color:${r.judgeType==='恒久判断'?'#3b82f6':'var(--review)'};background:${r.judgeType==='恒久判断'?'#eff6ff':'var(--review-dim)'};border-radius:100px;padding:5px 13px">${r.judgeType}</span>
-      </div>` : '';
-
   document.getElementById('dContent').innerHTML = `
     ${photosHtml}
-    ${judgeTypeBadge}
     <div class="detail-row">
       <span class="detail-lbl">メーカー</span>
       <span class="detail-val">${r.manufacturerName}</span>
@@ -6460,6 +6450,11 @@ function openDetail(id) {
     <div class="detail-row">
       <span class="detail-lbl">不良内容</span>
       <span class="detail-val">${r.defects.join('、')}</span>
+    </div>` : ''}
+    ${r.judgeType ? `
+    <div class="detail-row">
+      <span class="detail-lbl">判断区分</span>
+      <span class="detail-val" style="font-weight:700;color:${r.judgeType==='恒久判断'?'#3b82f6':'var(--review)'}">${r.judgeType}</span>
     </div>` : ''}
     <div class="detail-row">
       <span class="detail-lbl">確認者</span>
