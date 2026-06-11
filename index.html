@@ -977,6 +977,30 @@ a{color:inherit;text-decoration:none}
   width:48px!important;height:48px!important;
   box-shadow:0 4px 14px rgba(99,102,241,.5);
 }
+/* ズームコントロール */
+.cam-zoom-bar{
+  position:absolute;bottom:11px;left:50%;transform:translateX(-50%);
+  display:flex;align-items:center;gap:8px;
+  background:rgba(0,0,0,.48);backdrop-filter:blur(12px);
+  border-radius:100px;padding:5px 10px;
+  border:1px solid rgba(255,255,255,.15);
+}
+.cam-zoom-btn{
+  width:28px;height:28px;
+  background:rgba(255,255,255,.18);
+  border:1px solid rgba(255,255,255,.2);
+  border-radius:50%;color:#fff;
+  font-size:17px;font-weight:700;line-height:1;
+  display:flex;align-items:center;justify-content:center;
+  transition:background .12s;
+}
+.cam-zoom-btn:active{background:rgba(255,255,255,.42)}
+.cam-zoom-btn:disabled{opacity:.35;pointer-events:none}
+.cam-zoom-lbl{
+  font-size:13px;font-weight:700;color:#fff;
+  min-width:38px;text-align:center;letter-spacing:.4px;
+  font-variant-numeric:tabular-nums;
+}
 .photo-grid{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
 .photo-wrap{position:relative;width:80px;display:flex;flex-direction:column;align-items:center;gap:5px}
 .photo-thumb{width:80px;height:80px;border-radius:10px;object-fit:cover;display:block}
@@ -2365,6 +2389,12 @@ a{color:inherit;text-decoration:none}
             <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" width="22" height="22" stroke-linecap="round"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
           </button>
         </div>
+        <!-- ズームコントロール -->
+        <div class="cam-zoom-bar" id="camZoomBar" style="display:none">
+          <button class="cam-zoom-btn" id="camZoomOut" onclick="zoomOut()">－</button>
+          <span class="cam-zoom-lbl" id="camZoomLbl">1.0×</span>
+          <button class="cam-zoom-btn" id="camZoomIn" onclick="zoomIn()">＋</button>
+        </div>
       </div>
 
       <button class="cam-stop-btn" id="camStopBtn" style="display:none" onclick="stopCamera()">
@@ -2715,7 +2745,7 @@ a{color:inherit;text-decoration:none}
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="14" height="14" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
       丸を追加
     </button>
-    <button class="annot-clear" onclick="clearAnnotations()">全て消す</button>
+
   </div>
 </div>
 
@@ -2850,6 +2880,9 @@ const S = {
   photos: [],
   camStream: null,
   camFacing: 'environment',
+  camZoom: 1.0,
+  camZoomMax: 5.0,
+  camHardwareZoom: false,
   showAllMfr: false,
   showAllDefects: false,
   showAllProducts: false,
@@ -5144,6 +5177,23 @@ async function startCamera() {
   document.getElementById('camFrameEl').style.display = 'block';
   document.getElementById('camControls').style.display = 'flex';
   document.getElementById('camStopBtn').style.display = 'flex';
+
+  // ズームバー初期化
+  S.camZoom = 1.0;
+  S.camHardwareZoom = false;
+  const track = stream.getVideoTracks()[0];
+  if (track) {
+    const caps = track.getCapabilities?.() || {};
+    if (caps.zoom) {
+      S.camHardwareZoom = true;
+      S.camZoomMax = Math.min(caps.zoom.max ?? 5.0, 8.0);
+    } else {
+      S.camZoomMax = 5.0;
+    }
+  }
+  _updateZoomBar();
+  document.getElementById('camZoomBar').style.display = 'flex';
+
   showToast('カメラを起動しました','success');
 }
 
@@ -5151,18 +5201,65 @@ function stopCamera() {
   if (!S.camStream) return;
   S.camStream.getTracks().forEach(t => t.stop());
   S.camStream = null;
+  S.camZoom = 1.0;
+  S.camHardwareZoom = false;
   const v = document.getElementById('camVideo');
   v.srcObject = null;
   v.style.display = 'none';
+  v.style.transform = '';
   document.getElementById('camPlaceholder').style.display = 'flex';
   document.getElementById('camFrameEl').style.display = 'none';
   document.getElementById('camControls').style.display = 'none';
   document.getElementById('camStopBtn').style.display = 'none';
+  document.getElementById('camZoomBar').style.display = 'none';
 }
 
 async function flipCamera() {
   S.camFacing = S.camFacing === 'environment' ? 'user' : 'environment';
   if (S.camStream) { stopCamera(); await startCamera(); }
+}
+
+// ============================================================
+// ズーム機能
+// ============================================================
+const ZOOM_STEP = 0.5;
+const ZOOM_MIN  = 1.0;
+
+async function setZoom(level) {
+  level = Math.round(Math.min(Math.max(level, ZOOM_MIN), S.camZoomMax) * 10) / 10;
+  S.camZoom = level;
+  _updateZoomBar();
+
+  if (!S.camStream) return;
+  const track = S.camStream.getVideoTracks()[0];
+
+  if (S.camHardwareZoom && track) {
+    try {
+      await track.applyConstraints({ advanced: [{ zoom: level }] });
+      return;
+    } catch(e) {
+      S.camHardwareZoom = false; // フォールバックへ
+    }
+  }
+
+  // デジタルズーム：CSS scale でプレビューに反映
+  const v = document.getElementById('camVideo');
+  if (v) {
+    v.style.transform      = level > 1.0 ? `scale(${level})` : '';
+    v.style.transformOrigin = 'center center';
+  }
+}
+
+function zoomIn()  { setZoom(S.camZoom + ZOOM_STEP); }
+function zoomOut() { setZoom(S.camZoom - ZOOM_STEP); }
+
+function _updateZoomBar() {
+  const lbl = document.getElementById('camZoomLbl');
+  const btnIn  = document.getElementById('camZoomIn');
+  const btnOut = document.getElementById('camZoomOut');
+  if (lbl)    lbl.textContent = `${S.camZoom.toFixed(1)}×`;
+  if (btnOut) btnOut.disabled = S.camZoom <= ZOOM_MIN;
+  if (btnIn)  btnIn.disabled  = S.camZoom >= S.camZoomMax;
 }
 
 // ============================================================
@@ -5196,8 +5293,19 @@ async function capturePhoto() {
   const v = document.getElementById('camVideo');
   if (!v.srcObject) { showToast('カメラが起動していません','error'); return; }
   const c = document.getElementById('captureCanvas');
-  c.width = v.videoWidth; c.height = v.videoHeight;
-  c.getContext('2d').drawImage(v, 0, 0);
+  const vw = v.videoWidth, vh = v.videoHeight;
+  c.width = vw; c.height = vh;
+  const ctx = c.getContext('2d');
+
+  if (S.camZoom > 1.0 && !S.camHardwareZoom) {
+    // デジタルズーム：中央をトリミングして拡大
+    const cw = vw / S.camZoom;
+    const ch = vh / S.camZoom;
+    ctx.drawImage(v, (vw - cw) / 2, (vh - ch) / 2, cw, ch, 0, 0, vw, vh);
+  } else {
+    ctx.drawImage(v, 0, 0);
+  }
+
   // 撮影フラッシュ
   const a = document.getElementById('camArea');
   a.style.filter = 'brightness(2.5)';
@@ -5804,6 +5912,7 @@ function resetForm() {
   lotEl2.value = '';
   const lotTrig = document.getElementById('lotTriggerText');
   if (lotTrig) { lotTrig.textContent = '日付を選択'; lotTrig.style.color = 'var(--text-3)'; }
+  stopCamera();
   renderMfr();
   renderProduct();
   renderInspectors();
