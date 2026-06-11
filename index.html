@@ -6817,7 +6817,7 @@ function openDetail(id) {
       }
 
 
-      const comment = typeof p === 'string' ? '' : (p.comment || '');
+      const comment = typeof p === 'string' ? (r.comment || '') : (p.comment || r.comment || '');
       return `<div class="dpg-item" onclick="openPhotoViewer(${i})">\
 <img src="${toDriveImgUrl(url)}" class="dpg-img" data-comment="${comment.replace(/"/g,'&quot;')}">${lblHtml}</div>`;
     }).join('');
