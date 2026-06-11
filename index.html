@@ -1708,7 +1708,8 @@ a{color:inherit;text-decoration:none}
   transition:transform .22s cubic-bezier(.4,0,.2,1),opacity .22s;
 }
 /* 検索中はボトムナビを非表示 */
-.bottom-nav.search-mode{
+.bottom-nav.search-mode,
+.bottom-nav.keyboard-mode{
   transform:translateX(-50%) translateY(110%);
   opacity:0;
   pointer-events:none;
@@ -2579,10 +2580,9 @@ a{color:inherit;text-decoration:none}
   <div class="photo-viewer-count" id="pvCount"></div>
   <!-- 確認者コメントアイコン -->
   <button id="pvCommentBtn" class="pv-comment-btn" onclick="togglePvComment()" style="display:none">
-    <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.8" width="26" height="26" stroke-linecap="round" stroke-linejoin="round">
-      <circle cx="12" cy="12" r="10"/>
-      <path d="M8 10h8M8 13h5"/>
-      <path d="M7 17l-2 2V8a1 1 0 011-1h12a1 1 0 011 1v7a1 1 0 01-1 1H7z"/>
+    <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" width="24" height="24" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+      <line x1="9" y1="9" x2="15" y2="9"/><line x1="9" y1="13" x2="13" y2="13"/>
     </svg>
   </button>
   <div id="pvCommentPopup" class="pv-comment-popup" style="display:none"></div>
@@ -6961,6 +6961,12 @@ function init() {
   // 製品名入力欄がアクティブなら候補リストが見えるよう再スクロール
   if (window.visualViewport) {
     window.visualViewport.addEventListener('resize', () => {
+      // キーボード表示中はボトムナビを非表示
+      const nav = document.querySelector('.bottom-nav');
+      if (nav) {
+        const keyboardVisible = window.innerHeight - window.visualViewport.height > 100;
+        nav.classList.toggle('keyboard-mode', keyboardVisible);
+      }
       if (document.activeElement && document.activeElement.id === 'productInput') {
         const vvh  = window.visualViewport.height;
         const rect = document.activeElement.getBoundingClientRect();
