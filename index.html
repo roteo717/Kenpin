@@ -1301,6 +1301,46 @@ a{color:inherit;text-decoration:none}
 .empty p{font-size:14px;font-weight:500}
 
 /* =====================================================
+   検品履歴カード スワイプ削除
+   ===================================================== */
+.hist-swipe-row{
+  position:relative;overflow:hidden;
+  transform:translateZ(0);
+  -webkit-mask-image:-webkit-radial-gradient(white,black);
+}
+/* swipe-row 内の hist-card は角丸をリセット（親で制御） */
+.hist-swipe-row .hist-card:first-child,
+.hist-swipe-row .hist-card:last-child,
+.hist-swipe-row .hist-card:only-child{border-radius:0 !important}
+/* 先頭・末尾の swipe-row に角丸 */
+.hist-swipe-row:first-child{border-radius:14px 14px 0 0}
+.hist-swipe-row:last-child{border-radius:0 0 14px 14px}
+.hist-swipe-row:only-child{border-radius:14px}
+/* 末尾カードはボーダーなし */
+.hist-swipe-row:last-child .hist-card{border-bottom:none !important}
+/* 削除背景（右端に配置） */
+.hist-swipe-del-bg{
+  position:absolute;right:0;top:0;bottom:0;
+  width:80px;background:var(--fail);
+  display:flex;align-items:center;justify-content:center;
+  flex-direction:column;gap:3px;
+  border:none;cursor:pointer;opacity:0;
+  padding:0;
+}
+.hist-swipe-del-bg svg{stroke:white;width:18px;height:18px;pointer-events:none}
+.hist-swipe-del-lbl{font-size:11px;font-weight:700;color:white;letter-spacing:.3px;pointer-events:none}
+/* hist-card のスワイプ対応 */
+.hist-swipe-row .hist-card{
+  position:relative;z-index:1;
+  transform:translateX(0);
+  will-change:transform;
+  transition:background .12s,transform .3s cubic-bezier(.34,1.12,.64,1) !important;
+}
+.hist-swipe-row .hist-card.hs-swiping{
+  transition:background .12s !important;
+}
+
+/* =====================================================
    詳細ボトムシート
    ===================================================== */
 .detail-bg{
@@ -2380,7 +2420,7 @@ a{color:inherit;text-decoration:none}
       <button class="f-chip" id="fPass" onclick="setFilter('pass')">使用可</button>
       <button class="f-chip" id="fFail" onclick="setFilter('fail')">使用否</button>
       <button class="f-chip" id="fCaution" onclick="setFilter('caution')">要注意</button>
-      <button id="histEditBtn" onclick="toggleHistEdit()" style="margin-left:auto;flex-shrink:0;font-size:12px;font-weight:600;color:var(--text-3);background:none;border:none;cursor:pointer;padding:4px 2px;line-height:1;">編集</button>
+
     </div>
     <div id="histList"></div>
   </div>
