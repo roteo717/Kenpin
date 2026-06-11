@@ -773,6 +773,22 @@ a{color:inherit;text-decoration:none}
   padding-left:8px;padding-right:8px;
 }
 .hist-item.swiping{transition:none}
+/* 検品履歴スワイプ削除 */
+#histList .swipe-row{
+  position:relative;overflow:hidden;
+  transform:translateZ(0);
+  -webkit-mask-image:-webkit-radial-gradient(white,black);
+}
+#histList .swipe-del-bg{border-radius:0}
+#histList .swipe-row .hist-card{
+  transform:translateX(0);
+  transition:transform .3s cubic-bezier(.34,1.12,.64,1);
+  will-change:transform;
+  border-radius:0 !important;
+  cursor:pointer;
+}
+#histList .swipe-row .hist-card.swiping{transition:none}
+#histList .swipe-row:last-child .hist-card{border-bottom:none}
 .swipe-row.deleting{
   transition:max-height .25s ease, opacity .2s ease, margin .25s ease;
   overflow:hidden;
@@ -1299,46 +1315,6 @@ a{color:inherit;text-decoration:none}
 }
 .empty svg{width:48px;height:48px}
 .empty p{font-size:14px;font-weight:500}
-
-/* =====================================================
-   検品履歴カード スワイプ削除
-   ===================================================== */
-.hist-swipe-row{
-  position:relative;overflow:hidden;
-  transform:translateZ(0);
-  -webkit-mask-image:-webkit-radial-gradient(white,black);
-}
-/* swipe-row 内の hist-card は角丸をリセット（親で制御） */
-.hist-swipe-row .hist-card:first-child,
-.hist-swipe-row .hist-card:last-child,
-.hist-swipe-row .hist-card:only-child{border-radius:0 !important}
-/* 先頭・末尾の swipe-row に角丸 */
-.hist-swipe-row:first-child{border-radius:14px 14px 0 0}
-.hist-swipe-row:last-child{border-radius:0 0 14px 14px}
-.hist-swipe-row:only-child{border-radius:14px}
-/* 末尾カードはボーダーなし */
-.hist-swipe-row:last-child .hist-card{border-bottom:none !important}
-/* 削除背景（右端に配置） */
-.hist-swipe-del-bg{
-  position:absolute;right:0;top:0;bottom:0;
-  width:80px;background:var(--fail);
-  display:flex;align-items:center;justify-content:center;
-  flex-direction:column;gap:3px;
-  border:none;cursor:pointer;opacity:0;
-  padding:0;
-}
-.hist-swipe-del-bg svg{stroke:white;width:18px;height:18px;pointer-events:none}
-.hist-swipe-del-lbl{font-size:11px;font-weight:700;color:white;letter-spacing:.3px;pointer-events:none}
-/* hist-card のスワイプ対応 */
-.hist-swipe-row .hist-card{
-  position:relative;z-index:1;
-  transform:translateX(0);
-  will-change:transform;
-  transition:background .12s,transform .3s cubic-bezier(.34,1.12,.64,1) !important;
-}
-.hist-swipe-row .hist-card.hs-swiping{
-  transition:background .12s !important;
-}
 
 /* =====================================================
    詳細ボトムシート
@@ -4822,7 +4798,58 @@ function _initSwipeDelete() {
   });
 }
 
-function pickProduct(name) {
+// 検品履歴スワイプ削除
+let _hswStartX = null;
+let _hswStartY = null;
+let _hswInner  = null;
+let _hswDx     = 0;
+
+function _initHistSwipeDelete() {
+  document.querySelectorAll('#histList .swipe-row').forEach(row => {
+    const inner = row.querySelector('.hist-card');
+    const bg    = row.querySelector('.swipe-del-bg');
+    if (!inner || !bg) return;
+
+    row.addEventListener('touchstart', e => {
+      // 他に開いている行を閉じる
+      document.querySelectorAll('#histList .hist-card').forEach(c => {
+        if (c !== inner) {
+          c.style.transform = 'translateX(0)';
+          const b = c.parentNode.querySelector('.swipe-del-bg');
+          if (b) b.style.opacity = '0';
+        }
+      });
+      _hswStartX = e.touches[0].clientX;
+      _hswStartY = e.touches[0].clientY;
+      _hswInner  = inner;
+      _hswDx     = 0;
+      inner.classList.add('swiping');
+      bg.style.opacity = '1';
+    }, { passive: true });
+
+    row.addEventListener('touchmove', e => {
+      if (_hswInner !== inner) return;
+      const dx = e.touches[0].clientX - _hswStartX;
+      const dy = e.touches[0].clientY - _hswStartY;
+      if (Math.abs(dy) > Math.abs(dx) + 6) return;
+      if (dx > 0) { inner.style.transform = 'translateX(0)'; return; }
+      _hswDx = Math.max(dx, -80);
+      inner.style.transform = `translateX(${_hswDx}px)`;
+    }, { passive: true });
+
+    row.addEventListener('touchend', () => {
+      if (_hswInner !== inner) return;
+      inner.classList.remove('swiping');
+      if (_hswDx <= -50) {
+        inner.style.transform = 'translateX(-80px)';
+      } else {
+        inner.style.transform = 'translateX(0)';
+        bg.style.opacity = '0';
+      }
+      _hswStartX = null; _hswInner = null; _hswDx = 0;
+    });
+  });
+}
   document.getElementById('productInput').value = name;
   S.productName = name;
   renderProduct();
@@ -5869,31 +5896,24 @@ function renderHist() {
   const statusLbls = { pass:'使用可', fail:'使用否', review:'確認中' };
 
   el.innerHTML = data.map(r => {
-    const clickAttr = histEditMode ? '' : `onclick="openDetail('${r.id}')"`;
-    const cardStyle = histEditMode ? 'cursor:default;' : '';
-
-    // 判断区分ドット色
-    const dotCls = r.judgeType === '恒久判断' ? 'hc-dot-perm'
-                 : r.judgeType === '暫定判断' ? 'hc-dot-prov'
-                 : 'hc-dot-none';
-
-    // 削除モード：削除ボタン
-    const delBtn = histEditMode
-      ? `<button onclick="event.stopPropagation();deleteInspection('${r.id}')"
-           style="width:28px;height:28px;display:flex;align-items:center;justify-content:center;
-                  background:var(--fail-dim);border-radius:50%;border:none;cursor:pointer;color:var(--fail);flex-shrink:0;">
-           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="13" height="13" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-         </button>`
-      : '';
-
-    return `<div class="hist-card" style="${cardStyle}" ${clickAttr}>
-      <div class="hc-body">
-        <span class="hc-name">${r.productName}</span>
-        ${r.manufacturerName ? `<span class="hc-mfr">${r.manufacturerName}</span>` : ''}
+    const safeId = r.id.replace(/'/g, "\\'");
+    return `<div class="swipe-row" data-id="${r.id}">
+      <div class="swipe-del-bg" onclick="confirmDeleteInspection('${safeId}')">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round">
+          <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
+        </svg>
+        <span class="swipe-del-lbl">削除</span>
       </div>
-      ${histEditMode ? delBtn : `<span class="hc-date">${fmtDate(r.createdAt)}</span>`}
+      <div class="hist-card" onclick="openDetail('${safeId}')">
+        <div class="hc-body">
+          <span class="hc-name">${r.productName}</span>
+          ${r.manufacturerName ? `<span class="hc-mfr">${r.manufacturerName}</span>` : ''}
+        </div>
+        <span class="hc-date">${fmtDate(r.createdAt)}</span>
+      </div>
     </div>`;
   }).join('');
+  _initHistSwipeDelete();
 }
 
 // ============================================================
@@ -6079,14 +6099,25 @@ function renderHistSuggestions(rawQ) {
 
 function filterHist(val) { S.histSearch = val; renderHist(); }
 
+function confirmDeleteInspection(id) {
+  // 開いているスワイプを全て閉じる
+  document.querySelectorAll('#histList .hist-card').forEach(c => {
+    c.style.transform = 'translateX(0)';
+    const b = c.parentNode.querySelector('.swipe-del-bg');
+    if (b) b.style.opacity = '0';
+  });
+  document.getElementById('confirmTitle').textContent = '履歴を削除しますか？';
+  document.getElementById('confirmMsg').textContent   = 'この検品記録を削除します。この操作は元に戻せません。';
+  document.getElementById('confirmOk').textContent    = '削除';
+  document.getElementById('confirmOk').onclick = () => {
+    deleteInspection(id);
+    closeConfirm();
+  };
+  document.getElementById('confirmModal').classList.add('show');
+}
+
 function toggleHistEdit() {
-  histEditMode = !histEditMode;
-  const btn = document.getElementById('histEditBtn');
-  if (btn) {
-    btn.textContent = histEditMode ? '完了' : '編集';
-    btn.style.color = histEditMode ? 'var(--primary)' : 'var(--text-3)';
-  }
-  renderHist();
+  // 後方互換のため残す（何もしない）
 }
 
 function deleteInspection(id) {
