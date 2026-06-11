@@ -4970,25 +4970,25 @@ function toggleAllDefects() {
 }
 
 function toggleDefect(item) {
-  if (item === 'その他') {
-    const wrap = document.getElementById('defectOtherWrap');
-    if (S.defects.includes('その他')) {
-      S.defects = S.defects.filter(d => d !== 'その他');
-      S.defectsOther = '';
-      document.getElementById('defectOtherInput').value = '';
-      wrap.style.display = 'none';
-    } else {
-      S.defects.push('その他');
-      wrap.style.display = 'block';
-      setTimeout(() => document.getElementById('defectOtherInput').focus(), 80);
-    }
+  const wrap = document.getElementById('defectOtherWrap');
+  // 同じ項目を再タップで解除
+  if (S.defects.includes(item)) {
+    S.defects = [];
+    S.defectsOther = '';
+    document.getElementById('defectOtherInput').value = '';
+    wrap.style.display = 'none';
     renderDefects();
     return;
   }
-  if (S.defects.includes(item)) {
-    S.defects = S.defects.filter(d => d !== item);
+  // 一つだけ選択（前の選択をクリア）
+  S.defects = [item];
+  S.defectsOther = '';
+  document.getElementById('defectOtherInput').value = '';
+  if (item === 'その他') {
+    wrap.style.display = 'block';
+    setTimeout(() => document.getElementById('defectOtherInput').focus(), 80);
   } else {
-    S.defects.push(item);
+    wrap.style.display = 'none';
   }
   renderDefects();
 }
