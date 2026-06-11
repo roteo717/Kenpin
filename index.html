@@ -5857,9 +5857,12 @@ function onHistInput(val) {
   S.histProductFilter = null;
   const clrBtn = document.getElementById('histSearchClear');
   if (clrBtn) clrBtn.style.display = val ? 'flex' : 'none';
+  // 入力中は履歴リストを非表示にして候補だけ表示
+  const histList = document.getElementById('histList');
+  if (histList) histList.style.display = val ? 'none' : '';
   updateHistActiveBar();
   renderHistSuggestions(val);
-  renderHist();
+  if (!val) renderHist();
 }
 
 /** フォーカス時 */
@@ -5881,6 +5884,8 @@ function cancelHistSearch() {
   if (clrBtn) clrBtn.style.display = 'none';
   const cancelBtn = document.getElementById('histCancelBtn');
   if (cancelBtn) cancelBtn.style.display = 'none';
+  const histList = document.getElementById('histList');
+  if (histList) histList.style.display = '';
   closeHistSuggest();
   document.querySelector('.bottom-nav').classList.remove('search-mode');
   updateHistActiveBar();
@@ -5896,6 +5901,8 @@ function clearHistSearchInput() {
   if (inp) { inp.value = ''; inp.focus(); }
   const clrBtn = document.getElementById('histSearchClear');
   if (clrBtn) clrBtn.style.display = 'none';
+  const histList = document.getElementById('histList');
+  if (histList) histList.style.display = '';
   closeHistSuggest();
   updateHistActiveBar();
   renderHist();
@@ -5916,6 +5923,8 @@ function selectHistMfr(mfrId, jaName) {
   if (inp) inp.value = jaName;
   const clrBtn = document.getElementById('histSearchClear');
   if (clrBtn) clrBtn.style.display = 'flex';
+  const histList = document.getElementById('histList');
+  if (histList) histList.style.display = '';
   closeHistSuggest();
   document.querySelector('.bottom-nav').classList.remove('search-mode');
   const cancelBtn = document.getElementById('histCancelBtn');
@@ -5933,6 +5942,8 @@ function selectHistProduct(productName) {
   if (inp) inp.value = productName;
   const clrBtn = document.getElementById('histSearchClear');
   if (clrBtn) clrBtn.style.display = 'flex';
+  const histList = document.getElementById('histList');
+  if (histList) histList.style.display = '';
   closeHistSuggest();
   document.querySelector('.bottom-nav').classList.remove('search-mode');
   const cancelBtn = document.getElementById('histCancelBtn');
@@ -5945,18 +5956,7 @@ function selectHistProduct(productName) {
 function updateHistActiveBar() {
   const bar = document.getElementById('histActiveBar');
   if (!bar) return;
-  if (S.histMfrFilter || S.histProductFilter) {
-    const label = S.histMfrFilter
-      ? (([...ALL_MANUFACTURERS,...load('customMfrs',[])].find(m=>m.id===S.histMfrFilter)||{}).jaName || S.histSearch) + ' の検品履歴'
-      : S.histProductFilter + ' の検品履歴';
-    bar.innerHTML = `<div class="hist-active-bar">
-      <span class="hist-active-bar-label">${label}</span>
-      <button class="hist-active-bar-clear" onclick="cancelHistSearch()">✕</button>
-    </div>`;
-    bar.style.display = 'block';
-  } else {
-    bar.style.display = 'none';
-  }
+  bar.style.display = 'none';
 }
 
 /** ひらがな↔カタカナ正規化（どちらで入力しても一致させる） */
@@ -6010,7 +6010,6 @@ function renderHistSuggestions(rawQ) {
   matchMfrs.forEach(m => {
     const jaName = m.jaName || m.name;
     html += `<div class="hist-sug-item" onmousedown="event.preventDefault();selectHistMfr('${m.id}','${jaName.replace(/'/g,'&#39;')}')">
-      <div class="hist-sug-icon mfr">${mfrIcon}</div>
       <div class="hist-sug-info">
         <div class="hist-sug-name">${hlText(jaName, q)}</div>
         <div class="hist-sug-sub">メーカー</div>
@@ -6019,7 +6018,6 @@ function renderHistSuggestions(rawQ) {
   });
   matchProds.forEach(p => {
     html += `<div class="hist-sug-item" onmousedown="event.preventDefault();selectHistProduct('${p.replace(/'/g,'&#39;')}')">
-      <div class="hist-sug-icon prd">${prdIcon}</div>
       <div class="hist-sug-info">
         <div class="hist-sug-name">${hlText(p, q)}</div>
       </div>
