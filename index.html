@@ -2579,9 +2579,10 @@ a{color:inherit;text-decoration:none}
   <div class="photo-viewer-count" id="pvCount"></div>
   <!-- 確認者コメントアイコン -->
   <button id="pvCommentBtn" class="pv-comment-btn" onclick="togglePvComment()" style="display:none">
-    <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" width="20" height="20" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-      <line x1="9" y1="9" x2="15" y2="9"/><line x1="9" y1="13" x2="13" y2="13"/>
+    <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.8" width="26" height="26" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="10"/>
+      <path d="M8 10h8M8 13h5"/>
+      <path d="M7 17l-2 2V8a1 1 0 011-1h12a1 1 0 011 1v7a1 1 0 01-1 1H7z"/>
     </svg>
   </button>
   <div id="pvCommentPopup" class="pv-comment-popup" style="display:none"></div>
@@ -6908,12 +6909,12 @@ function _renderPhotoViewer() {
   document.getElementById('pvCount').textContent = total > 1 ? `${_pvIdx + 1} / ${total}` : '';
   document.getElementById('pvPrev').style.display = (total > 1 && _pvIdx > 0)           ? 'flex' : 'none';
   document.getElementById('pvNext').style.display = (total > 1 && _pvIdx < total - 1)   ? 'flex' : 'none';
-  // コメントアイコン表示制御
+  // コメントアイコン表示制御（常に表示）
   const comment = _pvComments[_pvIdx] || '';
   const btn  = document.getElementById('pvCommentBtn');
   const popup = document.getElementById('pvCommentPopup');
-  if (btn)  btn.style.display  = comment ? 'flex' : 'none';
-  if (popup) { popup.style.display = 'none'; popup.textContent = comment; }
+  if (btn)  btn.style.display  = 'flex';
+  if (popup) { popup.style.display = 'none'; popup.textContent = comment || 'コメントなし'; }
 }
 
 function photoViewerNav(dir) {
