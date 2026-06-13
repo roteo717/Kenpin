@@ -1950,7 +1950,6 @@ a{color:inherit;text-decoration:none}
 .annot-bottom{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;flex-shrink:0;padding-bottom:calc(env(safe-area-inset-bottom,0) + 14px)}
 .annot-undo{display:flex;align-items:center;gap:7px;font-size:14px;font-weight:600;color:#fff;background:rgba(255,255,255,.13);border:none;padding:10px 18px;border-radius:100px}
 .annot-clear{font-size:13px;font-weight:500;color:rgba(255,255,255,.4);background:none;border:none;padding:10px 8px}
-.photo-annot-btn{position:absolute;bottom:-6px;left:-6px;width:26px;height:26px;background:var(--primary);border-radius:50%;border:2px solid var(--surface);display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 2px 6px rgba(99,102,241,.4)}
 
 /* =====================================================
    ログイン画面
@@ -2775,7 +2774,7 @@ const db      = firebase.firestore();
 // ============================================================
 // ★ GAS (Google Apps Script) ウェブアプリURL
 // 画像アップロード・スプレッドシート書き込みはすべて GAS に委譲する
-const GAS_URL = 'https://script.google.com/macros/s/AKfycbxtyCav4X8eTVwYKXiisfnUzS8F3c644mOGP50K_Eg19bsP5JAANwn41azLbElQFt0d/exec';
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbyOXXUBBw3IOb3vNgACD58BfcS9Q26LZfoUptlKg0IyiAFxw9UVLftnh6yur6ET1jPf/exec';
 
 // 現在のログインユーザー
 let currentUser = null;
@@ -5349,9 +5348,6 @@ function renderPhotoGrid() {
       <div class="photo-img-wrap">
         <img src="${photo.url}" class="photo-thumb" onclick="openAnnotator(${i})">
         <button class="photo-del" onclick="removePhoto(${i})">✕</button>
-        <div class="photo-annot-btn" onclick="openAnnotator(${i})">
-          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-        </div>
       </div>
       ${usabilityLabel ? `<div class="photo-judge-label ${usabilityLabel.cls}" onclick="openPhotoJudge(${i})">${usabilityLabel.txt}</div>` : ''}
       ${!hasAnyLabel ? `<button class="photo-judge-set-btn" onclick="openPhotoJudge(${i})">＋判定設定</button>` : ''}
@@ -5870,6 +5866,9 @@ async function saveInspection() {
     // ── Firestore 保存（1検品 = 1ドキュメント、base64は含まない） ────────────
     await firestoreAddInspection(record);
 
+    // ── Googleスプレッドシートへ自動書き込み ─────────────────────────────────
+    writeRecordToSheet(record).catch(e => console.warn('[Sheets] 書き込みエラー:', e.message));
+
     // ローカル DB を更新（UI即時反映用）
     const list = load('inspections', []);
     list.unshift(record);
@@ -5890,6 +5889,46 @@ async function saveInspection() {
     const msg = e.message || '不明なエラー';
     // 詳細エラーを常に表示（デバッグ用）
     showToast(`エラー詳細:\n${msg.slice(0, 120)}`, 'error');
+  }
+}
+
+// ============================================================
+// Googleスプレッドシートへのリアルタイム書き込み
+// ============================================================
+async function writeRecordToSheet(record) {
+  try {
+    const payload = {
+      action: 'writeSheet',
+      record: {
+        createdAt:        record.createdAt,
+        manufacturerName: record.manufacturerName,
+        productName:      record.productName,
+        lotNumber:        record.lotNumber || '',
+        defects:          record.defects   || [],
+        judgeType:        record.judgeType || '',
+        inspectorName:    record.inspectorName,
+        createdByName:    record.createdByName,
+        photos:           record.photos    || [],
+        comment:          record.comment   || '',
+      },
+    };
+
+    const res = await fetch(GAS_URL, {
+      method:  'POST',
+      headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
+      body:    JSON.stringify(payload),
+    });
+
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const result = await res.json();
+    if (result.status === 'success') {
+      console.log('[Sheets] スプレッドシートへの書き込み完了 ✓');
+    } else {
+      console.warn('[Sheets] 書き込み失敗:', result.error);
+    }
+  } catch (e) {
+    // Sheets書き込みエラーはサイレントに処理（Firestore保存は成功済みのため）
+    console.warn('[Sheets] writeRecordToSheet error:', e.message);
   }
 }
 
