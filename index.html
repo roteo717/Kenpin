@@ -1024,7 +1024,7 @@ a{color:inherit;text-decoration:none}
 .photo-judge-label.fail{background:var(--fail-dim);color:var(--fail);border:1.5px solid var(--fail)}
 .photo-judge-label.perm{background:#eff6ff;color:#3b82f6;border:1.5px solid #3b82f6}
 .photo-judge-label.prov{background:var(--review-dim);color:var(--review);border:1.5px solid var(--review)}
-.photo-judge-label.caution{background:var(--review-dim);color:transparent;-webkit-text-stroke:1.2px var(--review);text-stroke:1.2px var(--review);border:1.5px solid var(--review)}
+.photo-judge-label.caution{background:var(--review-dim);color:var(--review);border:1.5px solid var(--review)}
 
 /* 写真個別判定設定ボタン（ラベル未設定時） */
 .photo-judge-set-btn{
@@ -1518,7 +1518,7 @@ a{color:inherit;text-decoration:none}
 .dpg-lbl-ok{background:rgba(0,0,0,.40);color:#fff}
 .dpg-lbl-perm{background:rgba(59,130,246,.88);color:#fff}
 .dpg-lbl-prov{background:rgba(245,158,11,.88);color:#fff}
-.dpg-lbl-caution{background:rgba(255,251,235,.92);color:transparent;-webkit-text-stroke:1.5px var(--review);text-stroke:1.5px var(--review);border-top:1.5px solid var(--review)}
+.dpg-lbl-caution{background:rgba(245,158,11,.88);color:#fff}
 
 
 /* =====================================================
@@ -2403,7 +2403,6 @@ a{color:inherit;text-decoration:none}
 
       <input type="file" id="fileInput" accept="image/*" multiple onchange="onFileSelected(this.files)">
       <button class="file-pick" onclick="document.getElementById('fileInput').click()">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15" stroke-linecap="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg>
         ファイルから選択
       </button>
       <div class="photo-grid" id="photoGrid"></div>
@@ -2971,7 +2970,6 @@ async function loadFromFirestore() {
       if (oldDoc.exists) {
         const oldList = oldDoc.data().value || [];
         if (oldList.length > 0) {
-          console.log(`[Migration] 旧形式から ${oldList.length} 件を移行中...`);
           const batch = db.batch();
           for (const insp of oldList) {
             if (!insp.id) continue;
@@ -2981,7 +2979,6 @@ async function loadFromFirestore() {
           }
           batch.delete(oldRef);
           await batch.commit();
-          console.log('[Migration] 移行完了');
         } else {
           // 空のドキュメントも削除
           await oldRef.delete().catch(() => {});
@@ -3013,20 +3010,6 @@ async function loadFromFirestore() {
       .map(doc => doc.data())
       .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
-    // 初回（データなし）のみサンプルを投入
-    if (!DB.inspections.length) {
-      const now = new Date();
-      const samples = [
-        { id:uid(), manufacturerId:'panasonic', manufacturerName:'パナソニック', productName:'EZ9L48',     inspectorId:'INS-001', inspectorName:'田中 太郎', createdByName:'田中 太郎', result:'pass',   judgeType:'恒久判断', defects:[], comment:'外観良好', photos:[], createdAt: new Date(now - 864e5*0).toISOString() },
-        { id:uid(), manufacturerId:'noritz',    manufacturerName:'ノーリツ',    productName:'GT-C2052SAWX', inspectorId:'INS-002', inspectorName:'佐藤 花子', createdByName:'佐藤 花子', result:'fail',   judgeType:'暫定判断', defects:['打痕・キズ'], comment:'傷あり',   photos:[], createdAt: new Date(now - 864e5*1).toISOString() },
-        { id:uid(), manufacturerId:'rinnai',    manufacturerName:'リンナイ',    productName:'RUF-A2405SAW', inspectorId:'INS-001', inspectorName:'田中 太郎', createdByName:'田中 太郎', result:'review', judgeType:'暫定判断', defects:[], comment:'要再確認', photos:[], createdAt: new Date(now - 864e5*2).toISOString() },
-      ];
-      DB.inspections = samples;
-      // サンプルデータも新構造で Firestore に保存
-      for (const s of samples) {
-        firestoreAddInspection(s).catch(e => console.warn('sample save:', e));
-      }
-    }
     if (DB.inspectors.length === 0) {
       save('inspectors', [...DEFAULT_INSPECTORS]);
     }
@@ -3083,7 +3066,6 @@ async function firestoreDeleteAllInspections() {
       docs.slice(i, i + batchSize).forEach(d => batch.delete(d.ref));
       await batch.commit();
     }
-    console.log(`[Firestore] ${docs.length} 件の検品記録を削除しました`);
   } catch(e) {
     console.warn('[Firestore] deleteAll inspections error:', e);
   }
@@ -3178,7 +3160,6 @@ async function uploadPhotoViaGAS(base64DataUrl, makerName, modelName) {
     );
   }
 
-  console.log('[GAS] アップロード成功:', imageUrl);
   return imageUrl;
 }
 
@@ -4720,7 +4701,6 @@ async function processOCR(primaryData, secondaryData = null, isRetry = false) {
     const topScore = scored[0]?.score ?? 0;
     const topLen   = scored[0]?.line.length ?? 0;
     if (!isRetry && (topScore < 0.25 || topLen < 3)) {
-      console.log('[OCR] weak result, auto-retrying with single frame...');
       showToast('精度が低いため再解析中...', 'default');
       await processOCR(primaryData, null, true);
       return;
@@ -5922,7 +5902,7 @@ async function writeRecordToSheet(record) {
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const result = await res.json();
     if (result.status === 'success') {
-      console.log('[Sheets] スプレッドシートへの書き込み完了 ✓');
+      // 書き込み成功
     } else {
       console.warn('[Sheets] 書き込み失敗:', result.error);
     }
@@ -7214,7 +7194,6 @@ document.addEventListener('keydown', e => {
 function init() {
   // ── GAS 接続確認 ──────────────────────────────────────────────────────────
   // OAuth 不要: GAS_URL へのfetch のみで Drive/Sheets にアクセスする
-  console.log('[init] GAS URL:', GAS_URL.slice(0, 60) + '...');
 
   // ダークモード復元（localStorageのまま）
   try {
@@ -7706,7 +7685,7 @@ self.addEventListener("fetch",e=>{e.respondWith(caches.match(e.request).then(c=>
 `;
     navigator.serviceWorker
       .register(URL.createObjectURL(new Blob([sw],{type:"application/javascript"})),{scope:"./"})
-      .then(()=>console.log("[PWA] SW registered"))
+      .then(()=>{})
       .catch(e=>console.warn("[PWA] SW error:",e));
   }
 
