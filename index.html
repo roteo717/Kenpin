@@ -977,30 +977,6 @@ a{color:inherit;text-decoration:none}
   width:48px!important;height:48px!important;
   box-shadow:0 4px 14px rgba(99,102,241,.5);
 }
-/* ズームコントロール */
-.cam-zoom-bar{
-  position:absolute;bottom:11px;left:50%;transform:translateX(-50%);
-  display:flex;align-items:center;gap:8px;
-  background:rgba(0,0,0,.48);backdrop-filter:blur(12px);
-  border-radius:100px;padding:5px 10px;
-  border:1px solid rgba(255,255,255,.15);
-}
-.cam-zoom-btn{
-  width:28px;height:28px;
-  background:rgba(255,255,255,.18);
-  border:1px solid rgba(255,255,255,.2);
-  border-radius:50%;color:#fff;
-  font-size:17px;font-weight:700;line-height:1;
-  display:flex;align-items:center;justify-content:center;
-  transition:background .12s;
-}
-.cam-zoom-btn:active{background:rgba(255,255,255,.42)}
-.cam-zoom-btn:disabled{opacity:.35;pointer-events:none}
-.cam-zoom-lbl{
-  font-size:13px;font-weight:700;color:#fff;
-  min-width:38px;text-align:center;letter-spacing:.4px;
-  font-variant-numeric:tabular-nums;
-}
 .photo-grid{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
 .photo-wrap{position:relative;width:80px;display:flex;flex-direction:column;align-items:center;gap:5px}
 .photo-thumb{width:80px;height:80px;border-radius:10px;object-fit:cover;display:block}
@@ -1265,10 +1241,17 @@ a{color:inherit;text-decoration:none}
   border-radius:0;
   position:relative;
 }
-.hist-card:first-child{border-radius:14px 14px 0 0}
-.hist-card:last-child{border-bottom:none;border-radius:0 0 14px 14px}
-.hist-card:only-child{border-radius:14px}
 .hist-card:active{background:var(--surface-2)}
+/* 検品履歴スワイプ削除 */
+.hist-swipe-row{
+  position:relative;overflow:hidden;
+  -webkit-mask-image:-webkit-radial-gradient(white,black);
+  transform:translateZ(0);
+}
+.hist-swipe-row:first-child .hist-card{border-radius:14px 14px 0 0}
+.hist-swipe-row:last-child .hist-card{border-bottom:none;border-radius:0 0 14px 14px}
+.hist-swipe-row:only-child .hist-card{border-radius:14px}
+.hist-swipe-row .swipe-del-bg{border-radius:0}
 /* #histList コンテナ */
 #histList:not(:empty){
   box-shadow:var(--shadow);
@@ -1323,46 +1306,6 @@ a{color:inherit;text-decoration:none}
 }
 .empty svg{width:48px;height:48px}
 .empty p{font-size:14px;font-weight:500}
-
-/* =====================================================
-   検品履歴カード スワイプ削除
-   ===================================================== */
-.hist-swipe-row{
-  position:relative;overflow:hidden;
-  transform:translateZ(0);
-  -webkit-mask-image:-webkit-radial-gradient(white,black);
-}
-/* swipe-row 内の hist-card は角丸をリセット（親で制御） */
-.hist-swipe-row .hist-card:first-child,
-.hist-swipe-row .hist-card:last-child,
-.hist-swipe-row .hist-card:only-child{border-radius:0 !important}
-/* 先頭・末尾の swipe-row に角丸 */
-.hist-swipe-row:first-child{border-radius:14px 14px 0 0}
-.hist-swipe-row:last-child{border-radius:0 0 14px 14px}
-.hist-swipe-row:only-child{border-radius:14px}
-/* 末尾カードはボーダーなし */
-.hist-swipe-row:last-child .hist-card{border-bottom:none !important}
-/* 削除背景（右端に配置） */
-.hist-swipe-del-bg{
-  position:absolute;right:0;top:0;bottom:0;
-  width:80px;background:var(--fail);
-  display:flex;align-items:center;justify-content:center;
-  flex-direction:column;gap:3px;
-  border:none;cursor:pointer;opacity:0;
-  padding:0;
-}
-.hist-swipe-del-bg svg{stroke:white;width:18px;height:18px;pointer-events:none}
-.hist-swipe-del-lbl{font-size:11px;font-weight:700;color:white;letter-spacing:.3px;pointer-events:none}
-/* hist-card のスワイプ対応 */
-.hist-swipe-row .hist-card{
-  position:relative;z-index:1;
-  transform:translateX(0);
-  will-change:transform;
-  transition:background .12s,transform .3s cubic-bezier(.34,1.12,.64,1) !important;
-}
-.hist-swipe-row .hist-card.hs-swiping{
-  transition:background .12s !important;
-}
 
 /* =====================================================
    詳細ボトムシート
@@ -1803,13 +1746,18 @@ a{color:inherit;text-decoration:none}
   padding:11px 20px;border-radius:100px;
   font-size:14px;font-weight:600;z-index:9999;
   opacity:0;transition:all .28s cubic-bezier(.34,1.56,.64,1);
-  pointer-events:none;white-space:nowrap;max-width:90vw;
+  pointer-events:none;white-space:nowrap;max-width:92vw;
   display:flex;align-items:center;gap:7px;
 }
+.toast.toast-top{
+  bottom:auto;top:14px;
+  transform:translateX(-50%) translateY(-10px);
+}
+.toast.toast-top.show{transform:translateX(-50%) translateY(0)}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 .toast.success{background:var(--pass)}
 .toast.error{background:var(--fail)}
-.toast.warning{background:var(--review)}
+.toast.warning{background:#b45309;}
 
 /* =====================================================
    モーダル
@@ -1950,6 +1898,7 @@ a{color:inherit;text-decoration:none}
 .annot-bottom{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;flex-shrink:0;padding-bottom:calc(env(safe-area-inset-bottom,0) + 14px)}
 .annot-undo{display:flex;align-items:center;gap:7px;font-size:14px;font-weight:600;color:#fff;background:rgba(255,255,255,.13);border:none;padding:10px 18px;border-radius:100px}
 .annot-clear{font-size:13px;font-weight:500;color:rgba(255,255,255,.4);background:none;border:none;padding:10px 8px}
+.photo-annot-btn{position:absolute;bottom:-6px;left:-6px;width:26px;height:26px;background:var(--primary);border-radius:50%;border:2px solid var(--surface);display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 2px 6px rgba(99,102,241,.4)}
 
 /* =====================================================
    ログイン画面
@@ -1999,6 +1948,8 @@ a{color:inherit;text-decoration:none}
 }
 .login-input::placeholder{color:#9ca3af}
 .login-input.pass-input{padding-right:48px}
+.login-input.pass-input::-ms-reveal{display:none}
+.login-input.pass-input::-webkit-credentials-auto-fill-button{visibility:hidden}
 .login-eye-btn{
   position:absolute;right:14px;top:50%;transform:translateY(-50%);
   background:none;border:none;padding:0;cursor:pointer;
@@ -2388,12 +2339,6 @@ a{color:inherit;text-decoration:none}
             <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" width="22" height="22" stroke-linecap="round"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
           </button>
         </div>
-        <!-- ズームコントロール -->
-        <div class="cam-zoom-bar" id="camZoomBar" style="display:none">
-          <button class="cam-zoom-btn" id="camZoomOut" onclick="zoomOut()">－</button>
-          <span class="cam-zoom-lbl" id="camZoomLbl">1.0×</span>
-          <button class="cam-zoom-btn" id="camZoomIn" onclick="zoomIn()">＋</button>
-        </div>
       </div>
 
       <button class="cam-stop-btn" id="camStopBtn" style="display:none" onclick="stopCamera()">
@@ -2743,7 +2688,7 @@ a{color:inherit;text-decoration:none}
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="14" height="14" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
       丸を追加
     </button>
-
+    <button class="annot-clear" onclick="clearAnnotations()">全て消す</button>
   </div>
 </div>
 
@@ -2783,7 +2728,7 @@ let loginMode = 'login'; // 'login' | 'register'
 // 履歴編集モード（削除ボタンの表示切り替え）
 let mfrHistEditMode     = false;
 let productHistEditMode = false;
-let histEditMode        = false;
+
 
 // ============================================================
 // 定数データ
@@ -2878,9 +2823,6 @@ const S = {
   photos: [],
   camStream: null,
   camFacing: 'environment',
-  camZoom: 1.0,
-  camZoomMax: 5.0,
-  camHardwareZoom: false,
   showAllMfr: false,
   showAllDefects: false,
   showAllProducts: false,
@@ -2889,6 +2831,7 @@ const S = {
   histSearch: '',
   histMfrFilter: null,    // 選択中メーカーID
   histProductFilter: null, // 選択中製品名
+  histDefectFilter: null,  // 選択中不良内容
 };
 
 // ============================================================
@@ -2970,6 +2913,7 @@ async function loadFromFirestore() {
       if (oldDoc.exists) {
         const oldList = oldDoc.data().value || [];
         if (oldList.length > 0) {
+          console.log(`[Migration] 旧形式から ${oldList.length} 件を移行中...`);
           const batch = db.batch();
           for (const insp of oldList) {
             if (!insp.id) continue;
@@ -2979,6 +2923,7 @@ async function loadFromFirestore() {
           }
           batch.delete(oldRef);
           await batch.commit();
+          console.log('[Migration] 移行完了');
         } else {
           // 空のドキュメントも削除
           await oldRef.delete().catch(() => {});
@@ -3010,6 +2955,20 @@ async function loadFromFirestore() {
       .map(doc => doc.data())
       .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
+    // 初回（データなし）のみサンプルを投入
+    if (!DB.inspections.length) {
+      const now = new Date();
+      const samples = [
+        { id:uid(), manufacturerId:'panasonic', manufacturerName:'パナソニック', productName:'EZ9L48',     inspectorId:'INS-001', inspectorName:'田中 太郎', createdByName:'田中 太郎', result:'pass',   judgeType:'恒久判断', defects:[], comment:'外観良好', photos:[], createdAt: new Date(now - 864e5*0).toISOString() },
+        { id:uid(), manufacturerId:'noritz',    manufacturerName:'ノーリツ',    productName:'GT-C2052SAWX', inspectorId:'INS-002', inspectorName:'佐藤 花子', createdByName:'佐藤 花子', result:'fail',   judgeType:'暫定判断', defects:['打痕・キズ'], comment:'傷あり',   photos:[], createdAt: new Date(now - 864e5*1).toISOString() },
+        { id:uid(), manufacturerId:'rinnai',    manufacturerName:'リンナイ',    productName:'RUF-A2405SAW', inspectorId:'INS-001', inspectorName:'田中 太郎', createdByName:'田中 太郎', result:'review', judgeType:'暫定判断', defects:[], comment:'要再確認', photos:[], createdAt: new Date(now - 864e5*2).toISOString() },
+      ];
+      DB.inspections = samples;
+      // サンプルデータも新構造で Firestore に保存
+      for (const s of samples) {
+        firestoreAddInspection(s).catch(e => console.warn('sample save:', e));
+      }
+    }
     if (DB.inspectors.length === 0) {
       save('inspectors', [...DEFAULT_INSPECTORS]);
     }
@@ -3066,6 +3025,7 @@ async function firestoreDeleteAllInspections() {
       docs.slice(i, i + batchSize).forEach(d => batch.delete(d.ref));
       await batch.commit();
     }
+    console.log(`[Firestore] ${docs.length} 件の検品記録を削除しました`);
   } catch(e) {
     console.warn('[Firestore] deleteAll inspections error:', e);
   }
@@ -3160,6 +3120,7 @@ async function uploadPhotoViaGAS(base64DataUrl, makerName, modelName) {
     );
   }
 
+  console.log('[GAS] アップロード成功:', imageUrl);
   return imageUrl;
 }
 
@@ -3198,13 +3159,84 @@ function fmtDate(iso) {
 // ============================================================
 
 let _toastTimer;
-function showToast(msg, type='default') {
+function showToast(msg, type='default', actionLabel, actionFn, persistent=false) {
   const el = document.getElementById('toast');
   const icons = { success:'✓ ', error:'✕ ', warning:'⚠ ', default:'' };
-  el.textContent = icons[type] + msg;
-  el.className = 'toast ' + type + ' show';
+  el.innerHTML = '';
+  const span = document.createElement('span');
+  span.textContent = icons[type] + msg;
+  el.appendChild(span);
+  if (actionLabel && actionFn) {
+    const btn = document.createElement('button');
+    btn.textContent = actionLabel;
+    btn.style.cssText = 'margin-left:8px;background:#fff;color:#1e2030;border:none;border-radius:20px;padding:3px 10px;font-size:12px;font-weight:700;cursor:pointer;flex-shrink:0;';
+    btn.onclick = (e) => { e.stopPropagation(); actionFn(); closeToast(); };
+    el.appendChild(btn);
+  }
+  if (persistent) {
+    const close = document.createElement('button');
+    close.textContent = '✕';
+    close.setAttribute('aria-label', '閉じる');
+    close.style.cssText = 'margin-left:8px;background:rgba(255,255,255,0.25);color:#fff;border:none;border-radius:50%;width:22px;height:22px;font-size:13px;font-weight:700;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;line-height:1;padding:0;';
+    close.onclick = (e) => { e.stopPropagation(); closeToast(); };
+    el.appendChild(close);
+  }
+  el.className = 'toast ' + type + (persistent ? ' toast-top' : '') + ' show';
+  el.style.pointerEvents = 'auto';
   clearTimeout(_toastTimer);
-  _toastTimer = setTimeout(() => el.classList.remove('show'), 3000);
+  if (!persistent) {
+    _toastTimer = setTimeout(() => closeToast(), actionLabel ? 6000 : 3000);
+  }
+}
+function closeToast() {
+  const el = document.getElementById('toast');
+  el.classList.remove('show');
+  el.style.pointerEvents = 'none';
+  clearTimeout(_toastTimer);
+}
+
+// ============================================================
+// 過去履歴照合トースト通知
+// ============================================================
+function checkHistoryMatch() {
+  if (!S.selectedMfr || !S.productName || !S.defects.length) return;
+  // 保存時と同じ変換を適用（その他：〇〇 形式）
+  const rawDefect = S.defects[0];
+  const defect = (rawDefect === 'その他' && S.defectsOther.trim())
+    ? `その他：${S.defectsOther.trim()}`
+    : rawDefect;
+  // renderHist と同じソース（load）で照合する
+  const all = load('inspections', []);
+  const matches = all.filter(r =>
+    r.manufacturerId === S.selectedMfr &&
+    r.productName    === S.productName &&
+    Array.isArray(r.defects) && r.defects.includes(defect)
+  );
+  if (matches.length > 0) {
+    showToast(
+      `同じ条件の記録が ${matches.length} 件あります`,
+      'warning',
+      '履歴を見る',
+      () => goToMatchedHistory(defect),
+      true
+    );
+  }
+}
+
+function goToMatchedHistory(defect) {
+  // メーカー・製品名・不良内容 AND で絞り込んでから履歴ページへ
+  S.histMfrFilter     = S.selectedMfr;
+  S.histProductFilter = S.productName;
+  S.histDefectFilter  = defect;
+  S.histSearch        = '';
+  S.histFilter        = 'all';
+
+  const inp = document.getElementById('histSearchInput');
+  if (inp) inp.value = '';
+  const clrBtn = document.getElementById('histSearchClear');
+  if (clrBtn) clrBtn.style.display = 'none';
+
+  switchPage('history');
 }
 
 // ============================================================
@@ -4701,6 +4733,7 @@ async function processOCR(primaryData, secondaryData = null, isRetry = false) {
     const topScore = scored[0]?.score ?? 0;
     const topLen   = scored[0]?.line.length ?? 0;
     if (!isRetry && (topScore < 0.25 || topLen < 3)) {
+      console.log('[OCR] weak result, auto-retrying with single frame...');
       showToast('精度が低いため再解析中...', 'default');
       await processOCR(primaryData, null, true);
       return;
@@ -5048,6 +5081,7 @@ function toggleDefect(item) {
     wrap.style.display = 'none';
   }
   renderDefects();
+  checkHistoryMatch();
 }
 
 function clearDefects() {
@@ -5156,23 +5190,6 @@ async function startCamera() {
   document.getElementById('camFrameEl').style.display = 'block';
   document.getElementById('camControls').style.display = 'flex';
   document.getElementById('camStopBtn').style.display = 'flex';
-
-  // ズームバー初期化
-  S.camZoom = 1.0;
-  S.camHardwareZoom = false;
-  const track = stream.getVideoTracks()[0];
-  if (track) {
-    const caps = track.getCapabilities?.() || {};
-    if (caps.zoom) {
-      S.camHardwareZoom = true;
-      S.camZoomMax = Math.min(caps.zoom.max ?? 5.0, 8.0);
-    } else {
-      S.camZoomMax = 5.0;
-    }
-  }
-  _updateZoomBar();
-  document.getElementById('camZoomBar').style.display = 'flex';
-
   showToast('カメラを起動しました','success');
 }
 
@@ -5180,65 +5197,18 @@ function stopCamera() {
   if (!S.camStream) return;
   S.camStream.getTracks().forEach(t => t.stop());
   S.camStream = null;
-  S.camZoom = 1.0;
-  S.camHardwareZoom = false;
   const v = document.getElementById('camVideo');
   v.srcObject = null;
   v.style.display = 'none';
-  v.style.transform = '';
   document.getElementById('camPlaceholder').style.display = 'flex';
   document.getElementById('camFrameEl').style.display = 'none';
   document.getElementById('camControls').style.display = 'none';
   document.getElementById('camStopBtn').style.display = 'none';
-  document.getElementById('camZoomBar').style.display = 'none';
 }
 
 async function flipCamera() {
   S.camFacing = S.camFacing === 'environment' ? 'user' : 'environment';
   if (S.camStream) { stopCamera(); await startCamera(); }
-}
-
-// ============================================================
-// ズーム機能
-// ============================================================
-const ZOOM_STEP = 0.5;
-const ZOOM_MIN  = 1.0;
-
-async function setZoom(level) {
-  level = Math.round(Math.min(Math.max(level, ZOOM_MIN), S.camZoomMax) * 10) / 10;
-  S.camZoom = level;
-  _updateZoomBar();
-
-  if (!S.camStream) return;
-  const track = S.camStream.getVideoTracks()[0];
-
-  if (S.camHardwareZoom && track) {
-    try {
-      await track.applyConstraints({ advanced: [{ zoom: level }] });
-      return;
-    } catch(e) {
-      S.camHardwareZoom = false; // フォールバックへ
-    }
-  }
-
-  // デジタルズーム：CSS scale でプレビューに反映
-  const v = document.getElementById('camVideo');
-  if (v) {
-    v.style.transform      = level > 1.0 ? `scale(${level})` : '';
-    v.style.transformOrigin = 'center center';
-  }
-}
-
-function zoomIn()  { setZoom(S.camZoom + ZOOM_STEP); }
-function zoomOut() { setZoom(S.camZoom - ZOOM_STEP); }
-
-function _updateZoomBar() {
-  const lbl = document.getElementById('camZoomLbl');
-  const btnIn  = document.getElementById('camZoomIn');
-  const btnOut = document.getElementById('camZoomOut');
-  if (lbl)    lbl.textContent = `${S.camZoom.toFixed(1)}×`;
-  if (btnOut) btnOut.disabled = S.camZoom <= ZOOM_MIN;
-  if (btnIn)  btnIn.disabled  = S.camZoom >= S.camZoomMax;
 }
 
 // ============================================================
@@ -5272,19 +5242,8 @@ async function capturePhoto() {
   const v = document.getElementById('camVideo');
   if (!v.srcObject) { showToast('カメラが起動していません','error'); return; }
   const c = document.getElementById('captureCanvas');
-  const vw = v.videoWidth, vh = v.videoHeight;
-  c.width = vw; c.height = vh;
-  const ctx = c.getContext('2d');
-
-  if (S.camZoom > 1.0 && !S.camHardwareZoom) {
-    // デジタルズーム：中央をトリミングして拡大
-    const cw = vw / S.camZoom;
-    const ch = vh / S.camZoom;
-    ctx.drawImage(v, (vw - cw) / 2, (vh - ch) / 2, cw, ch, 0, 0, vw, vh);
-  } else {
-    ctx.drawImage(v, 0, 0);
-  }
-
+  c.width = v.videoWidth; c.height = v.videoHeight;
+  c.getContext('2d').drawImage(v, 0, 0);
   // 撮影フラッシュ
   const a = document.getElementById('camArea');
   a.style.filter = 'brightness(2.5)';
@@ -5328,6 +5287,9 @@ function renderPhotoGrid() {
       <div class="photo-img-wrap">
         <img src="${photo.url}" class="photo-thumb" onclick="openAnnotator(${i})">
         <button class="photo-del" onclick="removePhoto(${i})">✕</button>
+        <div class="photo-annot-btn" onclick="openAnnotator(${i})">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+        </div>
       </div>
       ${usabilityLabel ? `<div class="photo-judge-label ${usabilityLabel.cls}" onclick="openPhotoJudge(${i})">${usabilityLabel.txt}</div>` : ''}
       ${!hasAnyLabel ? `<button class="photo-judge-set-btn" onclick="openPhotoJudge(${i})">＋判定設定</button>` : ''}
@@ -5846,9 +5808,6 @@ async function saveInspection() {
     // ── Firestore 保存（1検品 = 1ドキュメント、base64は含まない） ────────────
     await firestoreAddInspection(record);
 
-    // ── Googleスプレッドシートへ自動書き込み ─────────────────────────────────
-    writeRecordToSheet(record).catch(e => console.warn('[Sheets] 書き込みエラー:', e.message));
-
     // ローカル DB を更新（UI即時反映用）
     const list = load('inspections', []);
     list.unshift(record);
@@ -5872,46 +5831,6 @@ async function saveInspection() {
   }
 }
 
-// ============================================================
-// Googleスプレッドシートへのリアルタイム書き込み
-// ============================================================
-async function writeRecordToSheet(record) {
-  try {
-    const payload = {
-      action: 'writeSheet',
-      record: {
-        createdAt:        record.createdAt,
-        manufacturerName: record.manufacturerName,
-        productName:      record.productName,
-        lotNumber:        record.lotNumber || '',
-        defects:          record.defects   || [],
-        judgeType:        record.judgeType || '',
-        inspectorName:    record.inspectorName,
-        createdByName:    record.createdByName,
-        photos:           record.photos    || [],
-        comment:          record.comment   || '',
-      },
-    };
-
-    const res = await fetch(GAS_URL, {
-      method:  'POST',
-      headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
-      body:    JSON.stringify(payload),
-    });
-
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    const result = await res.json();
-    if (result.status === 'success') {
-      // 書き込み成功
-    } else {
-      console.warn('[Sheets] 書き込み失敗:', result.error);
-    }
-  } catch (e) {
-    // Sheets書き込みエラーはサイレントに処理（Firestore保存は成功済みのため）
-    console.warn('[Sheets] writeRecordToSheet error:', e.message);
-  }
-}
-
 function scrollToCard(id) {
   document.getElementById(id).scrollIntoView({ behavior:'smooth', block:'start' });
 }
@@ -5931,7 +5850,6 @@ function resetForm() {
   lotEl2.value = '';
   const lotTrig = document.getElementById('lotTriggerText');
   if (lotTrig) { lotTrig.textContent = '日付を選択'; lotTrig.style.color = 'var(--text-3)'; }
-  stopCamera();
   renderMfr();
   renderProduct();
   renderInspectors();
@@ -5954,10 +5872,22 @@ function renderHist() {
 
   const data = all.filter(r => {
     let mq;
-    if (S.histMfrFilter) {
+    if (S.histMfrFilter && S.histProductFilter && S.histDefectFilter) {
+      // 3条件 AND（履歴一致トーストから遷移した場合）
+      let mfrMatch = r.manufacturerId === S.histMfrFilter;
+      if (!mfrMatch && r.manufacturerName) {
+        const mfrObj = [...ALL_MANUFACTURERS, ...load('customMfrs',[])].find(m => m.id === S.histMfrFilter);
+        if (mfrObj) {
+          const names = [mfrObj.name, mfrObj.jaName].filter(Boolean).map(n=>normalizeKana(n));
+          mfrMatch = names.includes(normalizeKana(r.manufacturerName));
+        }
+      }
+      const productMatch = r.productName === S.histProductFilter;
+      const defectMatch  = Array.isArray(r.defects) && r.defects.includes(S.histDefectFilter);
+      mq = mfrMatch && productMatch && defectMatch;
+    } else if (S.histMfrFilter) {
       // メーカーID で絞り込み
       mq = r.manufacturerId === S.histMfrFilter;
-      // ID がない旧データはメーカー名で fallback
       if (!mq && r.manufacturerName) {
         const mfrObj = [...ALL_MANUFACTURERS, ...load('customMfrs',[])].find(m => m.id === S.histMfrFilter);
         if (mfrObj) {
@@ -5997,13 +5927,17 @@ function renderHist() {
   const statusLbls = { pass:'使用可', fail:'使用否', review:'確認中' };
 
   el.innerHTML = data.map(r => {
-    const eid = r.id.replace(/'/g, '&#39;');
-    return `<div class="hist-swipe-row" data-id="${eid}">
-      <button class="hist-swipe-del-bg" onclick="confirmDeleteInspection('${eid}')">
-        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
-        <span class="hist-swipe-del-lbl">削除</span>
-      </button>
-      <div class="hist-card" onclick="openDetail('${eid}')">
+    // 判断区分ドット色
+    const dotCls = r.judgeType === '恒久判断' ? 'hc-dot-perm'
+                 : r.judgeType === '暫定判断' ? 'hc-dot-prov'
+                 : 'hc-dot-none';
+
+    return `<div class="hist-swipe-row" data-id="${r.id}">
+      <div class="swipe-del-bg" onclick="_confirmDeleteInspection('${r.id}',this.closest('.hist-swipe-row'))">
+        <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" width="16" height="16" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6M9 6V4h6v2"/></svg>
+        <span class="swipe-del-lbl">削除</span>
+      </div>
+      <div class="hist-card hist-item" onclick="openDetail('${r.id}')">
         <div class="hc-body">
           <span class="hc-name">${r.productName}</span>
           ${r.manufacturerName ? `<span class="hc-mfr">${r.manufacturerName}</span>` : ''}
@@ -6012,7 +5946,7 @@ function renderHist() {
       </div>
     </div>`;
   }).join('');
-  _initHistSwipeDelete();
+  _initHistSwipe();
 }
 
 // ============================================================
@@ -6024,6 +5958,7 @@ function onHistInput(val) {
   S.histSearch     = val;
   S.histMfrFilter  = null;
   S.histProductFilter = null;
+  S.histDefectFilter  = null;
   const clrBtn = document.getElementById('histSearchClear');
   if (clrBtn) clrBtn.style.display = val ? 'flex' : 'none';
   // 入力中は履歴リストを非表示にして候補だけ表示
@@ -6047,6 +5982,7 @@ function cancelHistSearch() {
   S.histSearch = '';
   S.histMfrFilter = null;
   S.histProductFilter = null;
+  S.histDefectFilter  = null;
   const inp = document.getElementById('histSearchInput');
   if (inp) { inp.value = ''; inp.blur(); }
   const clrBtn = document.getElementById('histSearchClear');
@@ -6066,6 +6002,7 @@ function clearHistSearchInput() {
   S.histSearch = '';
   S.histMfrFilter = null;
   S.histProductFilter = null;
+  S.histDefectFilter  = null;
   const inp = document.getElementById('histSearchInput');
   if (inp) { inp.value = ''; inp.focus(); }
   const clrBtn = document.getElementById('histSearchClear');
@@ -6198,92 +6135,75 @@ function renderHistSuggestions(rawQ) {
 
 function filterHist(val) { S.histSearch = val; renderHist(); }
 
-function toggleHistEdit() {
-  histEditMode = !histEditMode;
-  const btn = document.getElementById('histEditBtn');
-  if (btn) {
-    btn.textContent = histEditMode ? '完了' : '編集';
-    btn.style.color = histEditMode ? 'var(--primary)' : 'var(--text-3)';
-  }
-  renderHist();
-}
-
-// ============================================================
-// 検品履歴 スワイプ削除
-// ============================================================
-let _hsStartX  = null;
-let _hsStartY  = null;
-let _hsCurrent = null;
-let _hsDx      = 0;
-let _hsOpenCard = null;
-
-const HS_SNAP = 50;  // この距離以上でスナップオープン
-const HS_MAX  = 80;  // 最大スワイプ量（削除背景幅）
-
-function _initHistSwipeDelete() {
-  document.querySelectorAll('#histList .hist-swipe-row').forEach(row => {
+/** 検品履歴スワイプ削除の初期化 */
+function _initHistSwipe() {
+  document.querySelectorAll('.hist-swipe-row').forEach(row => {
     const inner = row.querySelector('.hist-card');
-    const bg    = row.querySelector('.hist-swipe-del-bg');
+    const bg    = row.querySelector('.swipe-del-bg');
+    let startX = null, startY = null, dx = 0, isOpen = false;
+
+    inner.addEventListener('click', e => {
+      if (isOpen) { _closeHistRow(inner, bg); isOpen = false; e.stopPropagation(); }
+    });
 
     row.addEventListener('touchstart', e => {
-      if (_hsOpenCard && _hsOpenCard !== inner) _hsCloseCard(_hsOpenCard);
-      _hsStartX  = e.touches[0].clientX;
-      _hsStartY  = e.touches[0].clientY;
-      _hsCurrent = inner;
-      _hsDx      = _hsOpenCard === inner ? -HS_MAX : 0;
-      inner.classList.add('hs-swiping');
+      startX = e.touches[0].clientX;
+      startY = e.touches[0].clientY;
+      dx = 0;
+      inner.classList.add('swiping');
+      bg.style.opacity = '1';
     }, { passive: true });
 
     row.addEventListener('touchmove', e => {
-      if (_hsCurrent !== inner) return;
-      const dx = e.touches[0].clientX - _hsStartX;
-      const dy = e.touches[0].clientY - _hsStartY;
-      if (Math.abs(dy) > Math.abs(dx) + 6) return; // 縦スクロール優先
-      const base = _hsOpenCard === inner ? -HS_MAX : 0;
-      const next = Math.min(0, Math.max(base + dx, -HS_MAX));
-      _hsDx = next;
-      inner.style.transform = `translateX(${next}px)`;
-      if (bg) bg.style.opacity = Math.abs(next) / HS_MAX;
+      if (startX === null) return;
+      const cdx = e.touches[0].clientX - startX;
+      const cdy = e.touches[0].clientY - startY;
+      if (Math.abs(cdy) > Math.abs(cdx) + 6) return;
+      if (cdx > 0) { inner.style.transform = 'translateX(0)'; return; }
+      dx = Math.max(cdx, -SW_MAX);
+      inner.style.transform = `translateX(${dx}px)`;
     }, { passive: true });
 
     row.addEventListener('touchend', () => {
-      if (_hsCurrent !== inner) return;
-      inner.classList.remove('hs-swiping');
-      if (_hsDx <= -HS_SNAP) {
-        inner.style.transform = `translateX(-${HS_MAX}px)`;
-        if (bg) bg.style.opacity = '1';
-        _hsOpenCard = inner;
+      if (startX === null) return;
+      inner.classList.remove('swiping');
+      if (dx <= -SW_DEL) {
+        inner.style.transform = `translateX(-${SW_MAX}px)`;
+        isOpen = true;
       } else {
-        _hsCloseCard(inner);
+        _closeHistRow(inner, bg);
+        isOpen = false;
       }
-      _hsStartX = null; _hsCurrent = null; _hsDx = 0;
+      startX = null; dx = 0;
     });
   });
 }
 
-function _hsCloseCard(inner) {
-  if (!inner) return;
+function _closeHistRow(inner, bg) {
   inner.style.transform = 'translateX(0)';
-  const bg = inner.closest('.hist-swipe-row')?.querySelector('.hist-swipe-del-bg');
   if (bg) bg.style.opacity = '0';
-  if (_hsOpenCard === inner) _hsOpenCard = null;
 }
 
-// 他の場所タップで開いているカードを閉じる
-document.addEventListener('touchstart', e => {
-  if (!_hsOpenCard) return;
-  const row = _hsOpenCard.closest('.hist-swipe-row');
-  if (row && !row.contains(e.target)) _hsCloseCard(_hsOpenCard);
-}, { passive: true });
-
-function confirmDeleteInspection(id) {
-  if (_hsOpenCard) _hsCloseCard(_hsOpenCard);
-  document.getElementById('confirmTitle').textContent = '履歴を削除しますか？';
-  document.getElementById('confirmMsg').textContent   = 'この操作は元に戻せません。';
+/** スワイプ削除確認ダイアログ */
+function _confirmDeleteInspection(id, row) {
+  document.getElementById('confirmTitle').textContent = '削除の確認';
+  document.getElementById('confirmMsg').textContent   = 'この検品記録を削除します。\nよろしいですか？';
   document.getElementById('confirmOk').textContent    = '削除';
   document.getElementById('confirmOk').onclick = () => {
-    deleteInspection(id);
     closeConfirm();
+    if (row) {
+      row.style.transition = 'max-height .22s ease, opacity .18s ease, margin .22s ease';
+      row.style.maxHeight  = row.offsetHeight + 'px';
+      row.style.overflow   = 'hidden';
+      requestAnimationFrame(() => {
+        row.style.maxHeight = '0';
+        row.style.opacity   = '0';
+        row.style.margin    = '0';
+      });
+      setTimeout(() => deleteInspection(id), 230);
+    } else {
+      deleteInspection(id);
+    }
   };
   document.getElementById('confirmModal').classList.add('show');
 }
@@ -7194,6 +7114,7 @@ document.addEventListener('keydown', e => {
 function init() {
   // ── GAS 接続確認 ──────────────────────────────────────────────────────────
   // OAuth 不要: GAS_URL へのfetch のみで Drive/Sheets にアクセスする
+  console.log('[init] GAS URL:', GAS_URL.slice(0, 60) + '...');
 
   // ダークモード復元（localStorageのまま）
   try {
@@ -7685,7 +7606,7 @@ self.addEventListener("fetch",e=>{e.respondWith(caches.match(e.request).then(c=>
 `;
     navigator.serviceWorker
       .register(URL.createObjectURL(new Blob([sw],{type:"application/javascript"})),{scope:"./"})
-      .then(()=>{})
+      .then(()=>console.log("[PWA] SW registered"))
       .catch(e=>console.warn("[PWA] SW error:",e));
   }
 
