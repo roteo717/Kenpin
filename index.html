@@ -236,6 +236,11 @@ a{color:inherit;text-decoration:none}
   color:var(--text-3);pointer-events:none;
 }
 /* メーカー検索オーバーレイ */
+.mfr-overlay-backdrop{
+  display:none;position:fixed;inset:0;z-index:499;
+  background:rgba(0,0,0,.3);
+}
+.mfr-overlay-backdrop.open{display:block;}
 .mfr-overlay{
   display:none;
   position:fixed;top:0;bottom:0;z-index:500;
@@ -2183,6 +2188,19 @@ a{color:inherit;text-decoration:none}
   <!-- =================== HOME PAGE =================== -->
   <div id="page-home" class="page active">
 
+    <!-- 入力者選択 -->
+    <div class="card" id="input-person-card">
+      <div class="card-head">
+        <div style="display:flex;align-items:center;gap:9px">
+          <div class="head-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2" stroke-linecap="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          </div>
+          入力者
+        </div>
+      </div>
+      <div class="inspector-scroll" id="inputPersonScroll"></div>
+    </div>
+
     <!-- メーカー選択 -->
     <div class="card" id="mfr-card">
       <div class="card-head">
@@ -2420,6 +2438,17 @@ a{color:inherit;text-decoration:none}
     <div class="settings-section">
       <div class="section-title">マスターデータ</div>
       <div class="settings-card">
+        <div class="s-item" onclick="openInputPersonOverlay()">
+          <div class="s-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="var(--text-2)" stroke-width="2" width="17" height="17" stroke-linecap="round">
+              <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/>
+            </svg>
+          </div>
+          <div style="flex:1;min-width:0;display:flex;align-items:center;gap:6px">
+            <div class="s-label">入力者を管理</div>
+          </div>
+          <svg viewBox="0 0 24 24" fill="none" stroke="var(--text-3)" stroke-width="2.5" width="14" height="14" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+        </div>
         <div class="s-item" onclick="openInspOverlay()">
           <div class="s-icon">
             <svg viewBox="0 0 24 24" fill="none" stroke="var(--text-2)" stroke-width="2" width="17" height="17" stroke-linecap="round">
@@ -2778,6 +2807,11 @@ const ALL_MANUFACTURERS = [
 ];
 
 /** デフォルト確認者 */
+const DEFAULT_INPUT_PERSONS = [
+  { id:'INP-001', name:'山田 一郎' },
+  { id:'INP-002', name:'中村 明子' },
+];
+
 const DEFAULT_INSPECTORS = [
   { id:'INS-001', name:'田中 太郎', color:'#6366f1', initials:'田' },
   { id:'INS-002', name:'佐藤 花子', color:'#ec4899', initials:'佐' },
@@ -2820,6 +2854,7 @@ const S = {
   selectedMfr: null,
   productName: '',
   lotNumber: '',
+  selectedInputPerson: null,
   selectedInsp: null,
   usability: null,   // 'pass' | 'fail'
   judgeType: null,   // '恒久判断' | '暫定判断'
@@ -2846,6 +2881,7 @@ const S = {
 const DB = {
   inspections:      [],
   inspectors:       [...DEFAULT_INSPECTORS],
+  inputPersons:      [...DEFAULT_INPUT_PERSONS],
   products:         [...SAMPLE_PRODUCTS],
   customMfrs:       [],
   hiddenMfrs:       [],
@@ -2860,7 +2896,7 @@ const DARK_KEY = 'kiken_dark_v1';
 //   SHARED_KEYS  → users間で共有（マスターデータ）
 //   それ以外     → ユーザーごと（履歴系）
 // ============================================================
-const SHARED_KEYS = new Set(['inspectors', 'customMfrs', 'hiddenMfrs']);
+const SHARED_KEYS = new Set(['inspectors', 'inputPersons', 'customMfrs', 'hiddenMfrs']);
 
 function load(key, def) {
   return DB[key] !== undefined ? DB[key] : def;
@@ -2888,6 +2924,7 @@ async function loadFromFirestore() {
   // ユーザー切り替え時にDBをリセット（前ユーザーのデータが残らないように）
   DB.inspections      = [];
   DB.inspectors       = [...DEFAULT_INSPECTORS];
+  DB.inputPersons     = [...DEFAULT_INPUT_PERSONS];
   DB.products         = [...SAMPLE_PRODUCTS];
   DB.customMfrs       = [];
   DB.hiddenMfrs       = [];
@@ -3292,6 +3329,7 @@ function switchPage(page) {
     renderHist();
   }
   if (page === 'settings') { renderInspSettings(); updateSettingsCount(); }
+  if (page === 'home') { renderInspectors(); renderInputPersonCards(); }
 }
 
 // ============================================================
@@ -5126,6 +5164,110 @@ function clearDefects() {
 // 確認者選択
 // ============================================================
 
+// ============================================================
+// 入力者管理
+// ============================================================
+function getInputPersons() { return load('inputPersons', DEFAULT_INPUT_PERSONS); }
+
+function renderInputPersonCards() {
+  const list = getInputPersons();
+  const el = document.getElementById('inputPersonScroll');
+  if (!el) return;
+  el.innerHTML = list.map(p => `
+    <div class="inspector-card ${S.selectedInputPerson === p.id ? 'selected' : ''}" onclick="selectInputPerson('${p.id}')">
+      <div class="avatar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="1.8" width="28" height="28" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/>
+          <circle cx="12" cy="7" r="4"/>
+        </svg>
+      </div>
+      <div class="avatar-check">
+        <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" width="10" height="10" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+      </div>
+      <div class="inspector-name">${p.name}</div>
+    </div>
+  `).join('');
+}
+
+function selectInputPerson(id) {
+  S.selectedInputPerson = S.selectedInputPerson === id ? null : id;
+  renderInputPersonCards();
+}
+
+let _inputPersonEditMode = false;
+function openInputPersonOverlay() {
+  _inputPersonEditMode = false;
+  _lockScroll();
+  document.getElementById('inputPersonOverlay').classList.add('open');
+  renderInputPersonOverlayList();
+  const btn = document.getElementById('inputPersonEditToggleBtn');
+  if (btn) btn.textContent = '編集';
+}
+
+function closeInputPersonOverlay() {
+  _unlockScroll();
+  document.getElementById('inputPersonOverlay').classList.remove('open');
+}
+
+function toggleInputPersonEditMode() {
+  _inputPersonEditMode = !_inputPersonEditMode;
+  const btn = document.getElementById('inputPersonEditToggleBtn');
+  if (btn) btn.textContent = _inputPersonEditMode ? '完了' : '編集';
+  renderInputPersonOverlayList();
+}
+
+function renderInputPersonOverlayList() {
+  const list = getInputPersons();
+  const el = document.getElementById('inputPersonOverlayList');
+  if (!el) return;
+  if (!list.length) {
+    el.innerHTML = '<div style="padding:40px;text-align:center;color:var(--text-3);font-size:14px">入力者がいません</div>';
+    return;
+  }
+  el.innerHTML = list.map(p => `
+    <div class="mfr-result-item" style="gap:10px">
+      <div style="flex:1;font-size:15px;font-weight:600;color:var(--text)">${p.name}</div>
+      ${_inputPersonEditMode ? `<button class="settings-action-btn delete-btn" onclick="deleteInputPerson('${p.id}')">削除</button>` : ''}
+    </div>
+  `).join('');
+}
+
+function openInputPersonModal() {
+  document.getElementById('inputPersonModal').classList.add('show');
+  setTimeout(() => document.getElementById('inputPersonName').focus(), 80);
+}
+
+function closeInputPersonModal() {
+  document.getElementById('inputPersonModal').classList.remove('show');
+  document.getElementById('inputPersonName').value = '';
+}
+
+function addInputPerson() {
+  const name = document.getElementById('inputPersonName').value.trim();
+  if (!name) { showToast('氏名を入力してください','error'); return; }
+  const list = getInputPersons();
+  if (list.find(p => p.name === name)) { showToast('同じ名前がすでにあります','error'); return; }
+  const id = 'INP-' + String(Date.now()).slice(-6);
+  list.push({ id, name });
+  save('inputPersons', list);
+  closeInputPersonModal();
+  renderInputPersonOverlayList();
+  showToast('入力者を追加しました','success');
+}
+
+function deleteInputPerson(id) {
+  if (!confirm('この入力者を削除しますか？')) return;
+  let list = getInputPersons().filter(p => p.id !== id);
+  save('inputPersons', list);
+  if (S.selectedInputPerson === id) {
+    S.selectedInputPerson = null;
+    const t = document.getElementById('inputPersonTriggerText');
+    if (t) t.textContent = '入力者を選択';
+  }
+  renderInputPersonOverlayList();
+  showToast('削除しました','success');
+}
+
 function getInspectors() { return load('inspectors', DEFAULT_INSPECTORS); }
 
 function renderInspectors() {
@@ -5150,6 +5292,7 @@ function renderInspectors() {
 function selectInsp(id) {
   S.selectedInsp = S.selectedInsp === id ? null : id;
   renderInspectors();
+  renderInputPersonCards();
 }
 
 function openInspModal() { document.getElementById('inspModal').classList.add('show'); document.getElementById('newName').focus(); }
@@ -5168,6 +5311,7 @@ function addInspector() {
   save('inspectors', list);
   closeInspModal();
   renderInspectors();
+  renderInputPersonCards();
   showToast('確認者を追加しました','success');
   if (document.getElementById('inspOverlay')?.classList.contains('open')) renderInspOverlay();
 }
@@ -5727,9 +5871,9 @@ function showSaveConfirm() {
     : `<span class="sc-badge" style="background:var(--surface-2);color:var(--text-2)">未設定</span>`;
 
   const judgeBadge = derivedJudge === '恒久判断'
-    ? `<span class="sc-badge perm">● 恒久判断</span>`
+    ? `<span class="sc-badge perm">恒久判断</span>`
     : derivedJudge === '暫定判断'
-    ? `<span class="sc-badge prov">● 暫定判断</span>`
+    ? `<span class="sc-badge prov">暫定判断</span>`
     : '';
 
   // 写真判定サマリー
@@ -5741,10 +5885,12 @@ function showSaveConfirm() {
   if (failCount) photoSummaryParts.push(`使用否 ${failCount}枚`);
   if (noneCount) photoSummaryParts.push(`未設定 ${noneCount}枚`);
 
+  const inputPerson = getInputPersons().find(p => p.id === S.selectedInputPerson);
   const rows = [
     { lbl: 'メーカー', val: mfr  ? mfr.name  : '—' },
     { lbl: '製品名',   val: productName },
     ...(S.lotNumber ? [{ lbl: 'ロット番号', val: S.lotNumber }] : []),
+    ...(inputPerson ? [{ lbl: '入力者', val: inputPerson.name }] : []),
     { lbl: '確認者',   val: insp ? insp.name : '—' },
   ];
 
@@ -5754,8 +5900,8 @@ function showSaveConfirm() {
       html: `<span class="sc-val">${S.photos.length}枚 ／ ${photoSummaryParts.join('・') || '未設定'}</span>`
     });
   }
-  if (derived) {
-    rows.push({ lbl: '総合判定', html: resultBadge + (judgeBadge ? '&nbsp;' + judgeBadge : '') });
+  if (judgeBadge) {
+    rows.push({ lbl: '判定', html: judgeBadge });
   }
   if (S.defects.length) {
     rows.push({ lbl: '不良内容', val: S.defects.join('、') });
@@ -5822,6 +5968,8 @@ async function saveInspection() {
       manufacturerName: mfr  ? mfr.name  : '不明',
       productName,
       lotNumber:        S.lotNumber || '',
+      inputPersonId:    S.selectedInputPerson || null,
+      inputPersonName:  (() => { const p = getInputPersons().find(p => p.id === S.selectedInputPerson); return p ? p.name : null; })(),
       inspectorId:      S.selectedInsp,
       inspectorName:    insp ? insp.name : '不明',
       createdByName:    currentUserProfile?.name || '不明',
@@ -5865,6 +6013,7 @@ function scrollToCard(id) {
 
 function resetForm() {
   S.selectedMfr = null;
+  S.selectedInputPerson = null;
   S.selectedInsp = null;
   S.usability = null;
   S.judgeType = null;
@@ -5881,6 +6030,7 @@ function resetForm() {
   renderMfr();
   renderProduct();
   renderInspectors();
+  renderInputPersonCards();
   renderDefects();
   renderHistChips();
   renderPhotoGrid();
@@ -6866,6 +7016,7 @@ async function saveUserEdit() {
       inspList[inspIdx].initials = name.charAt(0);
       save('inspectors', inspList);
       renderInspectors();
+      renderInputPersonCards();
     }
 
     // 自分自身のプロフィールを更新
@@ -6905,6 +7056,7 @@ async function disableUser(uid) {
     const inspList = getInspectors().filter(i => i.id !== uid);
     save('inspectors', inspList);
     renderInspectors();
+    renderInputPersonCards();
 
     renderUserList(_allUsersCache);
     showToast('ユーザーを無効にしました', 'default');
@@ -6936,6 +7088,7 @@ function removeInspector(id) {
     save('inspectors', list);
     if (S.selectedInsp === id) S.selectedInsp = null;
     renderInspectors();
+    renderInputPersonCards();
     renderInspSettings();
     if (document.getElementById('inspOverlay')?.classList.contains('open')) renderInspOverlay();
     closeConfirm();
@@ -7054,7 +7207,7 @@ function openDetail(id) {
     ${r.createdByName ? `
     <div class="detail-row">
       <span class="detail-lbl">入力者</span>
-      <span class="detail-val">${r.createdByName}</span>
+      <span class="detail-val">${r.inputPersonName || r.createdByName || '—'}</span>
     </div>` : ''}
     <div class="detail-row">
       <span class="detail-lbl">日時</span>
@@ -7331,6 +7484,7 @@ function renderApp() {
   renderMfr();
   renderProduct();
   renderInspectors();
+  renderInputPersonCards();
   renderDefects();
   renderHistChips();
   renderHist();
@@ -7563,6 +7717,42 @@ init();
   </div>
 </div>
 <!-- =================== 確認者管理オーバーレイ =================== -->
+<div class="mfr-overlay" id="inputPersonOverlay">
+  <div class="mfr-overlay-header">
+    <button class="mfr-overlay-back" onclick="closeInputPersonOverlay()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="var(--text-2)" stroke-width="2.5" width="20" height="20" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg>
+    </button>
+    <div style="flex:1;font-size:17px;font-weight:700;color:var(--text);text-align:center">入力者管理</div>
+    <div style="display:flex;align-items:center;gap:4px">
+      <button class="md-edit-btn" onclick="openInputPersonModal()" style="color:var(--primary)">追加</button>
+      <button id="inputPersonEditToggleBtn" class="md-edit-btn" onclick="toggleInputPersonEditMode()">編集</button>
+    </div>
+  </div>
+  <div class="mfr-result-list" id="inputPersonOverlayList"></div>
+</div>
+
+<!-- 入力者 追加モーダル -->
+<div class="modal-bg" id="inputPersonModal" onclick="if(event.target===this)closeInputPersonModal()">
+  <div class="modal">
+    <div class="modal-title">入力者を追加</div>
+    <input class="modal-input" id="inputPersonName" type="text" placeholder="氏名を入力" oninput="" />
+    <div class="modal-actions">
+      <button class="modal-cancel" onclick="closeInputPersonModal()">キャンセル</button>
+      <button class="modal-ok" onclick="addInputPerson()">追加</button>
+    </div>
+  </div>
+</div>
+
+<!-- 入力者選択ドロップダウン -->
+<div class="mfr-overlay" id="inputPersonDropdown" style="max-height:60vh;border-radius:20px 20px 0 0;bottom:0;top:auto">
+  <div class="mfr-overlay-header" style="padding:14px 16px">
+    <div style="flex:1;font-size:16px;font-weight:700;color:var(--text)">入力者を選択</div>
+    <button class="mfr-overlay-cancel" onclick="closeInputPersonDropdown()" style="position:static;padding:6px 12px">キャンセル</button>
+  </div>
+  <div class="mfr-result-list" id="inputPersonDropdownList"></div>
+</div>
+<div class="mfr-overlay-backdrop" id="inputPersonDropdownBackdrop" onclick="closeInputPersonDropdown()"></div>
+
 <div class="mfr-overlay" id="inspOverlay">
   <div class="mfr-overlay-header">
     <button class="mfr-overlay-back" onclick="closeInspOverlay()">
