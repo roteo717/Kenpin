@@ -2754,6 +2754,14 @@ const db      = firebase.firestore();
 // 画像アップロード・スプレッドシート書き込みはすべて GAS に委譲する
 const GAS_URL = 'https://script.google.com/macros/s/AKfycbxtyCav4X8eTVwYKXiisfnUzS8F3c644mOGP50K_Eg19bsP5JAANwn41azLbElQFt0d/exec';
 
+// ============================================================
+// Googleスプレッドシート（Excel）自動反映 用のURL
+// 「不良検査管理システム」のGoogleスプレッドシートに紐づけて
+// 作成・デプロイしたウェブアプリのURLをここに貼り付けてください。
+// 未設定（PASTE_のまま）の場合はスプレッドシート連携をスキップします。
+// ============================================================
+const SHEET_SYNC_URL = 'PASTE_YOUR_SHEET_WEB_APP_URL_HERE';
+
 // 現在のログインユーザー
 let currentUser = null;
 let currentUserProfile = null; // { name, employeeId, color }
@@ -3301,8 +3309,6 @@ function goToMatchedHistory(defect) {
   const clrBtn = document.getElementById('histSearchClear');
   if (clrBtn) clrBtn.style.display = 'none';
 
-  // フィルタを保持したまま遷移するフラグ
-  switchPage._keepHistFilter = true;
   switchPage('history');
 }
 
@@ -3324,18 +3330,9 @@ function switchPage(page) {
 
   if (page === 'stats')    renderStats();
   if (page === 'history')  {
-    // 通常ナビ遷移ではフィルタをリセット（トースト経由は _keepHistFilter で保持）
-    if (!switchPage._keepHistFilter) {
-      S.histMfrFilter     = null;
-      S.histProductFilter = null;
-      S.histDefectFilter  = null;
-      S.histSearch        = '';
-      const inp = document.getElementById('histSearchInput');
-      if (inp) inp.value = '';
-      const clr = document.getElementById('histSearchClear');
-      if (clr) clr.style.display = 'none';
-    }
-    switchPage._keepHistFilter = false;
+    // 入力欄を同期（前回の値が残っていれば反映）
+    const inp = document.getElementById('histSearchInput');
+    if (inp) inp.value = S.histSearch || '';
     updateHistActiveBar();
     renderHist();
   }
@@ -5949,6 +5946,67 @@ async function executeSaveInspection() {
 // 保存
 // ============================================================
 
+// ============================================================
+// Googleスプレッドシート（Excel）への自動反映
+// 保存処理の本体（Firestore保存）には影響を与えない
+// fire-and-forget 方式（失敗してもFirestore保存自体は成功扱い）
+// ============================================================
+
+/** ISO日時 → "yyyy/MM/dd HH:mm" 形式（スプレッドシートの表記に合わせる） */
+function fmtDateForSheet(iso) {
+  const d = new Date(iso);
+  const p = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}/${p(d.getMonth() + 1)}/${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+
+/**
+ * 写真ステータス（P列）を判定する。
+ * 優先度: 使用否 > 要注意 > 使用可。写真にステータスが無い場合は全体判定から推定する。
+ */
+function derivePhotoStatus(record) {
+  const us = (record.photos || []).map(p => (typeof p === 'string' ? null : p.usability)).filter(Boolean);
+  if (us.includes('fail'))    return '使用否';
+  if (us.includes('caution')) return '要注意';
+  if (us.includes('pass'))    return '使用可';
+  const map = { pass: '使用可', fail: '使用否', review: '要注意' };
+  return map[record.result] || '';
+}
+
+/** 1件の検品記録をGoogleスプレッドシートの「② 不良一覧」に1行追記する */
+async function syncInspectionToSheet(record) {
+  if (!SHEET_SYNC_URL || SHEET_SYNC_URL.indexOf('PASTE_') === 0) return; // 未設定ならスキップ
+
+  const photos = (record.photos || []).slice(0, 3).map(p => ({
+    url:     typeof p === 'string' ? p : (p.url || ''),
+    comment: typeof p === 'string' ? ''  : (p.comment || ''),
+  }));
+
+  const payload = {
+    createdAt:        fmtDateForSheet(record.createdAt),
+    manufacturerName: record.manufacturerName || '',
+    productName:       record.productName || '',
+    lotNumber:         record.lotNumber || '',
+    defectsText:       (record.defects || []).join('、'),
+    judgeType:         record.judgeType || '',
+    inspectorName:     record.inspectorName || '',
+    inputPersonName:   record.inputPersonName || record.createdByName || '',
+    photos,
+    photoStatus:       derivePhotoStatus(record),
+  };
+
+  const res = await fetch(SHEET_SYNC_URL, {
+    method: 'POST',
+    // text/plain にしてCORSプリフライトを避ける（写真アップロードと同じ理由）
+    headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) throw new Error(`スプレッドシート同期失敗 (HTTP ${res.status})`);
+  const result = await res.json().catch(() => null);
+  if (!result || result.status === 'error') {
+    throw new Error(result?.error || 'スプレッドシートへの反映に失敗しました');
+  }
+}
+
 async function saveInspection() {
   const productName = document.getElementById('productInput').value.trim();
 
@@ -6003,6 +6061,9 @@ async function saveInspection() {
 
     // ── Firestore 保存（1検品 = 1ドキュメント、base64は含まない） ────────────
     await firestoreAddInspection(record);
+
+    // ── Googleスプレッドシート（Excel）へ自動反映（失敗してもFirestore保存は成功扱い） ──
+    syncInspectionToSheet(record).catch(e => console.warn('[Sheet同期] 失敗:', e));
 
     // ローカル DB を更新（UI即時反映用）
     const list = load('inspections', []);
@@ -7843,7 +7904,7 @@ init();
 const CACHE="kenpin-v72";
 self.addEventListener("install",e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll([self.location.href.replace(/\/sw-[^/]+$/,"")])));self.skipWaiting();});
 self.addEventListener("activate",e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))));self.clients.claim();});
-self.addEventListener("fetch",e=>{const url=e.request.url;if(url.includes("firestore.googleapis.com")||url.includes("firebase")||url.includes("googleapis.com")||url.includes("gstatic.com")){e.respondWith(fetch(e.request));return;}e.respondWith(caches.match(e.request).then(c=>c||fetch(e.request)));});
+self.addEventListener("fetch",e=>{e.respondWith(caches.match(e.request).then(c=>c||fetch(e.request)));});
 `;
     navigator.serviceWorker
       .register(URL.createObjectURL(new Blob([sw],{type:"application/javascript"})),{scope:"./"})
