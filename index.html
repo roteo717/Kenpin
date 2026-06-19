@@ -2760,7 +2760,7 @@ const GAS_URL = 'https://script.google.com/macros/s/AKfycbxtyCav4X8eTVwYKXiisfnU
 // 作成・デプロイしたウェブアプリのURLをここに貼り付けてください。
 // 未設定（PASTE_のまま）の場合はスプレッドシート連携をスキップします。
 // ============================================================
-const SHEET_SYNC_URL = 'PASTE_YOUR_SHEET_WEB_APP_URL_HERE';
+const SHEET_SYNC_URL = 'https://script.google.com/macros/s/AKfycbyLvslpCdjl3ywA4H6ZZY_V-kfjN0rWKRGpvGtVPPkZVvVnRnesX4I0M7NqzrZKdvbi/exec';
 
 // 現在のログインユーザー
 let currentUser = null;
@@ -7901,7 +7901,7 @@ init();
 
   if ("serviceWorker" in navigator) {
     const sw = `
-const CACHE="kenpin-v72";
+const CACHE="kenpin-v77";
 self.addEventListener("install",e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll([self.location.href.replace(/\/sw-[^/]+$/,"")])));self.skipWaiting();});
 self.addEventListener("activate",e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))));self.clients.claim();});
 self.addEventListener("fetch",e=>{e.respondWith(caches.match(e.request).then(c=>c||fetch(e.request)));});
