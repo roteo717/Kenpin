@@ -1778,7 +1778,7 @@ a{color:inherit;text-decoration:none}
   z-index:600;display:flex;align-items:center;justify-content:center;
   opacity:0;pointer-events:none;transition:opacity .2s;
 }
-.modal-bg.show{opacity:1;pointer-events:all}
+.modal-bg.show{opacity:1;pointer-events:all;touch-action:none}
 .modal-box{
   background:var(--surface);border-radius:22px;padding:24px;
   width:calc(100% - 48px);max-width:360px;
@@ -6457,7 +6457,6 @@ function _initHistSwipe() {
       startY = e.touches[0].clientY;
       dx = 0;
       inner.classList.add('swiping');
-      bg.style.opacity = '1';
     }, { passive: true });
 
     row.addEventListener('touchmove', e => {
@@ -6468,6 +6467,7 @@ function _initHistSwipe() {
       if (cdx > 0) { inner.style.transform = 'translateX(0)'; return; }
       dx = Math.max(cdx, -SW_MAX);
       inner.style.transform = `translateX(${dx}px)`;
+      bg.style.opacity = '1';
     }, { passive: true });
 
     row.addEventListener('touchend', () => {
@@ -8154,6 +8154,13 @@ self.addEventListener("fetch",e=>{e.respondWith(caches.match(e.request).then(c=>
     document.getElementById("pwa-x").onclick=()=>b.remove();
   }
 })();
+// ── モーダル背景スクロール抜け防止（iOS Safari）──
+document.querySelectorAll('.modal-bg').forEach(el => {
+  el.addEventListener('touchmove', function(e) {
+    // modal-box / modal の内側は許可、背景のみ止める
+    if (!e.target.closest('.modal-box') && !e.target.closest('.modal')) {
+      e.preventDefault();
+    }
+  }, { passive: false });
+});
 </script>
-</body>
-</html>
