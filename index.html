@@ -8164,4 +8164,16 @@ document.querySelectorAll('.modal-bg').forEach(el => {
     }
   }, { passive: false });
 });
+
+// ── テキスト選択・コンテキストメニュー完全防止（iOS Safari）──
+document.addEventListener('selectstart', e => {
+  if (!e.target.closest('input') && !e.target.closest('textarea')) {
+    e.preventDefault();
+  }
+});
+document.addEventListener('contextmenu', e => {
+  if (!e.target.closest('input') && !e.target.closest('textarea')) {
+    e.preventDefault();
+  }
+});
 </script>
