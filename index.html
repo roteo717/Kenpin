@@ -5959,17 +5959,10 @@ function fmtDateForSheet(iso) {
   return `${d.getFullYear()}/${p(d.getMonth() + 1)}/${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
 }
 
-/**
- * 写真ステータス（P列）を判定する。
- * 優先度: 使用否 > 要注意 > 使用可。写真にステータスが無い場合は全体判定から推定する。
- */
-function derivePhotoStatus(record) {
-  const us = (record.photos || []).map(p => (typeof p === 'string' ? null : p.usability)).filter(Boolean);
-  if (us.includes('fail'))    return '使用否';
-  if (us.includes('caution')) return '要注意';
-  if (us.includes('pass'))    return '使用可';
-  const map = { pass: '使用可', fail: '使用否', review: '要注意' };
-  return map[record.result] || '';
+/** 写真ごとの使用可否（usability）をスプレッドシート表記に変換する */
+function usabilityToSheetLabel(u) {
+  const map = { pass: '使用可', fail: '使用否', caution: '要注意' };
+  return map[u] || '';
 }
 
 /** 1件の検品記録をGoogleスプレッドシートの「② 不良一覧」に1行追記する */
@@ -5979,6 +5972,7 @@ async function syncInspectionToSheet(record) {
   const photos = (record.photos || []).slice(0, 3).map(p => ({
     url:     typeof p === 'string' ? p : (p.url || ''),
     comment: typeof p === 'string' ? ''  : (p.comment || ''),
+    status:  typeof p === 'string' ? ''  : usabilityToSheetLabel(p.usability), // ①②③ごとの写真ステータス
   }));
 
   const payload = {
@@ -5991,7 +5985,6 @@ async function syncInspectionToSheet(record) {
     inspectorName:     record.inspectorName || '',
     inputPersonName:   record.inputPersonName || record.createdByName || '',
     photos,
-    photoStatus:       derivePhotoStatus(record),
   };
 
   const res = await fetch(SHEET_SYNC_URL, {
@@ -7901,7 +7894,7 @@ init();
 
   if ("serviceWorker" in navigator) {
     const sw = `
-const CACHE="kenpin-v77";
+const CACHE="kenpin-v78";
 self.addEventListener("install",e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll([self.location.href.replace(/\/sw-[^/]+$/,"")])));self.skipWaiting();});
 self.addEventListener("activate",e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))));self.clients.claim();});
 self.addEventListener("fetch",e=>{e.respondWith(caches.match(e.request).then(c=>c||fetch(e.request)));});
