@@ -6123,6 +6123,7 @@ async function saveInspection() {
     const lbls = { pass:'使用可', fail:'使用否', review:'未判定' };
     const judgeStr = overallJudgeType ? ` / ${overallJudgeType}` : '';
     showToast(`保存しました（${lbls[overallResult] || '未判定'}${judgeStr}）`, 'success');
+    if (S.camStream) stopCamera();
     resetForm();
 
   } catch(e) {
