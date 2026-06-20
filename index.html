@@ -2117,35 +2117,37 @@ a{color:inherit;text-decoration:none}
   transition:color .15s;white-space:nowrap;
 }
 .md-edit-btn.active{color:var(--primary)}
-/* マスターデータ：スワイプで編集・削除ボタンを表示 */
-.md-swipe-row{position:relative;overflow:hidden;background:var(--fail)}
-.md-swipe-actions{position:absolute;right:0;top:0;bottom:0;display:flex}
-.md-swipe-actions button{
-  width:64px;border:none;color:#fff;
-  display:flex;flex-direction:column;align-items:center;justify-content:center;
-  gap:3px;font-size:11px;font-weight:700;letter-spacing:.2px;cursor:pointer;
+
+/* ── 管理リスト汎用スワイプ行（確認者・マスターデータ） ── */
+.mgmt-swipe-row{
+  position:relative;overflow:hidden;
+  -webkit-mask-image:-webkit-radial-gradient(white,black);
+  transform:translateZ(0);
 }
-.md-swipe-actions button:active{filter:brightness(.9)}
-.md-swipe-actions button svg{width:16px;height:16px;stroke:#fff}
-.md-swipe-edit-btn{background:var(--primary)}
-.md-swipe-del-btn{background:var(--fail)}
-.md-swipe-content{
-  position:relative;z-index:1;background:var(--surface);
-  display:flex;align-items:center;width:100%;
+.mgmt-swipe-row:last-child .mgmt-swipe-inner{border-bottom:none}
+.mgmt-swipe-actions{
+  position:absolute;right:0;top:0;bottom:0;
+  width:148px;
+  display:flex;align-items:stretch;
+  opacity:0;pointer-events:none;
+  transition:opacity .15s;
+}
+.mgmt-action-btn{
+  flex:1;border:none;cursor:pointer;
+  font-size:14px;font-weight:700;color:#fff;
+  display:flex;align-items:center;justify-content:center;
+  transition:filter .12s;
+}
+.mgmt-action-btn:active{filter:brightness(.85)}
+.mgmt-edit-btn{ background:#3B82F6; }
+.mgmt-del-btn { background:#EF4444; }
+.mgmt-swipe-inner{
+  position:relative;z-index:1;
+  background:var(--surface);
   transform:translateX(0);
   transition:transform .25s cubic-bezier(.34,1.12,.64,1);
   will-change:transform;
 }
-.md-swipe-content.swiping{transition:none}
-.md-drag-handle{
-  flex-shrink:0;width:28px;align-self:stretch;
-  display:flex;align-items:center;justify-content:center;
-  color:var(--text-3);cursor:grab;touch-action:none;
-}
-.md-drag-handle svg{width:17px;height:17px}
-.md-swipe-chevron{flex-shrink:0;color:var(--text-3);opacity:.45;margin-left:2px}
-.md-swipe-row.md-row-dragging{opacity:.45}
-.md-swipe-row.md-row-drop-target{box-shadow:inset 0 2px 0 var(--primary), inset 0 -2px 0 var(--primary)}
 .settings-section-expand{
   padding:10px 16px;font-size:13px;font-weight:600;color:var(--text-2);
   background:var(--surface-2);border-top:1px solid var(--border);
@@ -6646,13 +6648,7 @@ let _masterDataSection = null;
 let _masterEditMode = false;
 
 function toggleMasterEditMode() {
-  _masterEditMode = !_masterEditMode;
-  const btn = document.getElementById('masterEditToggleBtn');
-  if (btn) {
-    btn.textContent = _masterEditMode ? '完了' : '編集';
-    btn.classList.toggle('active', _masterEditMode);
-  }
-  renderSettingsMasterData();
+  // スワイプで編集・削除するため編集モードトグルは不要
 }
 
 function renderSettingsMasterData() {
@@ -6696,39 +6692,30 @@ function renderSettingsMasterData() {
   const eyeOffSvg  = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="11" height="11" stroke-linecap="round"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>`;
   const eyeSvg     = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="11" height="11" stroke-linecap="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`;
   const chevDownSvg = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="14" height="14" stroke-linecap="round" id="hiddenMfrsChevron" style="transition:transform .22s"><polyline points="6 9 12 15 18 9"/></svg>`;
-  const editSvg      = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>`;
-  const chevRightSvg = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" width="15" height="15" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>`;
-  const dragHandleSvg = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg>`;
 
-  // メーカー1行分のHTMLを生成（左にスワイプすると編集・削除ボタンが表示される）
-  const mfrRow = (m, isCustom) => {
-    const safeId  = (m.id || '').replace(/'/g, "\\'");
-    const keyId   = encodeURIComponent(m.id || '');
-    const name    = m.jaName || m.name;
-    const sub     = m.jaName && m.jaName !== m.name ? m.name : '';
-    const delFn   = isCustom ? `deleteCustomMfrFromSettings('${safeId}')` : `hideBuiltInMfr('${safeId}')`;
-    const editBtn = isCustom
-      ? `<button class="md-swipe-edit-btn" onclick="event.stopPropagation();openEditMfrModal('${safeId}')">${editSvg}<span>編集</span></button>`
-      : '';
-    const actionsWidth = isCustom ? 128 : 64;
+  // メーカー1行分のHTMLを生成（スワイプ対応）
+  const mfrRow = (m, isCustom, isHidden) => {
+    const safeId   = (m.id || '').replace(/'/g, "\\'");
+    const name     = m.jaName || m.name;
+    const safeName = name.replace(/'/g, "\\'");
+    const sub      = m.jaName && m.jaName !== m.name ? m.name : '';
+    const delFn    = isCustom ? `deleteCustomMfrFromSettings('${safeId}')` : `hideBuiltInMfr('${safeId}')`;
+    const editFn   = `openMasterMfrEditModal('${safeId}','${safeName}',${isCustom})`;
     return `
-      <div class="md-swipe-row" data-key="mfr:${keyId}" data-actions-width="${actionsWidth}">
-        <div class="md-swipe-actions">
-          ${editBtn}
-          <button class="md-swipe-del-btn" onclick="event.stopPropagation();${delFn}">${trashSvg}<span>削除</span></button>
+      <div class="mgmt-swipe-row" data-mfr-id="${m.id}">
+        <div class="mgmt-swipe-actions">
+          <button class="mgmt-action-btn mgmt-edit-btn" onclick="${editFn}">編集</button>
+          <button class="mgmt-action-btn mgmt-del-btn" onclick="${delFn}">削除</button>
         </div>
-        <div class="md-swipe-content">
-          ${_masterEditMode ? `<div class="md-drag-handle">${dragHandleSvg}</div>` : ''}
-          <div class="s-item" style="flex:1;border-bottom:none;padding:10px 16px;gap:10px;cursor:pointer" onclick="_toggleMdSwipe(this.closest('.md-swipe-row'))">
-            <div style="flex:1;min-width:0">
-              <div style="font-size:14px;font-weight:${isCustom ? '600' : '500'};color:var(--text);
-                          display:flex;align-items:center;gap:5px;flex-wrap:wrap">
-                <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:140px">${name}</span>
-              </div>
-              ${sub   ? `<div style="font-size:11px;color:var(--text-3);margin-top:1px">${sub}</div>` : ''}
+        <div class="mgmt-swipe-inner s-item" style="padding:10px 16px;gap:10px;cursor:default">
+          <div style="flex:1;min-width:0">
+            <div style="font-size:14px;font-weight:${isCustom ? '600' : '500'};color:var(--text);
+                        display:flex;align-items:center;gap:5px;flex-wrap:wrap">
+              <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:200px">${name}</span>
             </div>
+            ${sub ? `<div style="font-size:11px;color:var(--text-3);margin-top:1px">${sub}</div>` : ''}
           </div>
-          ${!_masterEditMode ? `<span class="md-swipe-chevron" style="margin-right:14px">${chevRightSvg}</span>` : ''}
+          <svg viewBox="0 0 24 24" fill="none" stroke="var(--text-3)" stroke-width="2" width="14" height="14" stroke-linecap="round" style="flex-shrink:0"><polyline points="9 18 15 12 9 6"/></svg>
         </div>
       </div>`;
   };
@@ -6738,62 +6725,46 @@ function renderSettingsMasterData() {
   /* ── メーカーセクション（section === 'mfr' または null のとき表示） ── */
   if (!section || section === 'mfr') {
     /* ─ 全メーカー（カスタム＋ビルトイン統合） ─ */
-    let allVisible = [
+    const allVisible = [
       ...trueCustom.map(m => ({ m, isCustom: true })),
       ...activeBuiltIn.map(m => ({ m, isCustom: false }))
-    ];
-    const mfrOrder = getMfrOrder();
-    if (mfrOrder.length) {
-      allVisible = _applyManualOrder(allVisible, mfrOrder, x => x.m.id,
-        x => [-(usageMap[x.m.id] || 0), (x.m.jaName || x.m.name)]);
-    } else {
-      allVisible.sort((a, b) => {
-        const ua = usageMap[a.m.id] || 0, ub = usageMap[b.m.id] || 0;
-        if (ub !== ua) return ub - ua;
-        return (a.m.jaName || a.m.name).localeCompare(b.m.jaName || b.m.name, 'ja');
-      });
-    }
+    ].sort((a, b) => {
+      const ua = usageMap[a.m.id] || 0, ub = usageMap[b.m.id] || 0;
+      if (ub !== ua) return ub - ua;
+      return (a.m.jaName || a.m.name).localeCompare(b.m.jaName || b.m.name, 'ja');
+    });
 
     if (allVisible.length === 0) {
       html += `<div style="padding:14px 16px;font-size:13px;color:var(--text-3);text-align:center">
                  すべてのメーカーが非表示になっています
                </div>`;
     } else {
-      allVisible.forEach(({ m, isCustom }) => { html += mfrRow(m, isCustom); });
+      allVisible.forEach(({ m, isCustom }) => { html += mfrRow(m, isCustom, false); });
     }
 
   }
 
   /* ── 製品名セクション（section === 'product' または null のとき表示） ── */
   if (!section || section === 'product') {
-    let productList = [...products];
-    const productOrder = getProductOrder();
-    if (productOrder.length) {
-      productList = _applyManualOrder(productList, productOrder, p => p, p => p);
-    }
-
-    if (productList.length === 0) {
+    if (products.length === 0) {
       html += `<div style="padding:14px 16px;font-size:13px;color:var(--text-3);text-align:center">
                  製品名履歴はありません
                </div>`;
     } else {
-      productList.forEach(p => {
+      products.forEach(p => {
         const esc     = p.replace(/'/g, "\\'");
-        const keyName = encodeURIComponent(p);
         const escHtml = p.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        const escEdit = escHtml.replace(/"/g,'&quot;');
         html += `
-          <div class="md-swipe-row" data-key="product:${keyName}" data-actions-width="128">
-            <div class="md-swipe-actions">
-              <button class="md-swipe-edit-btn" onclick="event.stopPropagation();openEditProductModal('${esc}')">${editSvg}<span>編集</span></button>
-              <button class="md-swipe-del-btn" onclick="event.stopPropagation();deleteProductFromSettings('${esc}')">${trashSvg}<span>削除</span></button>
+          <div class="mgmt-swipe-row" data-product="${esc}">
+            <div class="mgmt-swipe-actions">
+              <button class="mgmt-action-btn mgmt-edit-btn" onclick="openMasterProductEditModal('${esc}')">編集</button>
+              <button class="mgmt-action-btn mgmt-del-btn" onclick="deleteProductFromSettings('${esc}')">削除</button>
             </div>
-            <div class="md-swipe-content">
-              ${_masterEditMode ? `<div class="md-drag-handle">${dragHandleSvg}</div>` : ''}
-              <div class="s-item" style="flex:1;border-bottom:none;padding:11px 16px;cursor:pointer" onclick="_toggleMdSwipe(this.closest('.md-swipe-row'))">
-                <span style="flex:1;font-size:14px;font-weight:500;color:var(--text);
-                             overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml}</span>
-              </div>
-              ${!_masterEditMode ? `<span class="md-swipe-chevron" style="margin-right:14px">${chevRightSvg}</span>` : ''}
+            <div class="mgmt-swipe-inner s-item" style="padding:11px 16px;cursor:default">
+              <span style="flex:1;font-size:14px;font-weight:500;color:var(--text);
+                           overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml}</span>
+              <svg viewBox="0 0 24 24" fill="none" stroke="var(--text-3)" stroke-width="2" width="14" height="14" stroke-linecap="round" style="flex-shrink:0;margin-left:8px"><polyline points="9 18 15 12 9 6"/></svg>
             </div>
           </div>`;
       });
@@ -6801,249 +6772,8 @@ function renderSettingsMasterData() {
   }
 
   el.innerHTML = html;
-  _initMdSwipe(el);
-  if (_masterEditMode) _initMdDrag(el);
+  _initMgmtSwipe(el);
 }
-
-// ============================================================
-// マスターデータ：スワイプ開閉（編集・削除ボタンの表示/非表示）
-// ============================================================
-let _mdOpenRow = null;
-let _mdSwipeSt = { content: null };
-
-function _initMdSwipe(container) {
-  container.querySelectorAll('.md-swipe-row').forEach(row => {
-    const content = row.querySelector('.md-swipe-content');
-    if (!content) return;
-    const maxW = parseInt(row.dataset.actionsWidth || '64', 10);
-
-    content.addEventListener('pointerdown', e => {
-      if (e.target.closest('.md-drag-handle')) return;
-      _mdSwipeSt = { content, startX: e.clientX, startY: e.clientY, dx: 0, dragging: false,
-                     wasOpen: row.classList.contains('md-open') };
-    });
-    content.addEventListener('pointermove', e => {
-      if (_mdSwipeSt.content !== content) return;
-      const dx = e.clientX - _mdSwipeSt.startX;
-      const dy = e.clientY - _mdSwipeSt.startY;
-      if (!_mdSwipeSt.dragging) {
-        if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return;
-        if (Math.abs(dy) > Math.abs(dx)) { _mdSwipeSt.content = null; return; } // 縦スクロール優先
-        _mdSwipeSt.dragging = true;
-        content.classList.add('swiping');
-      }
-      const base = _mdSwipeSt.wasOpen ? -maxW : 0;
-      let nx = base + dx;
-      nx = Math.max(-maxW, Math.min(0, nx));
-      _mdSwipeSt.dx = nx;
-      content.style.transform = `translateX(${nx}px)`;
-    });
-    const endHandler = () => {
-      if (_mdSwipeSt.content !== content) return;
-      content.classList.remove('swiping');
-      if (_mdSwipeSt.dragging) {
-        _setMdRowOpen(row, content, _mdSwipeSt.dx <= -maxW / 2, maxW);
-      }
-      _mdSwipeSt = { content: null };
-    };
-    content.addEventListener('pointerup', endHandler);
-    content.addEventListener('pointercancel', endHandler);
-  });
-}
-
-function _setMdRowOpen(row, content, open, maxW) {
-  if (open) {
-    if (_mdOpenRow && _mdOpenRow !== row) _closeMdRow(_mdOpenRow);
-    row.classList.add('md-open');
-    content.style.transform = `translateX(-${maxW}px)`;
-    _mdOpenRow = row;
-  } else {
-    row.classList.remove('md-open');
-    content.style.transform = 'translateX(0)';
-    if (_mdOpenRow === row) _mdOpenRow = null;
-  }
-}
-
-function _closeMdRow(row) {
-  const content = row.querySelector('.md-swipe-content');
-  const maxW = parseInt(row.dataset.actionsWidth || '64', 10);
-  if (content) _setMdRowOpen(row, content, false, maxW);
-}
-
-/** タップでも開閉できるようにする（スワイプ操作の補助） */
-function _toggleMdSwipe(row) {
-  if (!row) return;
-  const content = row.querySelector('.md-swipe-content');
-  const maxW = parseInt(row.dataset.actionsWidth || '64', 10);
-  _setMdRowOpen(row, content, !row.classList.contains('md-open'), maxW);
-}
-
-// 他の場所をタップしたら開いている行を閉じる
-document.addEventListener('pointerdown', e => {
-  if (!_mdOpenRow) return;
-  if (e.target.closest('.md-swipe-row') === _mdOpenRow) return;
-  _closeMdRow(_mdOpenRow);
-});
-
-// ============================================================
-// マスターデータ：ドラッグ&ドロップで並び替え（編集モード中のみハンドルを表示）
-// ============================================================
-function getMfrOrder()          { return load('mfrManualOrder', []); }
-function saveMfrOrder(order)    { save('mfrManualOrder', order); }
-function getProductOrder()      { return load('productManualOrder', []); }
-function saveProductOrder(order){ save('productManualOrder', order); }
-
-/** 手動並び順（orderArr）が設定されている項目を先頭に、未設定の項目はフォールバック順で末尾に並べる */
-function _applyManualOrder(items, orderArr, keyFn, fallbackKeyFn) {
-  const idx = new Map(orderArr.map((k, i) => [k, i]));
-  const known = [], unknown = [];
-  items.forEach(it => (idx.has(keyFn(it)) ? known : unknown).push(it));
-  known.sort((a, b) => idx.get(keyFn(a)) - idx.get(keyFn(b)));
-  if (fallbackKeyFn) {
-    unknown.sort((a, b) => {
-      const ka = fallbackKeyFn(a), kb = fallbackKeyFn(b);
-      const aArr = Array.isArray(ka) ? ka : [ka];
-      const bArr = Array.isArray(kb) ? kb : [kb];
-      for (let i = 0; i < aArr.length; i++) {
-        if (aArr[i] < bArr[i]) return -1;
-        if (aArr[i] > bArr[i]) return 1;
-      }
-      return 0;
-    });
-  }
-  return [...known, ...unknown];
-}
-
-let _mdDragSt = null;
-
-function _initMdDrag(container) {
-  container.querySelectorAll('.md-drag-handle').forEach(handle => {
-    const row = handle.closest('.md-swipe-row');
-    if (!row) return;
-    handle.addEventListener('pointerdown', e => {
-      e.preventDefault();
-      _closeMdRow(row);
-      const list = row.parentElement;
-      _mdDragSt = { row, list, startY: e.clientY, prefix: (row.dataset.key || '').split(':')[0] };
-      row.classList.add('md-row-dragging');
-      row.style.position = 'relative';
-      row.style.zIndex = '5';
-      handle.setPointerCapture && handle.setPointerCapture(e.pointerId);
-    });
-    handle.addEventListener('pointermove', e => {
-      if (!_mdDragSt || _mdDragSt.row !== row) return;
-      row.style.transform = `translateY(${e.clientY - _mdDragSt.startY}px)`;
-      // 同じ種類（メーカー/製品名）の行同士でのみ入れ替える
-      const sibs = Array.from(_mdDragSt.list.querySelectorAll('.md-swipe-row'))
-        .filter(r => (r.dataset.key || '').split(':')[0] === _mdDragSt.prefix);
-      const idx  = sibs.indexOf(row);
-      const next = sibs[idx + 1], prev = sibs[idx - 1];
-      if (next) {
-        const r = next.getBoundingClientRect();
-        if (e.clientY > r.top + r.height / 2) {
-          _mdDragSt.list.insertBefore(next, row);
-          _mdDragSt.startY += r.height;
-          row.style.transform = `translateY(${e.clientY - _mdDragSt.startY}px)`;
-        }
-      } else if (prev) {
-        const r = prev.getBoundingClientRect();
-        if (e.clientY < r.top + r.height / 2) {
-          _mdDragSt.list.insertBefore(row, prev);
-          _mdDragSt.startY -= r.height;
-          row.style.transform = `translateY(${e.clientY - _mdDragSt.startY}px)`;
-        }
-      }
-    });
-    const endDrag = () => {
-      if (!_mdDragSt || _mdDragSt.row !== row) return;
-      row.classList.remove('md-row-dragging');
-      row.style.transform = '';
-      row.style.zIndex = '';
-      row.style.position = '';
-      _persistMdOrder(_mdDragSt.list);
-      _mdDragSt = null;
-    };
-    handle.addEventListener('pointerup', endDrag);
-    handle.addEventListener('pointercancel', endDrag);
-  });
-}
-
-function _persistMdOrder(listEl) {
-  const rows = Array.from(listEl.querySelectorAll('.md-swipe-row'));
-  const mfrKeys = [], productKeys = [];
-  rows.forEach(r => {
-    const key = r.dataset.key || '';
-    if (key.startsWith('mfr:'))           mfrKeys.push(decodeURIComponent(key.slice(4)));
-    else if (key.startsWith('product:'))  productKeys.push(decodeURIComponent(key.slice(8)));
-  });
-  if (mfrKeys.length)     saveMfrOrder(mfrKeys);
-  if (productKeys.length) saveProductOrder(productKeys);
-}
-
-// ============================================================
-// マスターデータ：名称編集モーダル
-// ============================================================
-let _mdEditTarget = null; // { type:'mfr', id } | { type:'product', name }
-
-function openEditMfrModal(id) {
-  const customMfrs = load('customMfrs', []);
-  const mfr = customMfrs.find(m => m.id === id);
-  if (!mfr) return;
-  _mdEditTarget = { type: 'mfr', id };
-  document.getElementById('mdEditModalTitle').textContent = 'メーカー名を編集';
-  const inp = document.getElementById('mdEditModalInput');
-  inp.value = mfr.jaName || mfr.name || '';
-  document.getElementById('mdEditModal').classList.add('show');
-  if (_mdOpenRow) _closeMdRow(_mdOpenRow);
-  setTimeout(() => inp.focus(), 80);
-}
-
-function openEditProductModal(name) {
-  _mdEditTarget = { type: 'product', name };
-  document.getElementById('mdEditModalTitle').textContent = '製品名を編集';
-  const inp = document.getElementById('mdEditModalInput');
-  inp.value = name;
-  document.getElementById('mdEditModal').classList.add('show');
-  if (_mdOpenRow) _closeMdRow(_mdOpenRow);
-  setTimeout(() => inp.focus(), 80);
-}
-
-function closeMdEditModal() {
-  document.getElementById('mdEditModal').classList.remove('show');
-  _mdEditTarget = null;
-}
-
-function saveMdEditModal() {
-  const val = document.getElementById('mdEditModalInput').value.trim();
-  if (!_mdEditTarget) { closeMdEditModal(); return; }
-  if (!val) { showToast('名称を入力してください', 'error'); return; }
-
-  if (_mdEditTarget.type === 'mfr') {
-    const customMfrs = load('customMfrs', []);
-    const idx = customMfrs.findIndex(m => m.id === _mdEditTarget.id);
-    if (idx > -1) {
-      customMfrs[idx] = { ...customMfrs[idx], name: val, jaName: val };
-      save('customMfrs', customMfrs);
-      showToast('メーカー名を変更しました', 'success');
-    }
-  } else if (_mdEditTarget.type === 'product') {
-    const products = load('products', []);
-    const idx = products.indexOf(_mdEditTarget.name);
-    if (idx > -1) {
-      products[idx] = val;
-      save('products', products);
-      const order = getProductOrder();
-      const oi = order.indexOf(_mdEditTarget.name);
-      if (oi > -1) { order[oi] = val; saveProductOrder(order); }
-      showToast('製品名を変更しました', 'success');
-    }
-  }
-  closeMdEditModal();
-  renderSettingsMasterData();
-  updateMasterDataCount();
-}
-
-/** カスタムメーカーを設定ページから削除 */
 function deleteCustomMfrFromSettings(id) {
   const customs = load('customMfrs', []);
   const mfr     = customs.find(m => m.id === id);
@@ -7164,9 +6894,9 @@ function openMasterData(section) {
   _masterEditMode = false;
   document.getElementById('masterDataOverlay').classList.add('open');
   renderSettingsMasterData();
-  // 編集ボタンを初期状態に戻す
+  // 編集ボタンはスワイプで代替するため非表示
   const btn = document.getElementById('masterEditToggleBtn');
-  if (btn) { btn.textContent = '編集'; btn.classList.remove('active'); }
+  if (btn) { btn.style.display = 'none'; }
   // オーバーレイタイトルをセクションに合わせて変更
   const titleEl = document.getElementById('masterDataOverlayTitle');
   if (titleEl) {
@@ -7180,6 +6910,7 @@ function closeMasterData() {
   _unlockScroll();
   _masterDataSection = null;
   _masterEditMode = false;
+  _mgmtSwipeActive = null;
   document.getElementById('masterDataOverlay').classList.remove('open');
   // 設定ページのカウントを更新
   updateMasterDataCount();
@@ -7190,12 +6921,153 @@ function updateMasterDataCount() {}
 
 let _inspEditMode = false;
 
+// ============================================================
+// 管理リスト汎用スワイプ（確認者・マスターデータ共通）
+// ============================================================
+let _mgmtSwipeActive = null; // { row, inner, actions }
+
+function _closeMgmtRow(info) {
+  if (!info) return;
+  info.inner.style.transform  = 'translateX(0)';
+  info.actions.style.opacity  = '0';
+  info.actions.style.pointerEvents = 'none';
+}
+
+function _initMgmtSwipe(container) {
+  // 前のリスナーをリセット
+  _mgmtSwipeActive = null;
+  const REVEAL = 148; // 2ボタン分の幅
+  const THRESH = 48;  // スワイプ確定しきい値
+
+  container.querySelectorAll('.mgmt-swipe-row').forEach(row => {
+    const inner   = row.querySelector('.mgmt-swipe-inner');
+    const actions = row.querySelector('.mgmt-swipe-actions');
+    if (!inner || !actions) return;
+    let startX = null, startY = null, dx = 0, isOpen = false;
+
+    // すでに開いている行をタップで閉じる
+    inner.addEventListener('click', e => {
+      if (isOpen) { _closeMgmtRow({inner, actions}); isOpen = false; e.stopPropagation(); return; }
+    });
+
+    row.addEventListener('touchstart', e => {
+      // 別の行が開いていたら閉じる
+      if (_mgmtSwipeActive && _mgmtSwipeActive.row !== row) {
+        _closeMgmtRow(_mgmtSwipeActive);
+        _mgmtSwipeActive = null;
+      }
+      startX = e.touches[0].clientX;
+      startY = e.touches[0].clientY;
+      dx = 0;
+      inner.style.transition = 'none';
+      actions.style.opacity = '1';
+      actions.style.pointerEvents = 'none';
+    }, { passive: true });
+
+    row.addEventListener('touchmove', e => {
+      if (startX === null) return;
+      const cdx = e.touches[0].clientX - startX;
+      const cdy = e.touches[0].clientY - startY;
+      if (Math.abs(cdy) > Math.abs(cdx) + 6) return;
+      if (cdx > 0 && !isOpen) { inner.style.transform = 'translateX(0)'; return; }
+      dx = isOpen ? Math.min(0, Math.max(cdx - REVEAL, -REVEAL)) : Math.max(cdx, -REVEAL);
+      inner.style.transform = `translateX(${dx}px)`;
+    }, { passive: true });
+
+    row.addEventListener('touchend', () => {
+      if (startX === null) return;
+      inner.style.transition = 'transform .25s cubic-bezier(.34,1.12,.64,1)';
+      if (!isOpen && dx <= -THRESH) {
+        inner.style.transform = `translateX(-${REVEAL}px)`;
+        actions.style.pointerEvents = 'all';
+        isOpen = true;
+        _mgmtSwipeActive = { row, inner, actions };
+      } else if (isOpen && dx > -THRESH) {
+        _closeMgmtRow({ inner, actions });
+        isOpen = false;
+        _mgmtSwipeActive = null;
+      } else if (isOpen) {
+        inner.style.transform = `translateX(-${REVEAL}px)`;
+        actions.style.pointerEvents = 'all';
+      } else {
+        _closeMgmtRow({ inner, actions });
+      }
+      startX = null; dx = 0;
+    });
+  });
+
+  // コンテナ外タップで閉じる
+  document.addEventListener('touchstart', function _mgmtOutside(e) {
+    if (_mgmtSwipeActive && !_mgmtSwipeActive.row.contains(e.target)) {
+      _closeMgmtRow(_mgmtSwipeActive);
+      _mgmtSwipeActive = null;
+    }
+  }, { passive: true });
+}
+
+/** メーカー名編集モーダル */
+function openMasterMfrEditModal(id, currentName, isCustom) {
+  document.getElementById('confirmTitle').textContent = 'メーカー名を編集';
+  const msgEl = document.getElementById('confirmMsg');
+  msgEl.innerHTML = `<input id="_mfrNameEdit" type="text" value="${currentName.replace(/"/g,'&quot;')}"
+    style="width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:10px;
+           font-size:15px;color:var(--text);background:var(--surface);box-sizing:border-box;margin-top:4px"
+    placeholder="メーカー名を入力" />`;
+  document.getElementById('confirmOk').textContent = '保存';
+  document.getElementById('confirmOk').onclick = () => {
+    const newName = document.getElementById('_mfrNameEdit')?.value.trim();
+    if (!newName) { showToast('メーカー名を入力してください', 'error'); return; }
+    if (isCustom) {
+      const customs = load('customMfrs', []);
+      const idx = customs.findIndex(m => m.id === id);
+      if (idx >= 0) { customs[idx].name = newName; customs[idx].jaName = newName; save('customMfrs', customs); }
+    }
+    // ビルトインは表示名のみローカル上書き（カスタム上書きリストに追加）
+    else {
+      const overrides = load('mfrNameOverrides', {});
+      overrides[id] = newName;
+      save('mfrNameOverrides', overrides);
+    }
+    closeConfirm();
+    renderSettingsMasterData();
+    showToast(`「${newName}」に変更しました`, 'success');
+  };
+  document.getElementById('confirmModal').classList.add('show');
+  setTimeout(() => document.getElementById('_mfrNameEdit')?.focus(), 100);
+}
+
+/** 製品名編集モーダル */
+function openMasterProductEditModal(oldName) {
+  document.getElementById('confirmTitle').textContent = '製品名を編集';
+  const escVal = oldName.replace(/"/g,'&quot;');
+  const msgEl  = document.getElementById('confirmMsg');
+  msgEl.innerHTML = `<input id="_prodNameEdit" type="text" value="${escVal}"
+    style="width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:10px;
+           font-size:15px;color:var(--text);background:var(--surface);box-sizing:border-box;margin-top:4px"
+    placeholder="製品名を入力" />`;
+  document.getElementById('confirmOk').textContent = '保存';
+  document.getElementById('confirmOk').onclick = () => {
+    const newName = document.getElementById('_prodNameEdit')?.value.trim();
+    if (!newName) { showToast('製品名を入力してください', 'error'); return; }
+    let prods = load('products', []);
+    const idx = prods.indexOf(oldName);
+    if (idx >= 0) prods[idx] = newName;
+    else prods.unshift(newName);
+    save('products', prods);
+    closeConfirm();
+    renderSettingsMasterData();
+    showToast(`「${newName}」に変更しました`, 'success');
+  };
+  document.getElementById('confirmModal').classList.add('show');
+  setTimeout(() => document.getElementById('_prodNameEdit')?.focus(), 100);
+}
+
 function openInspOverlay() {
   _lockScroll();
   _inspEditMode = false;
   document.getElementById('inspOverlay').classList.add('open');
   const btn = document.getElementById('inspEditToggleBtn');
-  if (btn) { btn.textContent = '編集'; btn.classList.remove('active'); }
+  if (btn) { btn.style.display = 'none'; }
   const addBtn = document.getElementById('inspAddBtn');
   if (addBtn) addBtn.style.display = '';
   renderInspOverlay();
@@ -7204,43 +7076,78 @@ function openInspOverlay() {
 function closeInspOverlay() {
   _unlockScroll();
   _inspEditMode = false;
+  _mgmtSwipeActive = null;
   document.getElementById('inspOverlay').classList.remove('open');
   updateInspSettingsCount();
 }
 
 function toggleInspEditMode() {
-  _inspEditMode = !_inspEditMode;
-  const btn = document.getElementById('inspEditToggleBtn');
-  if (btn) { btn.textContent = _inspEditMode ? '完了' : '編集'; btn.classList.toggle('active', _inspEditMode); }
-  renderInspOverlay();
+  // スワイプで編集・削除するため編集モードトグルは不要
 }
 
 function renderInspOverlay() {
   const el = document.getElementById('inspOverlayList');
   if (!el) return;
   const list = getInspectors();
-  const trashSvg = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="11" height="11" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>`;
 
   const rows = list.filter(ins => ins.id !== currentUser?.uid).map(ins => {
-    const vis = _inspEditMode ? 'visible' : 'hidden';
-    const ptr = _inspEditMode ? 'all' : 'none';
-    const actionBtn = `<button class="md-del-circle" onclick="removeInspector('${ins.id}')" title="削除"
-               style="visibility:${vis};pointer-events:${ptr}">
-         <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" width="12" height="12" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-       </button>`;
-    return `<div class="s-item" style="padding:11px 16px;gap:12px">
-      <div style="flex:1;min-width:0">
-        <div style="font-size:15px;font-weight:500;color:var(--text)">${ins.name}</div>
+    const safeId = (ins.id || '').replace(/'/g, "\\'");
+    const safeName = (ins.name || '').replace(/'/g, "\\'");
+    return `<div class="mgmt-swipe-row" data-insp-id="${ins.id}">
+      <div class="mgmt-swipe-actions">
+        <button class="mgmt-action-btn mgmt-edit-btn" onclick="openInspEditModal('${safeId}','${safeName}')">編集</button>
+        <button class="mgmt-action-btn mgmt-del-btn" onclick="removeInspector('${safeId}')">削除</button>
       </div>
-      ${actionBtn}
+      <div class="mgmt-swipe-inner s-item" style="padding:11px 16px;gap:12px;cursor:default">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:15px;font-weight:500;color:var(--text)">${ins.name}</div>
+        </div>
+        <svg viewBox="0 0 24 24" fill="none" stroke="var(--text-3)" stroke-width="2" width="14" height="14" stroke-linecap="round" style="flex-shrink:0"><polyline points="9 18 15 12 9 6"/></svg>
+      </div>
     </div>`;
   }).join('');
 
-  el.innerHTML = rows;
+  el.innerHTML = rows || `<div style="padding:20px;text-align:center;color:var(--text-3);font-size:13px">確認者がいません</div>`;
 
-  // ヘッダーの追加ボタンを編集モード中は非表示
+  _initMgmtSwipe(el);
+
+  // ヘッダーの追加・編集ボタンは常に表示（スワイプで操作するため編集モード不要）
   const addBtn = document.getElementById('inspAddBtn');
-  if (addBtn) addBtn.style.display = _inspEditMode ? 'none' : '';
+  if (addBtn) addBtn.style.display = '';
+  const editBtn = document.getElementById('inspEditToggleBtn');
+  if (editBtn) editBtn.style.display = 'none';
+}
+
+/** 確認者編集モーダルを開く */
+function openInspEditModal(id, currentName) {
+  // 既存のモーダルを流用、または専用モーダルを表示
+  document.getElementById('confirmTitle').textContent = '確認者名を編集';
+  document.getElementById('confirmMsg').textContent = '';
+  document.getElementById('confirmOk').textContent = '保存';
+  // インラインで入力欄を差し込む
+  const msgEl = document.getElementById('confirmMsg');
+  msgEl.innerHTML = `<input id="_inspNameEdit" type="text" value="${currentName.replace(/"/g,'&quot;')}"
+    style="width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:10px;
+           font-size:15px;color:var(--text);background:var(--surface);box-sizing:border-box;margin-top:4px"
+    placeholder="氏名を入力" />`;
+  document.getElementById('confirmOk').onclick = () => {
+    const newName = document.getElementById('_inspNameEdit')?.value.trim();
+    if (!newName) { showToast('氏名を入力してください', 'error'); return; }
+    let list = getInspectors();
+    const idx = list.findIndex(i => i.id === id);
+    if (idx >= 0) {
+      list[idx].name = newName;
+      list[idx].initials = newName.charAt(0);
+      save('inspectors', list);
+      renderInspectors();
+      renderInputPersonCards();
+      renderInspOverlay();
+    }
+    closeConfirm();
+    showToast(`「${newName}」に変更しました`, 'success');
+  };
+  document.getElementById('confirmModal').classList.add('show');
+  setTimeout(() => document.getElementById('_inspNameEdit')?.focus(), 100);
 }
 
 function updateInspSettingsCount() {}
@@ -8146,19 +8053,6 @@ init();
     <button id="masterEditToggleBtn" class="md-edit-btn" onclick="toggleMasterEditMode()">編集</button>
   </div>
   <div class="mfr-result-list" id="masterDataList"></div>
-</div>
-
-<!-- マスターデータ 名称編集モーダル -->
-<div class="modal-bg" id="mdEditModal" onclick="if(event.target===this)closeMdEditModal()">
-  <div class="modal-box">
-    <div class="modal-title" id="mdEditModalTitle">名称を編集</div>
-    <input type="text" class="modal-input" id="mdEditModalInput" placeholder="名称を入力"
-           onkeydown="if(event.key==='Enter')saveMdEditModal()">
-    <div class="modal-actions">
-      <button class="m-btn cancel" onclick="closeMdEditModal()">キャンセル</button>
-      <button class="m-btn ok" onclick="saveMdEditModal()">保存</button>
-    </div>
-  </div>
 </div>
 
 <!-- =================== 管理者管理オーバーレイ =================== -->
