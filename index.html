@@ -1249,6 +1249,7 @@ a{color:inherit;text-decoration:none}
 /* 検品履歴スワイプ削除 */
 .hist-swipe-row{
   position:relative;overflow:hidden;
+  -webkit-mask-image:linear-gradient(white,white);
   transform:translateZ(0);
   border-bottom:1px solid var(--border);
 }
@@ -2121,6 +2122,7 @@ a{color:inherit;text-decoration:none}
 /* ── 管理リスト汎用スワイプ行（確認者・マスターデータ） ── */
 .mgmt-swipe-row{
   position:relative;overflow:hidden;
+  -webkit-mask-image:linear-gradient(white,white);
   transform:translateZ(0);
   border-bottom:1px solid var(--border);
 }
@@ -5274,7 +5276,7 @@ function renderInputPersonOverlayList() {
       <div class="mgmt-swipe-actions">
         <button class="mgmt-action-btn mgmt-del-btn" onclick="deleteInputPerson('${safeId}')">削除</button>
       </div>
-      <div class="mgmt-swipe-inner s-item" style="padding:11px 16px;gap:12px;cursor:default">
+      <div class="mgmt-swipe-inner s-item" style="padding:14px 16px;gap:12px;cursor:default">
         <div style="flex:1;min-width:0">
           <div style="font-size:15px;font-weight:500;color:var(--text)">${safeName}</div>
         </div>
@@ -6724,7 +6726,7 @@ function renderSettingsMasterData() {
         <div class="mgmt-swipe-actions">
           <button class="mgmt-action-btn mgmt-del-btn" onclick="${delFn}">削除</button>
         </div>
-        <div class="mgmt-swipe-inner s-item" style="padding:10px 16px;gap:10px;cursor:default">
+        <div class="mgmt-swipe-inner s-item" style="padding:14px 16px;gap:10px;cursor:default">
           <div style="flex:1;min-width:0">
             <div style="font-size:14px;font-weight:${isCustom ? '600' : '500'};color:var(--text);
                         display:flex;align-items:center;gap:5px;flex-wrap:wrap">
@@ -6777,7 +6779,7 @@ function renderSettingsMasterData() {
             <div class="mgmt-swipe-actions">
               <button class="mgmt-action-btn mgmt-del-btn" onclick="deleteProductFromSettings('${esc}')">削除</button>
             </div>
-            <div class="mgmt-swipe-inner s-item" style="padding:11px 16px;cursor:default">
+            <div class="mgmt-swipe-inner s-item" style="padding:14px 16px;cursor:default">
               <span style="flex:1;font-size:14px;font-weight:500;color:var(--text);
                            overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml}</span>
               <svg viewBox="0 0 24 24" fill="none" stroke="var(--text-3)" stroke-width="2" width="14" height="14" stroke-linecap="round" style="flex-shrink:0;margin-left:8px"><polyline points="9 18 15 12 9 6"/></svg>
@@ -6910,9 +6912,9 @@ function openMasterData(section) {
   _masterEditMode = false;
   document.getElementById('masterDataOverlay').classList.add('open');
   renderSettingsMasterData();
-  // 編集ボタンはスワイプで代替するため非表示
+  // 編集ボタンはスワイプで代替するため非表示（スペースは維持してタイトルを中央に）
   const btn = document.getElementById('masterEditToggleBtn');
-  if (btn) { btn.style.display = 'none'; }
+  if (btn) { btn.style.visibility = 'hidden'; }
   // オーバーレイタイトルをセクションに合わせて変更
   const titleEl = document.getElementById('masterDataOverlayTitle');
   if (titleEl) {
@@ -7111,7 +7113,7 @@ function renderInspOverlay() {
       <div class="mgmt-swipe-actions">
         <button class="mgmt-action-btn mgmt-del-btn" onclick="removeInspector('${safeId}')">削除</button>
       </div>
-      <div class="mgmt-swipe-inner s-item" style="padding:11px 16px;gap:12px;cursor:default">
+      <div class="mgmt-swipe-inner s-item" style="padding:14px 16px;gap:12px;cursor:default">
         <div style="flex:1;min-width:0">
           <div style="font-size:15px;font-weight:500;color:var(--text)">${ins.name}</div>
         </div>
