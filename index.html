@@ -2142,6 +2142,7 @@ a{color:inherit;text-decoration:none}
 .mgmt-swipe-inner{
   position:relative;z-index:1;
   background:var(--surface);
+  border-bottom:1px solid var(--border);
   transform:translateX(0);
   transition:transform .25s cubic-bezier(.34,1.12,.64,1);
   will-change:transform;
@@ -5241,12 +5242,14 @@ function openInputPersonOverlay() {
   _lockScroll();
   document.getElementById('inputPersonOverlay').classList.add('open');
   renderInputPersonOverlayList();
+  // スワイプで削除するため編集ボタンは非表示
   const btn = document.getElementById('inputPersonEditToggleBtn');
-  if (btn) btn.textContent = '編集';
+  if (btn) btn.style.display = 'none';
 }
 
 function closeInputPersonOverlay() {
   _unlockScroll();
+  _mgmtSwipeActive = null;
   document.getElementById('inputPersonOverlay').classList.remove('open');
 }
 
@@ -5265,12 +5268,22 @@ function renderInputPersonOverlayList() {
     el.innerHTML = '<div style="padding:40px;text-align:center;color:var(--text-3);font-size:14px">入力者がいません</div>';
     return;
   }
-  el.innerHTML = list.map(p => `
-    <div class="mfr-result-item" style="gap:10px">
-      <div style="flex:1;font-size:15px;font-weight:600;color:var(--text)">${p.name}</div>
-      ${_inputPersonEditMode ? `<button class="settings-action-btn delete-btn" onclick="deleteInputPerson('${p.id}')">削除</button>` : ''}
-    </div>
-  `).join('');
+  el.innerHTML = list.map(p => {
+    const safeId   = (p.id   || '').replace(/'/g, "\\'");
+    const safeName = (p.name || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    return `<div class="mgmt-swipe-row" data-inp-id="${p.id}">
+      <div class="mgmt-swipe-actions">
+        <button class="mgmt-action-btn mgmt-del-btn" onclick="deleteInputPerson('${safeId}')">削除</button>
+      </div>
+      <div class="mgmt-swipe-inner s-item" style="padding:11px 16px;gap:12px;cursor:default">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:15px;font-weight:500;color:var(--text)">${safeName}</div>
+        </div>
+        <svg viewBox="0 0 24 24" fill="none" stroke="var(--text-3)" stroke-width="2" width="14" height="14" stroke-linecap="round" style="flex-shrink:0"><polyline points="9 18 15 12 9 6"/></svg>
+      </div>
+    </div>`;
+  }).join('');
+  _initMgmtSwipe(el);
 }
 
 function openInputPersonModal() {
@@ -5297,16 +5310,24 @@ function addInputPerson() {
 }
 
 function deleteInputPerson(id) {
-  if (!confirm('この入力者を削除しますか？')) return;
-  let list = getInputPersons().filter(p => p.id !== id);
-  save('inputPersons', list);
-  if (S.selectedInputPerson === id) {
-    S.selectedInputPerson = null;
-    const t = document.getElementById('inputPersonTriggerText');
-    if (t) t.textContent = '入力者を選択';
-  }
-  renderInputPersonOverlayList();
-  showToast('削除しました','success');
+  const person = getInputPersons().find(p => p.id === id);
+  const name = person ? person.name : '入力者';
+  document.getElementById('confirmTitle').textContent = `${name}を削除しますか？`;
+  document.getElementById('confirmMsg').textContent   = 'この入力者をリストから削除します。この操作は元に戻せません。';
+  document.getElementById('confirmOk').textContent    = '削除する';
+  document.getElementById('confirmOk').onclick = () => {
+    let list = getInputPersons().filter(p => p.id !== id);
+    save('inputPersons', list);
+    if (S.selectedInputPerson === id) {
+      S.selectedInputPerson = null;
+      const t = document.getElementById('inputPersonTriggerText');
+      if (t) t.textContent = '入力者を選択';
+    }
+    renderInputPersonOverlayList();
+    closeConfirm();
+    showToast(`${name}を削除しました`, 'default');
+  };
+  document.getElementById('confirmModal').classList.add('show');
 }
 
 function getInspectors() { return load('inspectors', DEFAULT_INSPECTORS); }
