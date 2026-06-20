@@ -2127,19 +2127,17 @@ a{color:inherit;text-decoration:none}
 .mgmt-swipe-row:last-child .mgmt-swipe-inner{border-bottom:none}
 .mgmt-swipe-actions{
   position:absolute;right:0;top:0;bottom:0;
-  width:148px;
+  width:74px;
   display:flex;align-items:stretch;
-  opacity:0;pointer-events:none;
-  transition:opacity .15s;
 }
 .mgmt-action-btn{
   flex:1;border:none;cursor:pointer;
   font-size:14px;font-weight:700;color:#fff;
   display:flex;align-items:center;justify-content:center;
   transition:filter .12s;
+  -webkit-tap-highlight-color:transparent;
 }
-.mgmt-action-btn:active{filter:brightness(.85)}
-.mgmt-edit-btn{ background:#3B82F6; }
+.mgmt-action-btn:active{filter:brightness(.82)}
 .mgmt-del-btn { background:#EF4444; }
 .mgmt-swipe-inner{
   position:relative;z-index:1;
@@ -6704,7 +6702,6 @@ function renderSettingsMasterData() {
     return `
       <div class="mgmt-swipe-row" data-mfr-id="${m.id}">
         <div class="mgmt-swipe-actions">
-          <button class="mgmt-action-btn mgmt-edit-btn" onclick="${editFn}">編集</button>
           <button class="mgmt-action-btn mgmt-del-btn" onclick="${delFn}">削除</button>
         </div>
         <div class="mgmt-swipe-inner s-item" style="padding:10px 16px;gap:10px;cursor:default">
@@ -6758,7 +6755,6 @@ function renderSettingsMasterData() {
         html += `
           <div class="mgmt-swipe-row" data-product="${esc}">
             <div class="mgmt-swipe-actions">
-              <button class="mgmt-action-btn mgmt-edit-btn" onclick="openMasterProductEditModal('${esc}')">編集</button>
               <button class="mgmt-action-btn mgmt-del-btn" onclick="deleteProductFromSettings('${esc}')">削除</button>
             </div>
             <div class="mgmt-swipe-inner s-item" style="padding:11px 16px;cursor:default">
@@ -6928,16 +6924,14 @@ let _mgmtSwipeActive = null; // { row, inner, actions }
 
 function _closeMgmtRow(info) {
   if (!info) return;
-  info.inner.style.transform  = 'translateX(0)';
-  info.actions.style.opacity  = '0';
-  info.actions.style.pointerEvents = 'none';
+  info.inner.style.transform = 'translateX(0)';
 }
 
 function _initMgmtSwipe(container) {
   // 前のリスナーをリセット
   _mgmtSwipeActive = null;
-  const REVEAL = 148; // 2ボタン分の幅
-  const THRESH = 48;  // スワイプ確定しきい値
+  const REVEAL = 74;  // 削除ボタン1つ分の幅
+  const THRESH = 40;  // スワイプ確定しきい値
 
   container.querySelectorAll('.mgmt-swipe-row').forEach(row => {
     const inner   = row.querySelector('.mgmt-swipe-inner');
@@ -6945,9 +6939,9 @@ function _initMgmtSwipe(container) {
     if (!inner || !actions) return;
     let startX = null, startY = null, dx = 0, isOpen = false;
 
-    // すでに開いている行をタップで閉じる
+    // 開いている行のinnerをタップ→閉じる
     inner.addEventListener('click', e => {
-      if (isOpen) { _closeMgmtRow({inner, actions}); isOpen = false; e.stopPropagation(); return; }
+      if (isOpen) { _closeMgmtRow({inner, actions}); isOpen = false; e.stopPropagation(); }
     });
 
     row.addEventListener('touchstart', e => {
@@ -6958,10 +6952,8 @@ function _initMgmtSwipe(container) {
       }
       startX = e.touches[0].clientX;
       startY = e.touches[0].clientY;
-      dx = 0;
+      dx = isOpen ? -REVEAL : 0;
       inner.style.transition = 'none';
-      actions.style.opacity = '1';
-      actions.style.pointerEvents = 'none';
     }, { passive: true });
 
     row.addEventListener('touchmove', e => {
@@ -6969,8 +6961,9 @@ function _initMgmtSwipe(container) {
       const cdx = e.touches[0].clientX - startX;
       const cdy = e.touches[0].clientY - startY;
       if (Math.abs(cdy) > Math.abs(cdx) + 6) return;
-      if (cdx > 0 && !isOpen) { inner.style.transform = 'translateX(0)'; return; }
-      dx = isOpen ? Math.min(0, Math.max(cdx - REVEAL, -REVEAL)) : Math.max(cdx, -REVEAL);
+      const base = isOpen ? -REVEAL : 0;
+      const raw  = base + cdx;
+      dx = Math.max(-REVEAL, Math.min(0, raw));
       inner.style.transform = `translateX(${dx}px)`;
     }, { passive: true });
 
@@ -6978,21 +6971,22 @@ function _initMgmtSwipe(container) {
       if (startX === null) return;
       inner.style.transition = 'transform .25s cubic-bezier(.34,1.12,.64,1)';
       if (!isOpen && dx <= -THRESH) {
+        // 開く
         inner.style.transform = `translateX(-${REVEAL}px)`;
-        actions.style.pointerEvents = 'all';
         isOpen = true;
         _mgmtSwipeActive = { row, inner, actions };
-      } else if (isOpen && dx > -THRESH) {
+      } else if (isOpen && dx > -(REVEAL - THRESH)) {
+        // 閉じる
         _closeMgmtRow({ inner, actions });
         isOpen = false;
         _mgmtSwipeActive = null;
       } else if (isOpen) {
+        // 開いたまま維持
         inner.style.transform = `translateX(-${REVEAL}px)`;
-        actions.style.pointerEvents = 'all';
       } else {
         _closeMgmtRow({ inner, actions });
       }
-      startX = null; dx = 0;
+      startX = null;
     });
   });
 
@@ -7095,7 +7089,6 @@ function renderInspOverlay() {
     const safeName = (ins.name || '').replace(/'/g, "\\'");
     return `<div class="mgmt-swipe-row" data-insp-id="${ins.id}">
       <div class="mgmt-swipe-actions">
-        <button class="mgmt-action-btn mgmt-edit-btn" onclick="openInspEditModal('${safeId}','${safeName}')">編集</button>
         <button class="mgmt-action-btn mgmt-del-btn" onclick="removeInspector('${safeId}')">削除</button>
       </div>
       <div class="mgmt-swipe-inner s-item" style="padding:11px 16px;gap:12px;cursor:default">
