@@ -6468,7 +6468,7 @@ function _initHistSwipe() {
   document.querySelectorAll('.hist-swipe-row').forEach(row => {
     const inner = row.querySelector('.hist-card');
     const bg    = row.querySelector('.swipe-del-bg');
-    let startX = null, startY = null, dx = 0, isOpen = false;
+    let startX = null, startY = null, dx = 0, isOpen = false, moved = false;
 
     inner.addEventListener('click', e => {
       if (isOpen) { _closeHistRow(inner, bg); isOpen = false; e.stopPropagation(); }
@@ -6477,7 +6477,7 @@ function _initHistSwipe() {
     row.addEventListener('touchstart', e => {
       startX = e.touches[0].clientX;
       startY = e.touches[0].clientY;
-      dx = 0;
+      dx = 0; moved = false;
       inner.classList.add('swiping');
     }, { passive: true });
 
@@ -6486,6 +6486,7 @@ function _initHistSwipe() {
       const cdx = e.touches[0].clientX - startX;
       const cdy = e.touches[0].clientY - startY;
       if (Math.abs(cdy) > Math.abs(cdx) + 6) return;
+      moved = true;
       if (cdx > 0) { inner.style.transform = 'translateX(0)'; return; }
       dx = Math.max(cdx, -SW_MAX);
       inner.style.transform = `translateX(${dx}px)`;
@@ -6498,6 +6499,10 @@ function _initHistSwipe() {
       if (dx <= -SW_DEL) {
         inner.style.transform = `translateX(-${SW_MAX}px)`;
         isOpen = true;
+      } else if (isOpen && !moved) {
+        // パネルが開いた状態でのタップ（スワイプなし）→ onclick に委譲
+        inner.style.transform = `translateX(-${SW_MAX}px)`;
+        // isOpen は true のまま維持
       } else {
         _closeHistRow(inner, bg);
         isOpen = false;
