@@ -3869,6 +3869,7 @@ function registerCustomMfr(name) {
   closeMfrSearch();
   renderMfr();
   checkHistoryMatch();
+}
 
 function toggleAllMfr() { /* 旧関数 - 新デザインでは未使用 */ }
 
@@ -8148,17 +8149,13 @@ init();
   const mBlob = new Blob([JSON.stringify(manifest)], { type: "application/json" });
   document.getElementById("pwa-manifest").setAttribute("href", URL.createObjectURL(mBlob));
 
-  if ("serviceWorker" in navigator) {
-    const sw = `
-const CACHE="kenpin-v78";
-self.addEventListener("install",e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll([self.location.href.replace(/\/sw-[^/]+$/,"")])));self.skipWaiting();});
-self.addEventListener("activate",e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))));self.clients.claim();});
-self.addEventListener("fetch",e=>{e.respondWith(caches.match(e.request).then(c=>c||fetch(e.request)));});
-`;
-    navigator.serviceWorker
-      .register(URL.createObjectURL(new Blob([sw],{type:"application/javascript"})),{scope:"./"})
-      .then(()=>console.log("[PWA] SW registered"))
-      .catch(e=>console.warn("[PWA] SW error:",e));
+    if ("serviceWorker" in navigator) {
+    // blob: URL は ServiceWorker に使用できないため、登録をスキップします
+    // ServiceWorker を使いたい場合は sw.js を別ファイルとして配置してください
+    // navigator.serviceWorker.register('./sw.js', {scope: './'})
+    //   .then(() => console.log('[PWA] SW registered'))
+    //   .catch(e => console.warn('[PWA] SW error:', e));
+    console.log('[PWA] ServiceWorker: blob: URL による登録は非対応のためスキップしました');
   }
 
   let dp=null;
