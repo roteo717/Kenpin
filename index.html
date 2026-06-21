@@ -3304,7 +3304,11 @@ function closeToast() {
 // 過去履歴照合トースト通知
 // ============================================================
 function checkHistoryMatch() {
-  if (!S.selectedMfr || !S.productName || !S.defects.length) return;
+  // 3条件のいずれかが未入力なら即トーストを閉じる
+  if (!S.selectedMfr || !S.productName || !S.defects.length) {
+    closeToast();
+    return;
+  }
   // 保存時と同じ変換を適用（その他：〇〇 形式）
   const rawDefect = S.defects[0];
   const defect = (rawDefect === 'その他' && S.defectsOther.trim())
@@ -3325,6 +3329,9 @@ function checkHistoryMatch() {
       () => goToMatchedHistory(defect),
       true
     );
+  } else {
+    // 条件が一致しなくなったらトーストを閉じる
+    closeToast();
   }
 }
 
@@ -3421,6 +3428,7 @@ function renderMfr() {
 function selectMfr(id) {
   S.selectedMfr = S.selectedMfr === id ? null : id;
   renderMfr();
+  checkHistoryMatch();
 }
 
 // ============================================================
@@ -3690,6 +3698,7 @@ function pickMfrFromSearch(id) {
   S.showAllMfr = false;
   closeMfrSearch();
   renderMfr();
+  checkHistoryMatch();
 }
 
 /** すべてのメーカーリストを表示 */
@@ -3836,6 +3845,7 @@ function pickProductFromSearch(name) {
   if (input) input.value = name;
   closeProductSearch();
   renderProduct();
+  checkHistoryMatch();
 }
 
 /** 未登録メーカーを新規登録して即選択 */
@@ -3858,7 +3868,7 @@ function registerCustomMfr(name) {
   S.showAllMfr  = false;
   closeMfrSearch();
   renderMfr();
-}
+  checkHistoryMatch();
 
 function toggleAllMfr() { /* 旧関数 - 新デザインでは未使用 */ }
 
@@ -4985,6 +4995,7 @@ function pickProduct(name) {
   dismissOCR();
   const cb = document.getElementById('productClearBtn');
   if (cb) cb.style.display = 'flex';
+  checkHistoryMatch();
 }
 
 // フォーカス時：何もしない（1文字入力後から候補を表示）
@@ -5040,6 +5051,7 @@ function onProductInput(val) {
   if (cb) cb.style.display = val ? 'flex' : 'none';
   if (!val.trim()) {
     hideSuggest();
+    checkHistoryMatch();
     return;
   }
   const history = load('products', SAMPLE_PRODUCTS);
@@ -5202,6 +5214,7 @@ function clearDefects() {
   if (inp) inp.value = '';
   if (wrap) wrap.style.display = 'none';
   renderDefects();
+  closeToast();
 }
 
 // ============================================================
@@ -6803,6 +6816,7 @@ function deleteCustomMfrFromSettings(id) {
   if (S.selectedMfr === id) {
     S.selectedMfr = null;
     renderMfr();
+    checkHistoryMatch();
   }
   renderSettingsMasterData();
   updateMasterDataCount();
