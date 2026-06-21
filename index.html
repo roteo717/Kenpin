@@ -6042,6 +6042,7 @@ async function syncInspectionToSheet(record) {
   }));
 
   const payload = {
+    spreadsheetId:    '1AZSCUtwo6apa15wG9YpmE4uDoPjvnkeNy6acepvEoV0',
     createdAt:        fmtDateForSheet(record.createdAt),
     manufacturerName: record.manufacturerName || '',
     productName:       record.productName || '',
@@ -6122,7 +6123,12 @@ async function saveInspection() {
     await firestoreAddInspection(record);
 
     // ── Googleスプレッドシート（Excel）へ自動反映（失敗してもFirestore保存は成功扱い） ──
-    syncInspectionToSheet(record).catch(e => console.warn('[Sheet同期] 失敗:', e));
+    syncInspectionToSheet(record).then(() => {
+      showToast('✅ スプレッドシートに反映しました', 'success');
+    }).catch(e => {
+      console.warn('[Sheet同期] 失敗:', e);
+      showToast(`❌ シート同期エラー: ${(e.message || String(e)).slice(0, 120)}`, 'error');
+    });
 
     // ローカル DB を更新（UI即時反映用）
     const list = load('inspections', []);
