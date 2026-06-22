@@ -5210,7 +5210,7 @@ function toggleDefect(item) {
   document.getElementById('defectOtherInput').value = '';
   if (item === 'その他') {
     wrap.style.display = 'block';
-    setTimeout(() => document.getElementById('defectOtherInput').focus(), 80);
+    document.getElementById('defectOtherInput').focus();
   } else {
     wrap.style.display = 'none';
   }
@@ -5315,7 +5315,7 @@ function renderInputPersonOverlayList() {
 
 function openInputPersonModal() {
   document.getElementById('inputPersonModal').classList.add('show');
-  setTimeout(() => document.getElementById('inputPersonName').focus(), 80);
+  document.getElementById('inputPersonName').focus();
 }
 
 function closeInputPersonModal() {
@@ -7111,7 +7111,7 @@ function openMasterMfrEditModal(id, currentName, isCustom) {
     showToast(`「${newName}」に変更しました`, 'success');
   };
   document.getElementById('confirmModal').classList.add('show');
-  setTimeout(() => document.getElementById('_mfrNameEdit')?.focus(), 100);
+  document.getElementById('_mfrNameEdit')?.focus();
 }
 
 /** 製品名編集モーダル */
@@ -7137,7 +7137,7 @@ function openMasterProductEditModal(oldName) {
     showToast(`「${newName}」に変更しました`, 'success');
   };
   document.getElementById('confirmModal').classList.add('show');
-  setTimeout(() => document.getElementById('_prodNameEdit')?.focus(), 100);
+  document.getElementById('_prodNameEdit')?.focus();
 }
 
 function openInspOverlay() {
@@ -7224,7 +7224,7 @@ function openInspEditModal(id, currentName) {
     showToast(`「${newName}」に変更しました`, 'success');
   };
   document.getElementById('confirmModal').classList.add('show');
-  setTimeout(() => document.getElementById('_inspNameEdit')?.focus(), 100);
+  document.getElementById('_inspNameEdit')?.focus();
 }
 
 function updateInspSettingsCount() {}
