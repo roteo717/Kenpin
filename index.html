@@ -7866,9 +7866,11 @@ const _authTimeout = setTimeout(() => {
 }, 8000);
 
 auth.onAuthStateChanged(async user => {
-  if (_authResolved) return; // タイムアウト後に遅延コールバックが来た場合は無視
-  _authResolved = true;
-  clearTimeout(_authTimeout);
+  // 初回コールバック時のみタイムアウトをキャンセル（2回目以降＝ログイン・ログアウト時も処理する）
+  if (!_authResolved) {
+    _authResolved = true;
+    clearTimeout(_authTimeout);
+  }
 
   const loadingEl = document.getElementById('loadingScreen');
   const loginEl   = document.getElementById('loginScreen');
