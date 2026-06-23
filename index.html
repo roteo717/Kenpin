@@ -6767,35 +6767,27 @@ function renderSettingsMasterData() {
   const totalVisible = trueCustom.length + activeBuiltIn.length;
   const totalHidden  = hiddenBuiltIn.length;
 
-  // アイコン
-  const mfrSvg     = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="17" height="17" stroke-linecap="round"><path d="M3 21h18"/><rect x="2" y="3" width="20" height="18" rx="1.5"/></svg>`;
-  const trashSvg   = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="11" height="11" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>`;
-  const eyeOffSvg  = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="11" height="11" stroke-linecap="round"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>`;
-  const eyeSvg     = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="11" height="11" stroke-linecap="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`;
-  const chevDownSvg = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="14" height="14" stroke-linecap="round" id="hiddenMfrsChevron" style="transition:transform .22s"><polyline points="6 9 12 15 18 9"/></svg>`;
-
   // メーカー1行分のHTMLを生成（スワイプ対応）
   const mfrRow = (m, isCustom, isHidden) => {
-    const safeId   = (m.id || '').replace(/'/g, "\\'");
+    const safeId   = (m.id || '').replace(/'/g, "\'");
     const name     = m.jaName || m.name;
-    const safeName = name.replace(/'/g, "\\'");
+    const safeName = name.replace(/'/g, "\'");
     const sub      = m.jaName && m.jaName !== m.name ? m.name : '';
     const delFn    = isCustom ? `deleteCustomMfrFromSettings('${safeId}')` : `hideBuiltInMfr('${safeId}')`;
-    const editFn   = `openMasterMfrEditModal('${safeId}','${safeName}',${isCustom})`;
     return `
       <div class="mgmt-swipe-row" data-mfr-id="${m.id}">
         <div class="mgmt-swipe-actions">
           <button class="mgmt-action-btn mgmt-del-btn" onclick="${delFn}">削除</button>
         </div>
-        <div class="mgmt-swipe-inner s-item" style="padding:14px 16px;gap:10px;cursor:default">
+        <div class="mgmt-swipe-inner s-item" style="padding:13px 14px;gap:12px;cursor:default">
+          <div class="inp-list-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="var(--text-3)" stroke-width="1.8" width="20" height="20" stroke-linecap="round"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+          </div>
           <div style="flex:1;min-width:0">
-            <div style="font-size:14px;font-weight:${isCustom ? '600' : '500'};color:var(--text);
-                        display:flex;align-items:center;gap:5px;flex-wrap:wrap">
-              <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:200px">${name}</span>
-            </div>
+            <div style="font-size:15px;font-weight:${isCustom ? '600' : '500'};color:var(--text);
+                        overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${name}</div>
             ${sub ? `<div style="font-size:11px;color:var(--text-3);margin-top:1px">${sub}</div>` : ''}
           </div>
-          <svg viewBox="0 0 24 24" fill="none" stroke="var(--text-3)" stroke-width="2" width="14" height="14" stroke-linecap="round" style="flex-shrink:0"><polyline points="9 18 15 12 9 6"/></svg>
         </div>
       </div>`;
   };
@@ -6815,11 +6807,13 @@ function renderSettingsMasterData() {
     });
 
     if (allVisible.length === 0) {
-      html += `<div style="padding:14px 16px;font-size:13px;color:var(--text-3);text-align:center">
-                 すべてのメーカーが非表示になっています
+      html += `<div style="padding:40px;text-align:center;color:var(--text-3);font-size:14px">
+                 メーカーがありません
                </div>`;
     } else {
+      html += '<div class="inp-list-container">';
       allVisible.forEach(({ m, isCustom }) => { html += mfrRow(m, isCustom, false); });
+      html += '</div>';
     }
 
   }
@@ -6827,26 +6821,29 @@ function renderSettingsMasterData() {
   /* ── 製品名セクション（section === 'product' または null のとき表示） ── */
   if (!section || section === 'product') {
     if (products.length === 0) {
-      html += `<div style="padding:14px 16px;font-size:13px;color:var(--text-3);text-align:center">
+      html += `<div style="padding:40px;text-align:center;color:var(--text-3);font-size:14px">
                  製品名履歴はありません
                </div>`;
     } else {
+      html += '<div class="inp-list-container">';
       products.forEach(p => {
-        const esc     = p.replace(/'/g, "\\'");
+        const esc     = p.replace(/'/g, "\'");
         const escHtml = p.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-        const escEdit = escHtml.replace(/"/g,'&quot;');
         html += `
           <div class="mgmt-swipe-row" data-product="${esc}">
             <div class="mgmt-swipe-actions">
               <button class="mgmt-action-btn mgmt-del-btn" onclick="deleteProductFromSettings('${esc}')">削除</button>
             </div>
-            <div class="mgmt-swipe-inner s-item" style="padding:14px 16px;cursor:default">
-              <span style="flex:1;font-size:14px;font-weight:500;color:var(--text);
+            <div class="mgmt-swipe-inner s-item" style="padding:13px 14px;gap:12px;cursor:default">
+              <div class="inp-list-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="var(--text-3)" stroke-width="1.8" width="20" height="20" stroke-linecap="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+              </div>
+              <span style="flex:1;font-size:15px;font-weight:500;color:var(--text);
                            overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml}</span>
-              <svg viewBox="0 0 24 24" fill="none" stroke="var(--text-3)" stroke-width="2" width="14" height="14" stroke-linecap="round" style="flex-shrink:0;margin-left:8px"><polyline points="9 18 15 12 9 6"/></svg>
             </div>
           </div>`;
       });
+      html += '</div>';
     }
   }
 
@@ -7191,22 +7188,26 @@ function renderInspOverlay() {
   const list = getInspectors();
 
   const rows = list.filter(ins => ins.id !== currentUser?.uid).map(ins => {
-    const safeId = (ins.id || '').replace(/'/g, "\\'");
-    const safeName = (ins.name || '').replace(/'/g, "\\'");
+    const safeId = (ins.id || '').replace(/'/g, "\'");
     return `<div class="mgmt-swipe-row" data-insp-id="${ins.id}">
       <div class="mgmt-swipe-actions">
         <button class="mgmt-action-btn mgmt-del-btn" onclick="removeInspector('${safeId}')">削除</button>
       </div>
-      <div class="mgmt-swipe-inner s-item" style="padding:14px 16px;gap:12px;cursor:default">
-        <div style="flex:1;min-width:0">
-          <div style="font-size:15px;font-weight:500;color:var(--text)">${ins.name}</div>
+      <div class="mgmt-swipe-inner s-item" style="padding:13px 14px;gap:12px;cursor:default">
+        <div class="inp-list-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="var(--text-3)" stroke-width="1.8" width="20" height="20" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/>
+            <circle cx="12" cy="7" r="4"/>
+          </svg>
         </div>
-        <svg viewBox="0 0 24 24" fill="none" stroke="var(--text-3)" stroke-width="2" width="14" height="14" stroke-linecap="round" style="flex-shrink:0"><polyline points="9 18 15 12 9 6"/></svg>
+        <div class="inp-list-name">${ins.name}</div>
       </div>
     </div>`;
   }).join('');
 
-  el.innerHTML = rows || `<div style="padding:20px;text-align:center;color:var(--text-3);font-size:13px">確認者がいません</div>`;
+  el.innerHTML = rows
+    ? `<div class="inp-list-container">${rows}</div>`
+    : `<div style="padding:40px;text-align:center;color:var(--text-3);font-size:14px">確認者がいません</div>`;
 
   _initMgmtSwipe(el);
 
