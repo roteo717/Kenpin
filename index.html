@@ -2167,6 +2167,25 @@ a{color:inherit;text-decoration:none}
   transition:background .15s;gap:8px;
 }
 .settings-section-expand:active{background:var(--primary-dim);color:var(--primary)}
+
+/* ── 入力者管理 カードリスト ── */
+.inp-list-container{
+  margin:12px 14px;
+  border:1px solid var(--border);
+  border-radius:14px;
+  overflow:hidden;
+  box-shadow:0 1px 3px rgba(0,0,0,.05);
+}
+.inp-list-icon{
+  width:34px;height:34px;border-radius:50%;
+  background:var(--surface-2);
+  display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;
+}
+.inp-list-name{
+  flex:1;font-size:15px;font-weight:500;color:var(--text);
+  min-width:0;
+}
 </style>
 
 <!-- ★ Firebase SDK ★ -->
@@ -5295,21 +5314,24 @@ function renderInputPersonOverlayList() {
     el.innerHTML = '<div style="padding:40px;text-align:center;color:var(--text-3);font-size:14px">入力者がいません</div>';
     return;
   }
-  el.innerHTML = list.map(p => {
-    const safeId   = (p.id   || '').replace(/'/g, "\\'");
+  el.innerHTML = '<div class="inp-list-container">' + list.map(p => {
+    const safeId   = (p.id   || '').replace(/'/g, "\'");
     const safeName = (p.name || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
     return `<div class="mgmt-swipe-row" data-inp-id="${p.id}">
       <div class="mgmt-swipe-actions">
         <button class="mgmt-action-btn mgmt-del-btn" onclick="deleteInputPerson('${safeId}')">削除</button>
       </div>
-      <div class="mgmt-swipe-inner s-item" style="padding:14px 16px;gap:12px;cursor:default">
-        <div style="flex:1;min-width:0">
-          <div style="font-size:15px;font-weight:500;color:var(--text)">${safeName}</div>
+      <div class="mgmt-swipe-inner s-item" style="padding:13px 14px;gap:12px;cursor:default">
+        <div class="inp-list-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="var(--text-3)" stroke-width="1.8" width="20" height="20" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/>
+            <circle cx="12" cy="7" r="4"/>
+          </svg>
         </div>
-        <svg viewBox="0 0 24 24" fill="none" stroke="var(--text-3)" stroke-width="2" width="14" height="14" stroke-linecap="round" style="flex-shrink:0"><polyline points="9 18 15 12 9 6"/></svg>
+        <div class="inp-list-name">${safeName}</div>
       </div>
     </div>`;
-  }).join('');
+  }).join('') + '</div>';
   _initMgmtSwipe(el);
 }
 
