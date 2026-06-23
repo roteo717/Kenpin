@@ -7941,8 +7941,15 @@ auth.onAuthStateChanged(async user => {
 // Firestoreからプロフィールを取得
 async function loadUserProfile() {
   try {
-    const doc = await db.collection('users').doc(currentUser.uid).get();
-    return doc.exists ? doc.data() : null;
+    // まずログインID（社員番号）でプロフィールを検索
+    const loginId = currentUser.email ? currentUser.email.split('@')[0] : null;
+    if (loginId) {
+      const docByLogin = await db.collection('users').doc(loginId).get();
+      if (docByLogin.exists) return docByLogin.data();
+    }
+    // なければUID（Firebase内部ID）で検索（後方互換性）
+    const docByUid = await db.collection('users').doc(currentUser.uid).get();
+    return docByUid.exists ? docByUid.data() : null;
   } catch(e) { return null; }
 }
 
