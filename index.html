@@ -1481,10 +1481,8 @@ a{color:inherit;text-decoration:none}
 }
 .photo-viewer-bg.show{opacity:1;pointer-events:all}
 .photo-viewer-img{
-  max-width:100vw;max-height:100dvh;
-  width:auto;height:auto;
+  max-width:100%;max-height:100dvh;
   object-fit:contain;
-  display:block;margin:auto;
   transition:transform .2s;
 }
 .photo-viewer-close{
@@ -3020,26 +3018,25 @@ async function loadFromFirestore() {
       }
     });
 
-    // ③ 旧構造からの移行チェック（v55以前：data/inspections に配列保存）
+    // ③ 旧構造からの移行チェック（v55以前：users/{uid}/data/inspections に配列保存）
     try {
       const oldRef = db.collection('users').doc(currentUser.uid).collection('data').doc('inspections');
       const oldDoc = await oldRef.get();
       if (oldDoc.exists) {
         const oldList = oldDoc.data().value || [];
         if (oldList.length > 0) {
-          console.log(`[Migration] 旧形式から ${oldList.length} 件を移行中...`);
+          console.log(`[Migration] 旧形式から ${oldList.length} 件を共有コレクションへ移行中...`);
           const batch = db.batch();
           for (const insp of oldList) {
             if (!insp.id) continue;
-            const ref = db.collection('users').doc(currentUser.uid)
-              .collection('inspections').doc(insp.id);
+            // ★ 移行先を共有コレクションに変更
+            const ref = db.collection('shared').doc('inspections').collection('items').doc(insp.id);
             batch.set(ref, insp);
           }
           batch.delete(oldRef);
           await batch.commit();
           console.log('[Migration] 移行完了');
         } else {
-          // 空のドキュメントも削除
           await oldRef.delete().catch(() => {});
         }
       }
@@ -3047,21 +3044,42 @@ async function loadFromFirestore() {
       console.warn('[Migration] 移行スキップ:', migErr);
     }
 
-    // ④ 新構造から検品記録をロード（users/{uid}/inspections/{id}）
+    // ③-b 旧個別コレクション（users/{uid}/inspections）からの移行
+    try {
+      const oldInspSnap = await db.collection('users').doc(currentUser.uid)
+        .collection('inspections').get();
+      if (!oldInspSnap.empty) {
+        console.log(`[Migration] users/{uid}/inspections から ${oldInspSnap.size} 件を共有コレクションへ移行中...`);
+        const batchSize = 400;
+        const docs = oldInspSnap.docs;
+        for (let i = 0; i < docs.length; i += batchSize) {
+          const batch = db.batch();
+          docs.slice(i, i + batchSize).forEach(d => {
+            const sharedRef = db.collection('shared').doc('inspections').collection('items').doc(d.id);
+            batch.set(sharedRef, d.data());
+            batch.delete(d.ref);
+          });
+          await batch.commit();
+        }
+        console.log('[Migration] 旧個別コレクション移行完了');
+      }
+    } catch(migErr2) {
+      console.warn('[Migration] 旧個別コレクション移行スキップ:', migErr2);
+    }
+
+    // ④ 共有コレクションから検品記録をロード（shared/inspections/items/{id}）
     // ★ Firestore インデックス要件:
-    //   Collection: inspections, Field: createdAt Descending
+    //   Collection: items (shared/inspections/items), Field: createdAt Descending
     //   初回アクセス時にコンソールログにインデックス作成URLが表示されます
     let inspSnap;
     try {
-      inspSnap = await db.collection('users').doc(currentUser.uid)
-        .collection('inspections')
+      inspSnap = await db.collection('shared').doc('inspections').collection('items')
         .orderBy('createdAt', 'desc')
         .get();
     } catch(idxErr) {
       // インデックス未作成時はorderByなしでフォールバック
       console.warn('[Firestore] インデックス未作成。orderByなしで読み込みます:', idxErr.message);
-      inspSnap = await db.collection('users').doc(currentUser.uid)
-        .collection('inspections')
+      inspSnap = await db.collection('shared').doc('inspections').collection('items')
         .get();
     }
     // クライアント側でも日付降順にソート（確実性のため）
@@ -3069,7 +3087,7 @@ async function loadFromFirestore() {
       .map(doc => doc.data())
       .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
-    // 初回（データなし）のみサンプルを投入
+    // 初回（全ユーザーでデータなし）のみサンプルを共有コレクションへ投入
     if (!DB.inspections.length) {
       const now = new Date();
       const samples = [
@@ -3094,42 +3112,42 @@ async function loadFromFirestore() {
 // ============================================================
 // Firestore 検品記録 個別ドキュメント管理
 // （1MB 制限回避のため、1検品 = 1ドキュメント構成）
-// コレクション: users/{uid}/inspections/{inspectionId}
+// ★ 全ユーザー共有: shared/inspections/{inspectionId}
 // ============================================================
 
+/** 共有検品コレクションへの参照 */
+function sharedInspCol() {
+  return db.collection('shared').doc('inspections').collection('items');
+}
+
 /**
- * 1件の検品記録を Firestore の個別ドキュメントとして保存する。
+ * 1件の検品記録を Firestore の共有コレクションに保存する。
  * photos フィールドには Drive URL のみが含まれ、base64 は保存されない。
  */
 async function firestoreAddInspection(record) {
   if (!currentUser) return;
-  await db.collection('users').doc(currentUser.uid)
-    .collection('inspections').doc(record.id)
-    .set(record);
+  await sharedInspCol().doc(record.id).set(record);
 }
 
 /**
- * 1件の検品記録を Firestore から削除する。
+ * 1件の検品記録を Firestore の共有コレクションから削除する。
  */
 async function firestoreDeleteInspection(id) {
   if (!currentUser) return;
   try {
-    await db.collection('users').doc(currentUser.uid)
-      .collection('inspections').doc(id)
-      .delete();
+    await sharedInspCol().doc(id).delete();
   } catch(e) {
     console.warn('[Firestore] inspection delete error:', e);
   }
 }
 
 /**
- * 全検品記録を Firestore から一括削除する（バッチ書き込み）。
+ * 全検品記録を Firestore の共有コレクションから一括削除する（バッチ書き込み）。
  */
 async function firestoreDeleteAllInspections() {
   if (!currentUser) return;
   try {
-    const snap = await db.collection('users').doc(currentUser.uid)
-      .collection('inspections').get();
+    const snap = await sharedInspCol().get();
     if (snap.empty) return;
     // Firestore バッチは最大500件。件数が多い場合は分割して実行。
     const batchSize = 400;
