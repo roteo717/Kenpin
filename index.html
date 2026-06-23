@@ -7926,6 +7926,7 @@ auth.onAuthStateChanged(async user => {
     loginEl.style.display   = 'none';
     appEl.style.display     = 'block';
     renderApp();
+    renderInspSettings(); // ログイン後に設定ページのユーザー名を必ず更新
   } else {
     currentUser        = null;
     currentUserProfile = null;
