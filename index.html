@@ -3101,13 +3101,12 @@ async function loadFromFirestore() {
         firestoreAddInspection(s).catch(e => console.warn('sample save:', e));
       }
     }
-    // 共有マスタが空の場合のみデフォルト値を書き込む
-    // Firestoreに1件もない場合のみ書き込み → 複数ユーザー同時初回ログイン時の競合を防ぐ
-    if (sharedSnap.empty) {
-      if (DB.inspectors.length === 0)   save('inspectors',   [...DEFAULT_INSPECTORS]);
-      if (DB.inputPersons.length === 0) save('inputPersons', [...DEFAULT_INPUT_PERSONS]);
-      if (DB.products.length === 0)     save('products',     [...SAMPLE_PRODUCTS]);
-    }
+    // 共有マスタに存在しないキーのみデフォルト値を書き込む
+    // sharedSnap に含まれるキーを Set で管理し、存在しないキーだけ初期化する
+    const existingSharedKeys = new Set(sharedSnap.docs.map(d => d.id));
+    if (!existingSharedKeys.has('inspectors'))   save('inspectors',   [...DEFAULT_INSPECTORS]);
+    if (!existingSharedKeys.has('inputPersons')) save('inputPersons', [...DEFAULT_INPUT_PERSONS]);
+    if (!existingSharedKeys.has('products'))     save('products',     [...SAMPLE_PRODUCTS]);
   } catch(e) {
     console.warn('Firestore load:', e);
   }
