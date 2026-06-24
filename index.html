@@ -3101,8 +3101,11 @@ async function loadFromFirestore() {
         firestoreAddInspection(s).catch(e => console.warn('sample save:', e));
       }
     }
-    if (DB.inspectors.length === 0) {
-      save('inspectors', [...DEFAULT_INSPECTORS]);
+    // 共有マスタが空の場合のみデフォルト値を書き込む
+    // Firestoreに1件もない場合のみ書き込み → 複数ユーザー同時初回ログイン時の競合を防ぐ
+    if (sharedSnap.empty) {
+      if (DB.inspectors.length === 0)   save('inspectors',   [...DEFAULT_INSPECTORS]);
+      if (DB.inputPersons.length === 0) save('inputPersons', [...DEFAULT_INPUT_PERSONS]);
     }
   } catch(e) {
     console.warn('Firestore load:', e);
