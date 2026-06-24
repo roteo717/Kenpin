@@ -2966,7 +2966,7 @@ const DARK_KEY = 'kiken_dark_v1';
 //   SHARED_KEYS  → users間で共有（マスターデータ）
 //   それ以外     → ユーザーごと（履歴系）
 // ============================================================
-const SHARED_KEYS = new Set(['inspectors', 'inputPersons', 'customMfrs', 'hiddenMfrs']);
+const SHARED_KEYS = new Set(['inspectors', 'inputPersons', 'customMfrs', 'hiddenMfrs', 'products']);
 
 function load(key, def) {
   return DB[key] !== undefined ? DB[key] : def;
@@ -3106,6 +3106,7 @@ async function loadFromFirestore() {
     if (sharedSnap.empty) {
       if (DB.inspectors.length === 0)   save('inspectors',   [...DEFAULT_INSPECTORS]);
       if (DB.inputPersons.length === 0) save('inputPersons', [...DEFAULT_INPUT_PERSONS]);
+      if (DB.products.length === 0)     save('products',     [...SAMPLE_PRODUCTS]);
     }
   } catch(e) {
     console.warn('Firestore load:', e);
