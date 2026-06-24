@@ -3446,8 +3446,8 @@ function getRecentMfrs() {
   const hiddenMfrs     = [...new Set([...hiddenHistory, ...hiddenBuiltIn])];
   const seen = [];
   // 入力者が選択済みならその人の検品だけに絞る
-  const source = S.selectedInsp
-    ? inspections.filter(r => r.inspectorId === S.selectedInsp)
+  const source = S.selectedInputPerson
+    ? inspections.filter(r => r.inputPersonId === S.selectedInputPerson)
     : inspections;
   const sorted = [...source].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
   for (const insp of sorted) {
@@ -3830,7 +3830,21 @@ function renderProductResults(q) {
   const checkIcon  = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" width="16" height="16" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>`;
   const chevRight  = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="14" height="14" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg>`;
 
-  const history = load('products', SAMPLE_PRODUCTS);
+  // 入力者が選択済みなら検品履歴から入力者で絞り込んだ製品名リストを使用
+  let history;
+  if (S.selectedInputPerson) {
+    const allInspections = load('inspections', []);
+    const seenProds = [];
+    [...allInspections]
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+      .filter(r => r.inputPersonId === S.selectedInputPerson && r.productName)
+      .forEach(r => {
+        if (!seenProds.includes(r.productName)) seenProds.push(r.productName);
+      });
+    history = seenProds.slice(0, 30);
+  } else {
+    history = load('products', SAMPLE_PRODUCTS);
+  }
   const filteredHist = raw
     ? history.filter(p => p.toLowerCase().includes(lower))
     : history.slice(0, 5);
@@ -5303,6 +5317,15 @@ function renderInputPersonCards() {
 function selectInputPerson(id) {
   S.selectedInputPerson = S.selectedInputPerson === id ? null : id;
   renderInputPersonCards();
+  // 入力者が変わったらメーカー・製品名の履歴表示を更新（オーバーレイが開いている場合）
+  const mfrOverlay = document.getElementById('mfrOverlay');
+  if (mfrOverlay && mfrOverlay.classList.contains('open')) {
+    renderMfrResults(document.getElementById('mfrOverlayInput')?.value || '');
+  }
+  const prodOverlay = document.getElementById('productOverlay');
+  if (prodOverlay && prodOverlay.classList.contains('open')) {
+    renderProductResults(document.getElementById('productOverlayInput')?.value || '');
+  }
 }
 
 let _inputPersonEditMode = false;
