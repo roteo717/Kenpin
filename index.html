@@ -1483,8 +1483,15 @@ a{color:inherit;text-decoration:none}
 .photo-viewer-img{
   max-width:100%;max-height:100dvh;
   object-fit:contain;
-  transition:transform .2s;
+  transition:transform .15s ease;
+  transform-origin:center center;
+  touch-action:none;
+  cursor:grab;
+  user-select:none;
+  -webkit-user-select:none;
 }
+.photo-viewer-img.dragging{cursor:grabbing;transition:none;}
+.photo-viewer-img.zoomed{transition:none;}
 .photo-viewer-close{
   position:absolute;top:16px;right:16px;
   width:40px;height:40px;
@@ -2427,6 +2434,7 @@ a{color:inherit;text-decoration:none}
       </div>
 
       <button class="cam-stop-btn" id="camStopBtn" style="display:none" onclick="stopCamera()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="14" height="14" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
         カメラを停止
       </button>
 
@@ -2679,7 +2687,7 @@ a{color:inherit;text-decoration:none}
 </div>
 
 <!-- PHOTO VIEWER -->
-<div class="photo-viewer-bg" id="photoViewerBg" onclick="if(event.target===this)closePhotoViewer()">
+<div class="photo-viewer-bg" id="photoViewerBg" onclick="if(event.target===this && _pvScale<=1)closePhotoViewer()">
   <button class="photo-viewer-close" onclick="closePhotoViewer()">
     <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" width="16" height="16" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
   </button>
@@ -3196,7 +3204,7 @@ async function uploadPhotoViaGAS(base64DataUrl, makerName, modelName) {
   if (!base64DataUrl.startsWith('data:')) return base64DataUrl;
 
   // ① Canvas で圧縮（最長辺 1024px、品質 0.78）
-  const compressed = await compressImage(base64DataUrl, 1024, 0.78);
+  const compressed = await compressImage(base64DataUrl, 1600, 0.78);
 
   // ② GAS ウェブアプリへ POST
   // GAS は受け取った base64 画像を Drive に保存し、公開 URL を返す
@@ -5574,7 +5582,7 @@ async function capturePhoto() {
   a.style.filter = 'brightness(2.5)';
   setTimeout(() => a.style.filter = '', 110);
   // 圧縮してから保存
-  const compressed = await compressImage(c.toDataURL('image/jpeg', 1.0), 1280, 0.75);
+  const compressed = await compressImage(c.toDataURL('image/jpeg', 1.0), 1600, 0.75);
   addPhoto(compressed);
   showToast('撮影しました','success');
 }
@@ -5583,7 +5591,7 @@ function onFileSelected(files) {
   Array.from(files).forEach(file => {
     const reader = new FileReader();
     reader.onload = async e => {
-      const compressed = await compressImage(e.target.result, 1280, 0.75);
+      const compressed = await compressImage(e.target.result, 1600, 0.75);
       addPhoto(compressed);
     };
     reader.readAsDataURL(file);
@@ -5971,7 +5979,7 @@ async function saveAnnotation() {
   annotState.selectedIdx = -1;
   redrawAnnotCanvas();
   const raw    = canvas.toDataURL('image/jpeg', 0.92);
-  const compressed = await compressImage(raw, 1280, 0.85);
+  const compressed = await compressImage(raw, 1600, 0.85);
   S.photos[annotState.photoIdx].url = compressed;
   renderPhotoGrid();
   closeAnnotator();
@@ -7642,6 +7650,105 @@ let _pvIdx      = 0;
 function dpgScroll(el, total) {
 }
 
+// ============================================================
+// フォトビューアー（ピンチズーム・ダブルタップ対応）
+// ============================================================
+let _pvScale = 1, _pvOffX = 0, _pvOffY = 0;
+let _pvPinchDist0 = 0, _pvPinchScale0 = 1;
+let _pvDragStartX = 0, _pvDragStartY = 0, _pvDragOffX = 0, _pvDragOffY = 0;
+let _pvIsDragging = false, _pvLastTap = 0;
+const PV_MAX_SCALE = 5, PV_MIN_SCALE = 1;
+
+function _pvApplyTransform(img, animate) {
+  if (animate) img.classList.remove('zoomed');
+  else img.classList.add('zoomed');
+  img.style.transform = `translate(${_pvOffX}px,${_pvOffY}px) scale(${_pvScale})`;
+}
+
+function _pvReset(img, animate) {
+  _pvScale = 1; _pvOffX = 0; _pvOffY = 0;
+  if (animate) {
+    img.classList.remove('zoomed');
+  } else {
+    img.classList.add('zoomed');
+  }
+  img.style.transform = '';
+}
+
+function _pvClampOffset(img) {
+  if (_pvScale <= 1) { _pvOffX = 0; _pvOffY = 0; return; }
+  const r = img.getBoundingClientRect();
+  const maxX = (r.width  * (_pvScale - 1)) / 2;
+  const maxY = (r.height * (_pvScale - 1)) / 2;
+  _pvOffX = Math.max(-maxX, Math.min(maxX, _pvOffX));
+  _pvOffY = Math.max(-maxY, Math.min(maxY, _pvOffY));
+}
+
+function _pvSetupGestures() {
+  const img = document.getElementById('photoViewerImg');
+  if (img._pvGestureReady) return;
+  img._pvGestureReady = true;
+
+  // ダブルタップで拡大/リセット
+  img.addEventListener('click', e => {
+    const now = Date.now();
+    if (now - _pvLastTap < 300) {
+      e.stopPropagation();
+      if (_pvScale > 1) {
+        _pvReset(img, true);
+      } else {
+        _pvScale = 2.5; _pvOffX = 0; _pvOffY = 0;
+        _pvApplyTransform(img, false);
+      }
+    }
+    _pvLastTap = now;
+  }, true);
+
+  // ピンチズーム
+  img.addEventListener('touchstart', e => {
+    if (e.touches.length === 2) {
+      e.preventDefault();
+      const dx = e.touches[0].clientX - e.touches[1].clientX;
+      const dy = e.touches[0].clientY - e.touches[1].clientY;
+      _pvPinchDist0  = Math.hypot(dx, dy);
+      _pvPinchScale0 = _pvScale;
+    } else if (e.touches.length === 1 && _pvScale > 1) {
+      e.preventDefault();
+      _pvIsDragging = true;
+      img.classList.add('dragging');
+      _pvDragStartX = e.touches[0].clientX - _pvOffX;
+      _pvDragStartY = e.touches[0].clientY - _pvOffY;
+    }
+  }, { passive: false });
+
+  img.addEventListener('touchmove', e => {
+    if (e.touches.length === 2) {
+      e.preventDefault();
+      const dx = e.touches[0].clientX - e.touches[1].clientX;
+      const dy = e.touches[0].clientY - e.touches[1].clientY;
+      const dist = Math.hypot(dx, dy);
+      _pvScale = Math.max(PV_MIN_SCALE, Math.min(PV_MAX_SCALE, _pvPinchScale0 * (dist / _pvPinchDist0)));
+      _pvClampOffset(img);
+      _pvApplyTransform(img, false);
+    } else if (e.touches.length === 1 && _pvIsDragging) {
+      e.preventDefault();
+      _pvOffX = e.touches[0].clientX - _pvDragStartX;
+      _pvOffY = e.touches[0].clientY - _pvDragStartY;
+      _pvClampOffset(img);
+      _pvApplyTransform(img, false);
+    }
+  }, { passive: false });
+
+  img.addEventListener('touchend', e => {
+    if (_pvIsDragging) {
+      _pvIsDragging = false;
+      img.classList.remove('dragging');
+    }
+    // ズームアウトしすぎたらリセット
+    if (_pvScale < 1) { _pvReset(img, true); }
+  });
+}
+
 function openPhotoViewer(idx) {
   // カルーセル(.dpg-img) または旧グリッド(.detail-photo) どちらにも対応
   const imgs = document.querySelectorAll('#dContent .dpg-img, #dContent .detail-photo');
@@ -7649,12 +7756,16 @@ function openPhotoViewer(idx) {
   _pvComments = Array.from(imgs).map(img => img.dataset.comment || '');
   if (!_pvPhotos.length) return;
   _pvIdx = idx;
+  _pvReset(document.getElementById('photoViewerImg'), false);
   _renderPhotoViewer();
   document.getElementById('photoViewerBg').classList.add('show');
+  _pvSetupGestures();
 }
 
 function _renderPhotoViewer() {
-  document.getElementById('photoViewerImg').src = _pvPhotos[_pvIdx];
+  const img = document.getElementById('photoViewerImg');
+  img.src = _pvPhotos[_pvIdx];
+  _pvReset(img, false);
   const total = _pvPhotos.length;
   document.getElementById('pvCount').textContent = total > 1 ? `${_pvIdx + 1} / ${total}` : '';
   document.getElementById('pvPrev').style.display = (total > 1 && _pvIdx > 0)           ? 'flex' : 'none';
@@ -7668,6 +7779,7 @@ function _renderPhotoViewer() {
 }
 
 function photoViewerNav(dir) {
+  if (_pvScale > 1) return; // ズーム中は写真切り替えしない
   _pvIdx = Math.max(0, Math.min(_pvPhotos.length - 1, _pvIdx + dir));
   _renderPhotoViewer();
 }
@@ -7678,6 +7790,8 @@ function togglePvComment() {
 }
 
 function closePhotoViewer() {
+  const img = document.getElementById('photoViewerImg');
+  _pvReset(img, false);
   document.getElementById('photoViewerBg').classList.remove('show');
 }
 
