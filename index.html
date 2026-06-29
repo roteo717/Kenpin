@@ -7182,12 +7182,17 @@ function openMasterData(section) {
   _masterEditMode = false;
   document.getElementById('masterDataOverlay').classList.add('open');
   renderSettingsMasterData();
-  // 編集ボタンはスワイプで代替するため非表示（スペースは維持してタイトルを中央に）
-  const btn = document.getElementById('masterEditToggleBtn');
-  if (btn) { btn.style.visibility = 'hidden'; }
-  // 追加ボタンは製品状態管理のときだけ表示
-  const addBtn = document.getElementById('masterAddBtn');
-  if (addBtn) { addBtn.style.display = section === 'productStatus' ? '' : 'none'; }
+  const editBtn = document.getElementById('masterEditToggleBtn');
+  const addBtn  = document.getElementById('masterAddBtn');
+  if (section === 'productStatus') {
+    // 追加ボタンを表示、編集ボタンは非表示（スペースごと消してずれを防ぐ）
+    if (addBtn)  addBtn.style.display  = '';
+    if (editBtn) editBtn.style.display = 'none';
+  } else {
+    // 通常はスペース確保のため編集ボタンを visibility:hidden で残す
+    if (addBtn)  addBtn.style.display      = 'none';
+    if (editBtn) { editBtn.style.display = ''; editBtn.style.visibility = 'hidden'; }
+  }
   // オーバーレイタイトルをセクションに合わせて変更
   const titleEl = document.getElementById('masterDataOverlayTitle');
   if (titleEl) {
