@@ -1791,7 +1791,8 @@ a{color:inherit;text-decoration:none}
 .modal-bg.show{opacity:1;pointer-events:all;touch-action:none}
 /* 入力者・確認者追加モーダルはキーボードと被らないよう上寄せ */
 #inputPersonModal,
-#inspModal{
+#inspModal,
+#productStatusModal{
   align-items:flex-start;
   padding-top:72px;
 }
@@ -6982,19 +6983,6 @@ function renderSettingsMasterData() {
       });
       html += '</div>';
     }
-    // 追加フォーム
-    html += `
-      <div style="padding:12px 14px 4px">
-        <div style="display:flex;gap:8px;align-items:center">
-          <input type="text" id="addProductStatusInput"
-            style="flex:1;padding:10px 12px;border:1.5px solid var(--border);border-radius:10px;font-size:14px;background:var(--surface-2);color:var(--text);outline:none"
-            placeholder="新しい製品状態を入力"
-            maxlength="20"
-            onkeydown="if(event.key==='Enter')addProductStatus()">
-          <button onclick="addProductStatus()"
-            style="padding:10px 16px;background:var(--primary);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;white-space:nowrap">追加</button>
-        </div>
-      </div>`;
   }
 
   el.innerHTML = html;
@@ -7058,9 +7046,25 @@ function deleteProductStatusFromSettings(name) {
   document.getElementById('confirmModal').classList.add('show');
 }
 
+/** 製品状態追加モーダルを開く */
+function openProductStatusModal() {
+  document.getElementById('productStatusModal').classList.add('show');
+  setTimeout(() => {
+    const inp = document.getElementById('productStatusName');
+    if (inp) inp.focus();
+  }, 50);
+}
+
+/** 製品状態追加モーダルを閉じる */
+function closeProductStatusModal() {
+  document.getElementById('productStatusModal').classList.remove('show');
+  const inp = document.getElementById('productStatusName');
+  if (inp) inp.value = '';
+}
+
 /** 製品状態を新規追加 */
 function addProductStatus() {
-  const inp = document.getElementById('addProductStatusInput');
+  const inp = document.getElementById('productStatusName');
   if (!inp) return;
   const val = inp.value.trim();
   if (!val) { showToast('製品状態名を入力してください', 'error'); return; }
@@ -7068,7 +7072,7 @@ function addProductStatus() {
   if (statuses.includes(val)) { showToast('すでに登録されています', 'error'); return; }
   statuses.push(val);
   save('productStatuses', statuses);
-  inp.value = '';
+  closeProductStatusModal();
   renderSettingsMasterData();
   renderProductStatus();
   showToast(`「${val}」を追加しました`, 'success');
@@ -7181,6 +7185,9 @@ function openMasterData(section) {
   // 編集ボタンはスワイプで代替するため非表示（スペースは維持してタイトルを中央に）
   const btn = document.getElementById('masterEditToggleBtn');
   if (btn) { btn.style.visibility = 'hidden'; }
+  // 追加ボタンは製品状態管理のときだけ表示
+  const addBtn = document.getElementById('masterAddBtn');
+  if (addBtn) { addBtn.style.display = section === 'productStatus' ? '' : 'none'; }
   // オーバーレイタイトルをセクションに合わせて変更
   const titleEl = document.getElementById('masterDataOverlayTitle');
   if (titleEl) {
@@ -8456,6 +8463,19 @@ init();
   </div>
 </div>
 
+<!-- 製品状態追加モーダル -->
+<div class="modal-bg" id="productStatusModal" onclick="if(event.target===this)closeProductStatusModal()">
+  <div class="modal-box">
+    <div class="modal-title">製品状態を追加</div>
+    <input class="modal-input" id="productStatusName" type="text" placeholder="例: ベトナム品" maxlength="20"
+      onkeydown="if(event.key==='Enter')addProductStatus()" />
+    <div class="modal-actions">
+      <button class="m-btn cancel" onclick="closeProductStatusModal()">キャンセル</button>
+      <button class="m-btn ok" onclick="addProductStatus()">追加する</button>
+    </div>
+  </div>
+</div>
+
 <!-- 入力者選択ドロップダウン -->
 <div class="mfr-overlay" id="inputPersonDropdown" style="max-height:60vh;border-radius:20px 20px 0 0;bottom:0;top:auto">
   <div class="mfr-overlay-header" style="padding:14px 16px">
@@ -8487,7 +8507,10 @@ init();
       <svg viewBox="0 0 24 24" fill="none" stroke="var(--text-2)" stroke-width="2.5" width="20" height="20" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg>
     </button>
     <div style="flex:1;font-size:17px;font-weight:700;color:var(--text);text-align:center" id="masterDataOverlayTitle">マスターデータ</div>
-    <button id="masterEditToggleBtn" class="md-edit-btn" onclick="toggleMasterEditMode()">編集</button>
+    <div style="display:flex;align-items:center;gap:4px">
+      <button id="masterAddBtn" class="md-edit-btn" onclick="openProductStatusModal()" style="color:var(--primary);display:none">追加</button>
+      <button id="masterEditToggleBtn" class="md-edit-btn" onclick="toggleMasterEditMode()">編集</button>
+    </div>
   </div>
   <div class="mfr-result-list" id="masterDataList"></div>
 </div>
